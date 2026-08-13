@@ -33,6 +33,35 @@ function logout() {
   clearTokens()
 }
 
+async function previewInvite(token) {
+  const res = await fetch(`${API_BASE}/api/invites/preview/${token}/`)
+  if (!res.ok) {
+    throw new Error(res.status === 404 ? 'This invite link is invalid.' : 'Could not load invite.')
+  }
+  return res.json()
+}
+
+async function acceptInvite(token, username, password) {
+  const res = await fetch(`${API_BASE}/api/invites/accept/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, username, password }),
+  })
+  let data = null
+  try {
+    data = await res.json()
+  } catch {
+    // no body
+  }
+  if (!res.ok) {
+    const message =
+      (data && (data.detail || Object.values(data).flat().join(' '))) || 'Could not accept invite.'
+    throw new Error(message)
+  }
+  setTokens(data)
+  return data
+}
+
 async function refreshAccessToken() {
   const tokens = getTokens()
   if (!tokens?.refresh) return null
@@ -113,6 +142,14 @@ export const api = {
   logout,
   isLoggedIn: () => !!getTokens()?.access,
   me: () => request('/api/me/'),
+  previewInvite,
+  acceptInvite,
+
+  invites: {
+    list: () => request('/api/invites/'),
+    create: (body) => request('/api/invites/', { method: 'POST', body }),
+    remove: (id) => request(`/api/invites/${id}/`, { method: 'DELETE' }),
+  },
 
   students: {
     list: (params) => request('/api/students/', { params }),
@@ -121,6 +158,14 @@ export const api = {
   },
   schoolClasses: {
     list: () => request('/api/school-classes/'),
+    create: (body) => request('/api/school-classes/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/school-classes/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/school-classes/${id}/`, { method: 'DELETE' }),
+  },
+  yearGroups: {
+    list: () => request('/api/year-groups/'),
+    create: (body) => request('/api/year-groups/', { method: 'POST', body }),
+    remove: (id) => request(`/api/year-groups/${id}/`, { method: 'DELETE' }),
   },
   subjects: {
     list: () => request('/api/subjects/'),

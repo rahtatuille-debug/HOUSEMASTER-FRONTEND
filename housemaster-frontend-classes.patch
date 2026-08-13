@@ -1,0 +1,321 @@
+diff -ruN '--exclude=node_modules' '--exclude=dist' '--exclude=.env' frontend/src/api.js frontend2/src/api.js
+--- frontend/src/api.js	2026-08-03 06:27:51.417907816 +0000
++++ frontend2/src/api.js	2026-08-05 06:46:31.963257511 +0000
+@@ -121,6 +121,14 @@
+   },
+   schoolClasses: {
+     list: () => request('/api/school-classes/'),
++    create: (body) => request('/api/school-classes/', { method: 'POST', body }),
++    update: (id, body) => request(`/api/school-classes/${id}/`, { method: 'PATCH', body }),
++    remove: (id) => request(`/api/school-classes/${id}/`, { method: 'DELETE' }),
++  },
++  yearGroups: {
++    list: () => request('/api/year-groups/'),
++    create: (body) => request('/api/year-groups/', { method: 'POST', body }),
++    remove: (id) => request(`/api/year-groups/${id}/`, { method: 'DELETE' }),
+   },
+   subjects: {
+     list: () => request('/api/subjects/'),
+diff -ruN '--exclude=node_modules' '--exclude=dist' '--exclude=.env' frontend/src/panels/Setup.jsx frontend2/src/panels/Setup.jsx
+--- frontend/src/panels/Setup.jsx	2026-08-03 06:28:28.336821008 +0000
++++ frontend2/src/panels/Setup.jsx	2026-08-05 06:47:09.153883299 +0000
+@@ -4,6 +4,8 @@
+ export default function Setup() {
+   const [subjects, setSubjects] = useState([])
+   const [terms, setTerms] = useState([])
++  const [yearGroups, setYearGroups] = useState([])
++  const [classes, setClasses] = useState([])
+   const [error, setError] = useState('')
+   const [loading, setLoading] = useState(true)
+ 
+@@ -11,14 +13,25 @@
+   const [termName, setTermName] = useState('')
+   const [termStart, setTermStart] = useState('')
+   const [termEnd, setTermEnd] = useState('')
++  const [yearGroupName, setYearGroupName] = useState('')
++  const [className, setClassName] = useState('')
++  const [classYearGroup, setClassYearGroup] = useState('')
++  const [classHouse, setClassHouse] = useState('')
+ 
+   async function loadAll() {
+     setLoading(true)
+     setError('')
+     try {
+-      const [s, t] = await Promise.all([api.subjects.list(), api.terms.list()])
++      const [s, t, yg, cls] = await Promise.all([
++        api.subjects.list(),
++        api.terms.list(),
++        api.yearGroups.list(),
++        api.schoolClasses.list(),
++      ])
+       setSubjects(s)
+       setTerms(t)
++      setYearGroups(yg)
++      setClasses(cls)
+     } catch (err) {
+       setError(err.message)
+     } finally {
+@@ -56,6 +69,46 @@
+     }
+   }
+ 
++  async function addYearGroup(e) {
++    e.preventDefault()
++    if (!yearGroupName.trim()) return
++    try {
++      await api.yearGroups.create({ name: yearGroupName.trim() })
++      setYearGroupName('')
++      loadAll()
++    } catch (err) {
++      setError(err.message)
++    }
++  }
++
++  async function addClass(e) {
++    e.preventDefault()
++    if (!className.trim() || !classYearGroup) return
++    try {
++      await api.schoolClasses.create({
++        name: className.trim(),
++        year_group: Number(classYearGroup),
++        house: classHouse.trim(),
++      })
++      setClassName('')
++      setClassHouse('')
++      loadAll()
++    } catch (err) {
++      setError(err.message)
++    }
++  }
++
++  async function removeClass(id) {
++    try {
++      await api.schoolClasses.remove(id)
++      loadAll()
++    } catch (err) {
++      setError(err.message)
++    }
++  }
++
++  const yearGroupName_ = (id) => yearGroups.find((yg) => yg.id === id)?.name || `#${id}`
++
+   return (
+     <div>
+       <div className="panel-header">
+@@ -136,13 +189,106 @@
+         )}
+       </div>
+ 
+-      <div className="card" style={{ borderLeft: '3px solid var(--gold)' }}>
+-        <h3 style={{ marginBottom: 8, fontSize: 15 }}>Classes</h3>
+-        <p className="hint" style={{ marginTop: 0 }}>
+-          Class management (e.g. "7A", "Year 9 Blue") isn't available here yet — the backend
+-          needs a Year Group API added first. For now, classes can be created via the Django
+-          admin panel at <span className="mono">/admin/</span>.
+-        </p>
++      <div className="card">
++        <h3 style={{ marginBottom: 14 }}>Year groups</h3>
++        <form onSubmit={addYearGroup} className="form-row" style={{ marginBottom: 16 }}>
++          <div className="field" style={{ marginBottom: 0 }}>
++            <label htmlFor="yg-name">New year group</label>
++            <input
++              id="yg-name"
++              value={yearGroupName}
++              onChange={(e) => setYearGroupName(e.target.value)}
++              placeholder="e.g. Year 7"
++            />
++          </div>
++          <button type="submit">Add year group</button>
++        </form>
++        {!loading && yearGroups.length === 0 && (
++          <p className="hint">No year groups yet — add one above before creating classes.</p>
++        )}
++        {yearGroups.length > 0 && (
++          <ul style={{ margin: 0, paddingLeft: 18 }}>
++            {yearGroups.map((yg) => (
++              <li key={yg.id}>{yg.name}</li>
++            ))}
++          </ul>
++        )}
++      </div>
++
++      <div className="card">
++        <h3 style={{ marginBottom: 14 }}>Classes</h3>
++        {yearGroups.length === 0 ? (
++          <p className="hint" style={{ margin: 0 }}>
++            Add a year group first, then classes can be created within it.
++          </p>
++        ) : (
++          <>
++            <form onSubmit={addClass} className="form-row" style={{ marginBottom: 16 }}>
++              <div className="field" style={{ marginBottom: 0 }}>
++                <label htmlFor="class-year-group">Year group</label>
++                <select
++                  id="class-year-group"
++                  value={classYearGroup}
++                  onChange={(e) => setClassYearGroup(e.target.value)}
++                >
++                  <option value="">Select…</option>
++                  {yearGroups.map((yg) => (
++                    <option key={yg.id} value={yg.id}>
++                      {yg.name}
++                    </option>
++                  ))}
++                </select>
++              </div>
++              <div className="field" style={{ marginBottom: 0 }}>
++                <label htmlFor="class-name">Class name</label>
++                <input
++                  id="class-name"
++                  value={className}
++                  onChange={(e) => setClassName(e.target.value)}
++                  placeholder="e.g. 7A"
++                />
++              </div>
++              <div className="field" style={{ marginBottom: 0 }}>
++                <label htmlFor="class-house">House</label>
++                <input
++                  id="class-house"
++                  value={classHouse}
++                  onChange={(e) => setClassHouse(e.target.value)}
++                  placeholder="optional"
++                />
++              </div>
++              <button type="submit">Add class</button>
++            </form>
++            {classes.length === 0 ? (
++              <p className="hint">No classes yet — add one above.</p>
++            ) : (
++              <table>
++                <thead>
++                  <tr>
++                    <th>Class</th>
++                    <th>Year group</th>
++                    <th>House</th>
++                    <th></th>
++                  </tr>
++                </thead>
++                <tbody>
++                  {classes.map((c) => (
++                    <tr key={c.id}>
++                      <td>{c.name}</td>
++                      <td>{yearGroupName_(c.year_group)}</td>
++                      <td>{c.house || '—'}</td>
++                      <td>
++                        <button className="danger" onClick={() => removeClass(c.id)}>
++                          Delete
++                        </button>
++                      </td>
++                    </tr>
++                  ))}
++                </tbody>
++              </table>
++            )}
++          </>
++        )}
+       </div>
+     </div>
+   )
+diff -ruN '--exclude=node_modules' '--exclude=dist' '--exclude=.env' frontend/src/panels/Students.jsx frontend2/src/panels/Students.jsx
+--- frontend/src/panels/Students.jsx	2026-08-03 06:28:45.024820627 +0000
++++ frontend2/src/panels/Students.jsx	2026-08-05 06:47:30.618249758 +0000
+@@ -1,10 +1,11 @@
+ import { useEffect, useState } from 'react'
+ import { api } from '../api.js'
+ 
+-const emptyForm = { first_name: '', last_name: '', house: '', external_id: '' }
++const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', school_class: '' }
+ 
+ export default function Students() {
+   const [students, setStudents] = useState([])
++  const [classes, setClasses] = useState([])
+   const [error, setError] = useState('')
+   const [loading, setLoading] = useState(true)
+   const [form, setForm] = useState(emptyForm)
+@@ -16,8 +17,9 @@
+     setError('')
+     try {
+       const params = showInactive ? {} : { is_active: true }
+-      const data = await api.students.list(params)
++      const [data, cls] = await Promise.all([api.students.list(params), api.schoolClasses.list()])
+       setStudents(data)
++      setClasses(cls)
+     } catch (err) {
+       setError(err.message)
+     } finally {
+@@ -37,6 +39,7 @@
+       last_name: student.last_name,
+       house: student.house || '',
+       external_id: student.external_id || '',
++      school_class: student.school_class ? String(student.school_class) : '',
+     })
+   }
+ 
+@@ -48,11 +51,15 @@
+   async function handleSubmit(e) {
+     e.preventDefault()
+     if (!form.first_name.trim() || !form.last_name.trim()) return
++    const body = {
++      ...form,
++      school_class: form.school_class ? Number(form.school_class) : null,
++    }
+     try {
+       if (editingId) {
+-        await api.students.update(editingId, form)
++        await api.students.update(editingId, body)
+       } else {
+-        await api.students.create(form)
++        await api.students.create(body)
+       }
+       cancelEdit()
+       load()
+@@ -70,6 +77,11 @@
+     }
+   }
+ 
++  const className = (id) => {
++    if (!id) return '—'
++    return classes.find((c) => c.id === id)?.name || `#${id}`
++  }
++
+   return (
+     <div>
+       <div className="panel-header">
+@@ -112,6 +124,21 @@
+               />
+             </div>
+             <div className="field" style={{ marginBottom: 0 }}>
++              <label htmlFor="student-class">Class</label>
++              <select
++                id="student-class"
++                value={form.school_class}
++                onChange={(e) => setForm({ ...form, school_class: e.target.value })}
++              >
++                <option value="">Unassigned</option>
++                {classes.map((c) => (
++                  <option key={c.id} value={c.id}>
++                    {c.name}
++                  </option>
++                ))}
++              </select>
++            </div>
++            <div className="field" style={{ marginBottom: 0 }}>
+               <label htmlFor="house">House</label>
+               <input
+                 id="house"
+@@ -152,6 +179,7 @@
+           <thead>
+             <tr>
+               <th>Name</th>
++              <th>Class</th>
+               <th>House</th>
+               <th>External ID</th>
+               <th>Status</th>
+@@ -162,6 +190,7 @@
+             {students.map((s) => (
+               <tr key={s.id}>
+                 <td>{s.first_name} {s.last_name}</td>
++                <td>{className(s.school_class)}</td>
+                 <td>{s.house || '—'}</td>
+                 <td className="mono">{s.external_id || '—'}</td>
+                 <td>

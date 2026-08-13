@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 
-const emptyForm = { first_name: '', last_name: '', house: '', external_id: '' }
+const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', school_class: '' }
 
 export default function Students() {
   const [students, setStudents] = useState([])
+  const [classes, setClasses] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(emptyForm)
@@ -16,8 +17,9 @@ export default function Students() {
     setError('')
     try {
       const params = showInactive ? {} : { is_active: true }
-      const data = await api.students.list(params)
+      const [data, cls] = await Promise.all([api.students.list(params), api.schoolClasses.list()])
       setStudents(data)
+      setClasses(cls)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -37,6 +39,7 @@ export default function Students() {
       last_name: student.last_name,
       house: student.house || '',
       external_id: student.external_id || '',
+      school_class: student.school_class ? String(student.school_class) : '',
     })
   }
 
@@ -48,11 +51,15 @@ export default function Students() {
   async function handleSubmit(e) {
     e.preventDefault()
     if (!form.first_name.trim() || !form.last_name.trim()) return
+    const body = {
+      ...form,
+      school_class: form.school_class ? Number(form.school_class) : null,
+    }
     try {
       if (editingId) {
-        await api.students.update(editingId, form)
+        await api.students.update(editingId, body)
       } else {
-        await api.students.create(form)
+        await api.students.create(body)
       }
       cancelEdit()
       load()
@@ -68,6 +75,11 @@ export default function Students() {
     } catch (err) {
       setError(err.message)
     }
+  }
+
+  const className = (id) => {
+    if (!id) return '—'
+    return classes.find((c) => c.id === id)?.name || `#${id}`
   }
 
   return (
@@ -112,6 +124,21 @@ export default function Students() {
               />
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
+              <label htmlFor="student-class">Class</label>
+              <select
+                id="student-class"
+                value={form.school_class}
+                onChange={(e) => setForm({ ...form, school_class: e.target.value })}
+              >
+                <option value="">Unassigned</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
               <label htmlFor="house">House</label>
               <input
                 id="house"
@@ -152,6 +179,7 @@ export default function Students() {
           <thead>
             <tr>
               <th>Name</th>
+              <th>Class</th>
               <th>House</th>
               <th>External ID</th>
               <th>Status</th>
@@ -162,6 +190,7 @@ export default function Students() {
             {students.map((s) => (
               <tr key={s.id}>
                 <td>{s.first_name} {s.last_name}</td>
+                <td>{className(s.school_class)}</td>
                 <td>{s.house || '—'}</td>
                 <td className="mono">{s.external_id || '—'}</td>
                 <td>
