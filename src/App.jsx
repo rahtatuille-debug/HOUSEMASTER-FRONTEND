@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
+import ForgotPassword from './panels/ForgotPassword.jsx'
+import ResetPassword from './panels/ResetPassword.jsx'
 import Students from './panels/Students.jsx'
 import Setup from './panels/Setup.jsx'
 import Grades from './panels/Grades.jsx'
@@ -17,18 +19,27 @@ const TABS = [
 ]
 
 // No router library — this app is small enough that a plain path check
-// for the one public route (/invite/:token) plus tab state for everything
-// else is simpler than pulling in react-router for a single case.
+// for the public routes (/invite/:token, /reset-password/:token) plus tab
+// state for everything else is simpler than pulling in react-router.
 function getInviteToken() {
   const match = window.location.pathname.match(/^\/invite\/([^/]+)\/?$/)
   return match ? match[1] : null
 }
 
+function getResetToken() {
+  const match = window.location.pathname.match(/^\/reset-password\/([^/]+)\/?$/)
+  return match ? match[1] : null
+}
+
 export default function App() {
   const [inviteToken, setInviteToken] = useState(getInviteToken())
+  const [resetToken, setResetToken] = useState(getResetToken())
   const [loggedIn, setLoggedIn] = useState(api.isLoggedIn())
   const [me, setMe] = useState(null)
   const [activeTab, setActiveTab] = useState('students')
+  // Which screen to show when logged out and not on a token route.
+  const [authView, setAuthView] = useState('login') // 'login' | 'forgot'
+  const [authMessage, setAuthMessage] = useState('')
 
   useEffect(() => {
     if (!loggedIn) return
@@ -53,12 +64,35 @@ export default function App() {
     setLoggedIn(true)
   }
 
+  function handlePasswordResetDone() {
+    window.history.replaceState({}, '', '/')
+    setResetToken(null)
+    setAuthView('login')
+    setAuthMessage('Your password has been reset. You can now sign in.')
+  }
+
   if (inviteToken) {
     return <AcceptInvite token={inviteToken} onAccepted={handleInviteAccepted} />
   }
 
+  if (resetToken) {
+    return <ResetPassword token={resetToken} onDone={handlePasswordResetDone} />
+  }
+
   if (!loggedIn) {
-    return <Login onLoggedIn={() => setLoggedIn(true)} />
+    if (authView === 'forgot') {
+      return <ForgotPassword onBack={() => setAuthView('login')} />
+    }
+    return (
+      <Login
+        onLoggedIn={() => setLoggedIn(true)}
+        onForgotPassword={() => {
+          setAuthMessage('')
+          setAuthView('forgot')
+        }}
+        successMessage={authMessage}
+      />
+    )
   }
 
   const visibleTabs = TABS.filter((t) => !t.adminOnly || me?.role === 'admin')

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 
-export default function Login({ onLoggedIn }) {
+export default function Login({ onLoggedIn, onForgotPassword, successMessage }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -26,6 +26,7 @@ export default function Login({ onLoggedIn }) {
       <div className="login-card">
         <h1>HouseMaster</h1>
         <p className="tagline">Staff sign-in</p>
+        {successMessage && <div className="success-banner">{successMessage}</div>}
         {error && <div className="error-banner">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="field">
@@ -52,6 +53,11 @@ export default function Login({ onLoggedIn }) {
             {submitting ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+        {onForgotPassword && (
+          <button type="button" className="link-button" onClick={onForgotPassword}>
+            Forgot password?
+          </button>
+        )}
       </div>
     </div>
   )

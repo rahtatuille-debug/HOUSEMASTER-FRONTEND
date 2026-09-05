@@ -62,6 +62,47 @@ async function acceptInvite(token, username, password) {
   return data
 }
 
+async function requestPasswordReset(username) {
+  const res = await fetch(`${API_BASE}/api/password-reset/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username }),
+  })
+  let data = null
+  try {
+    data = await res.json()
+  } catch {
+    // no body
+  }
+  if (!res.ok) {
+    const message =
+      (data && (data.detail || Object.values(data).flat().join(' '))) ||
+      'Could not request a reset link.'
+    throw new Error(message)
+  }
+  return data
+}
+
+async function confirmPasswordReset(token, password) {
+  const res = await fetch(`${API_BASE}/api/password-reset/confirm/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password }),
+  })
+  let data = null
+  try {
+    data = await res.json()
+  } catch {
+    // no body
+  }
+  if (!res.ok) {
+    const message =
+      (data && (data.detail || Object.values(data).flat().join(' '))) || 'Could not reset password.'
+    throw new Error(message)
+  }
+  return data
+}
+
 async function refreshAccessToken() {
   const tokens = getTokens()
   if (!tokens?.refresh) return null
@@ -144,6 +185,8 @@ export const api = {
   me: () => request('/api/me/'),
   previewInvite,
   acceptInvite,
+  requestPasswordReset,
+  confirmPasswordReset,
 
   invites: {
     list: () => request('/api/invites/'),
