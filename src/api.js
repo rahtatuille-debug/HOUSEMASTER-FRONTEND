@@ -243,6 +243,7 @@ export const api = {
     update: (id, body) => request(`/api/announcements/${id}/`, { method: 'PATCH', body }),
     publish: (id) => request(`/api/announcements/${id}/publish/`, { method: 'POST' }),
     archive: (id) => request(`/api/announcements/${id}/archive/`, { method: 'POST' }),
+    generateText: (body) => request('/api/announcements/generate-text/', { method: 'POST', body }),
   },
   schools: {
     mine: () => request('/api/schools/'),

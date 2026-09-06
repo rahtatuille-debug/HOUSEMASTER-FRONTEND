@@ -80,6 +80,95 @@ function ConfirmDialog({ action, onCancel, onConfirm, busy }) {
   )
 }
 
+function ReplaceDialog({ onCancel, onConfirm }) {
+  const cancelRef = useRef(null)
+  useEffect(() => { cancelRef.current?.focus() }, [])
+  return (
+    <div className="dialog-backdrop" role="presentation">
+      <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="replace-title">
+        <h3 id="replace-title">Replace current announcement text?</h3>
+        <p>Generating a new draft will replace the current title and message.</p>
+        <div className="form-actions">
+          <button ref={cancelRef} type="button" className="secondary" onClick={onCancel}>Cancel</button>
+          <button type="button" onClick={onConfirm}>Replace with AI draft</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function AiDraftTool({ yearGroups, classes, initialContext, onUseDraft, teacher = false, onBack, showToast }) {
+  const [context, setContext] = useState(() => ({
+    summary: '', audience: initialContext?.audience || 'all_staff',
+    year_group: initialContext?.year_group || '', school_class: initialContext?.school_class || '',
+  }))
+  const [generated, setGenerated] = useState(null)
+  const [errors, setErrors] = useState({})
+  const [error, setError] = useState('')
+  const [generating, setGenerating] = useState(false)
+
+  function setAudience(audience) {
+    setContext((value) => ({ ...value, audience, year_group: audience === 'year_group' ? value.year_group : '', school_class: audience === 'school_class' ? value.school_class : '' }))
+  }
+
+  function generationError(err) {
+    if (err.status === 403) return "You don’t have permission to do that."
+    if (err.status === 404) return 'The selected audience target could not be found.'
+    if (err.status === 503) return 'AI drafting is currently unavailable. Please write the announcement manually or try again later.'
+    return errorMessage(err)
+  }
+
+  async function generate() {
+    const summary = context.summary.trim()
+    const nextErrors = {}
+    if (summary.length < 10) nextErrors.summary = 'Enter at least 10 characters.'
+    if (summary.length > 2000) nextErrors.summary = 'Summary must be 2,000 characters or fewer.'
+    if (context.audience === 'year_group' && !context.year_group) nextErrors.year_group = 'Choose a year group.'
+    if (context.audience === 'school_class' && !context.school_class) nextErrors.school_class = 'Choose a class.'
+    setErrors(nextErrors)
+    if (Object.keys(nextErrors).length) return
+    const payload = { summary, audience: context.audience }
+    if (context.audience === 'year_group') payload.year_group = Number(context.year_group)
+    if (context.audience === 'school_class') payload.school_class = Number(context.school_class)
+    setGenerating(true)
+    setError('')
+    try {
+      setGenerated(await api.announcements.generateText(payload))
+    } catch (err) {
+      const data = err.data || {}
+      setErrors(data.summary ? { summary: Array.isArray(data.summary) ? data.summary.join(' ') : String(data.summary) } : {})
+      setError(generationError(err))
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function copy(value) {
+    try {
+      await navigator.clipboard.writeText(value)
+      showToast('Copied to clipboard.')
+    } catch {
+      setError('Could not copy — your browser may be blocking clipboard access.')
+    }
+  }
+
+  const classOptions = classes
+  return (
+    <section className="ai-draft-tool card">
+      <div className="ai-heading"><div><p className="eyebrow">Assistive drafting</p><h3>{teacher ? 'AI Announcement Draft' : 'Draft with AI'}</h3></div></div>
+      <p className="text-muted">AI creates editable suggested text only. It will not save or publish an announcement.</p>
+      {error && <div className="error-banner">{error}</div>}
+      <div className="field"><label htmlFor="ai-summary">What would you like to communicate?</label><textarea id="ai-summary" rows="4" value={context.summary} onChange={(e) => setContext({ ...context, summary: e.target.value })} placeholder="Tell Year 8 parents that assessment week begins Monday and students should bring their normal stationery." aria-invalid={!!errors.summary} /><div className="field-meta">{context.summary.length}/2000</div>{errors.summary && <p className="field-error">{errors.summary}</p>}</div>
+      <div className="field"><label htmlFor="ai-audience">Intended audience</label><select id="ai-audience" value={context.audience} onChange={(e) => setAudience(e.target.value)}>{Object.entries(AUDIENCES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
+      {context.audience === 'year_group' && <div className="field"><label htmlFor="ai-year-group">Year group</label><select id="ai-year-group" value={context.year_group} onChange={(e) => setContext({ ...context, year_group: e.target.value })} aria-invalid={!!errors.year_group}><option value="">Choose a year group</option>{yearGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select>{errors.year_group && <p className="field-error">{errors.year_group}</p>}</div>}
+      {context.audience === 'school_class' && <div className="field"><label htmlFor="ai-class">Class</label><select id="ai-class" value={context.school_class} onChange={(e) => setContext({ ...context, school_class: e.target.value })} aria-invalid={!!errors.school_class}><option value="">Choose a class</option>{classOptions.map((item) => { const group = yearGroups.find((entry) => entry.id === item.year_group); return <option key={item.id} value={item.id}>{group ? `${group.name} — ` : ''}{item.name}</option> })}</select>{errors.school_class && <p className="field-error">{errors.school_class}</p>}</div>}
+      <div className="form-actions"><button type="button" onClick={generate} disabled={generating}>{generating ? 'Writing your announcement…' : generated ? 'Regenerate draft' : 'Generate official draft'}</button>{teacher && <button type="button" className="secondary" onClick={onBack}>Back to announcements</button>}</div>
+      {generating && <p className="ai-writing" role="status">Writing your announcement…</p>}
+      {generated && <div className="ai-output"><p className="draft-notice">AI-generated draft — review and edit before use.</p><h3>Generated announcement draft</h3><div className="field"><label htmlFor="ai-title">Title</label><input id="ai-title" value={generated.title} onChange={(e) => setGenerated({ ...generated, title: e.target.value })} /></div><div className="field"><label htmlFor="ai-body">Message</label><textarea id="ai-body" rows="7" value={generated.body} onChange={(e) => setGenerated({ ...generated, body: e.target.value })} /></div>{teacher ? <div className="form-actions ai-copy-actions"><button type="button" className="secondary" onClick={() => copy(generated.title)}>Copy title</button><button type="button" className="secondary" onClick={() => copy(generated.body)}>Copy message</button><button type="button" onClick={() => copy(`${generated.title}\n\n${generated.body}`)}>Copy all</button></div> : <div className="form-actions"><button type="button" onClick={() => onUseDraft(generated, context)}>Use this draft</button><button type="button" className="secondary" onClick={() => onUseDraft(generated, context)}>Edit manually</button></div>}{teacher && <p className="hint">Generated text is a draft. Share it with an administrator to publish it.</p>}</div>}
+    </section>
+  )
+}
+
 export default function Announcements({ me }) {
   const admin = me?.role === 'admin'
   const [items, setItems] = useState([])
@@ -96,6 +185,8 @@ export default function Announcements({ me }) {
   const [toast, setToast] = useState('')
   const [confirmAction, setConfirmAction] = useState(null)
   const [acting, setActing] = useState(false)
+  const [showAi, setShowAi] = useState(false)
+  const [pendingAiDraft, setPendingAiDraft] = useState(null)
 
   async function load() {
     setLoading(true)
@@ -143,6 +234,7 @@ export default function Announcements({ me }) {
   function openCreate() {
     setForm(blankForm)
     setFormErrors({})
+    setShowAi(false)
     setView('form')
     loadTargets()
   }
@@ -151,12 +243,29 @@ export default function Announcements({ me }) {
     if (selected.status !== 'draft') return
     setForm({ title: selected.title, body: selected.body, audience: selected.audience, year_group: selected.year_group ? String(selected.year_group) : '', school_class: selected.school_class ? String(selected.school_class) : '' })
     setFormErrors({})
+    setShowAi(false)
     setView('form')
     loadTargets()
   }
 
   function setAudience(audience) {
     setForm((current) => ({ ...current, audience, year_group: audience === 'year_group' ? current.year_group : '', school_class: audience === 'school_class' ? current.school_class : '' }))
+  }
+
+  function useAiDraft(draft, context) {
+    const nextForm = { title: draft.title, body: draft.body, audience: context.audience, year_group: context.audience === 'year_group' ? context.year_group : '', school_class: context.audience === 'school_class' ? context.school_class : '' }
+    if (form.title.trim() || form.body.trim()) {
+      setPendingAiDraft(nextForm)
+      return
+    }
+    setForm(nextForm)
+    setShowAi(false)
+  }
+
+  function applyPendingAiDraft() {
+    setForm(pendingAiDraft)
+    setPendingAiDraft(null)
+    setShowAi(false)
   }
 
   function validate() {
@@ -215,11 +324,21 @@ export default function Announcements({ me }) {
 
   if (view === 'not-found') return <div className="empty-state"><h3>Announcement unavailable</h3><p>{error || 'This announcement could not be found.'}</p><button className="secondary" onClick={backToList}>Back to announcements</button></div>
 
+  if (view === 'ai') return (
+    <div>
+      <div className="panel-header"><div><h2>AI Announcement Draft</h2><p className="text-muted">Create a draft to share with an administrator.</p></div></div>
+      {toast && <div className="success-banner" role="status">{toast}</div>}
+      <AiDraftTool yearGroups={yearGroups} classes={classes} teacher onBack={backToList} showToast={setToast} />
+    </div>
+  )
+
   if (view === 'form') return (
     <div className="announcement-form">
       <div className="panel-header"><div><h2>{selected ? 'Edit announcement' : 'New announcement'}</h2><p className="text-muted">Save your message as a draft. It will not be published automatically.</p></div></div>
       {error && <div className="error-banner">{error}</div>}
+      {showAi && <AiDraftTool yearGroups={yearGroups} classes={classes} initialContext={form} onUseDraft={useAiDraft} showToast={setToast} />}
       <form className="card" onSubmit={saveDraft} noValidate>
+        <div className="form-section-heading"><h3>Announcement details</h3><button type="button" className="secondary" onClick={() => setShowAi(!showAi)}>{showAi ? 'Hide AI draft tool' : 'Draft with AI'}</button></div>
         <div className="field"><label htmlFor="announcement-title">Title</label><input id="announcement-title" maxLength="180" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-invalid={!!formErrors.title} required /><div className="field-meta">{form.title.length}/180</div>{formErrors.title && <p className="field-error">{formErrors.title}</p>}</div>
         <div className="field"><label htmlFor="announcement-body">Message</label><textarea id="announcement-body" rows="8" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} aria-invalid={!!formErrors.body} required />{formErrors.body && <p className="field-error">{formErrors.body}</p>}</div>
         <div className="field"><label htmlFor="announcement-audience">Audience</label><select id="announcement-audience" value={form.audience} onChange={(e) => setAudience(e.target.value)}>{Object.entries(AUDIENCES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
@@ -229,6 +348,7 @@ export default function Announcements({ me }) {
         {(form.audience === 'year_group' || form.audience === 'school_class') && <div className="info-notice">Recipient delivery for parent/class audiences will be enabled when parent accounts and class memberships are available.</div>}
         <div className="form-actions"><button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save draft'}</button><button type="button" className="secondary" onClick={() => selected ? setView('detail') : backToList()} disabled={saving}>Cancel</button></div>
       </form>
+      {pendingAiDraft && <ReplaceDialog onCancel={() => setPendingAiDraft(null)} onConfirm={applyPendingAiDraft} />}
     </div>
   )
 
@@ -243,10 +363,10 @@ export default function Announcements({ me }) {
   )
 
   return <div>
-    <div className="panel-header"><div><h2>Announcements</h2><p className="text-muted">{admin ? 'Create and manage school announcements.' : 'School staff notices.'}</p></div>{admin && <button onClick={openCreate}>New announcement</button>}</div>
+    <div className="panel-header"><div><h2>Announcements</h2><p className="text-muted">{admin ? 'Create and manage school announcements.' : 'School staff notices.'}</p></div>{admin ? <button onClick={openCreate}>New announcement</button> : <button onClick={() => setView('ai')}>Draft with AI</button>}</div>
     {toast && <div className="success-banner" role="status">{toast}</div>}
     {admin && <div className="announcement-filters" aria-label="Filter announcements by status">{[['', 'All'], ['draft', 'Drafts'], ['published', 'Published'], ['archived', 'Archived']].map(([value, label]) => <button key={label} className={status === value ? 'active-filter' : 'secondary'} onClick={() => setStatus(value)}>{label}</button>)}</div>}
     {error && <div className="error-banner">{error}<button className="secondary retry-button" onClick={load}>Retry</button></div>}
-    {loading ? <div className="announcement-skeleton" aria-label="Loading announcements"><span /><span /><span /></div> : items.length === 0 ? <div className="empty-state"><h3>{admin ? 'No announcements yet' : 'No staff announcements yet.'}</h3><p>{admin ? 'Create your first announcement.' : 'Published staff announcements will appear here.'}</p>{admin && <button onClick={openCreate}>New announcement</button>}</div> : <div className="announcement-list">{items.map((item) => <button className="announcement-card" key={item.id} onClick={() => openDetail(item.id)}><div className="announcement-card-top"><span className="eyebrow">{audienceText(item, yearGroups, classes)}</span>{admin && <StatusBadge status={item.status} />}</div><h3>{item.title}</h3><p>{item.body}</p><div className="announcement-card-footer"><span>{item.created_by_name || 'Unknown author'}</span><span>{item.status === 'published' ? `Published ${dateTime(item.published_at)}` : item.status === 'archived' ? `Archived ${dateTime(item.archived_at)}` : `Created ${dateTime(item.created_at)}`}</span></div>{admin && item.status === 'draft' && <span className="draft-helper">Draft — not visible to recipients.</span>}</button>)}</div>}
+    {loading ? <div className="announcement-skeleton" aria-label="Loading announcements"><span /><span /><span /></div> : items.length === 0 ? <div className="empty-state"><h3>{admin ? 'No announcements yet' : 'No staff announcements yet.'}</h3><p>{admin ? 'Create your first announcement.' : 'Published staff announcements will appear here.'}</p>{admin ? <button onClick={openCreate}>New announcement</button> : <button onClick={() => setView('ai')}>Draft with AI</button>}</div> : <div className="announcement-list">{items.map((item) => <button className="announcement-card" key={item.id} onClick={() => openDetail(item.id)}><div className="announcement-card-top"><span className="eyebrow">{audienceText(item, yearGroups, classes)}</span>{admin && <StatusBadge status={item.status} />}</div><h3>{item.title}</h3><p>{item.body}</p><div className="announcement-card-footer"><span>{item.created_by_name || 'Unknown author'}</span><span>{item.status === 'published' ? `Published ${dateTime(item.published_at)}` : item.status === 'archived' ? `Archived ${dateTime(item.archived_at)}` : `Created ${dateTime(item.created_at)}`}</span></div>{admin && item.status === 'draft' && <span className="draft-helper">Draft — not visible to recipients.</span>}</button>)}</div>}
   </div>
 }
