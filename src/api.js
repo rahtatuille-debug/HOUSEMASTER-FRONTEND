@@ -56,7 +56,10 @@ async function acceptInvite(token, password) {
   if (!res.ok) {
     const message =
       (data && (data.detail || Object.values(data).flat().join(' '))) || 'Could not accept invite.'
-    throw new Error(message)
+    const err = new Error(message)
+    err.status = res.status
+    err.data = data
+    throw err
   }
   setTokens(data)
   return data
@@ -172,7 +175,10 @@ async function request(path, { method = 'GET', body, params } = {}) {
     const message =
       (data && (data.detail || Object.values(data).flat().join(' '))) ||
       `Request failed (${res.status})`
-    throw new Error(message)
+    const err = new Error(message)
+    err.status = res.status
+    err.data = data
+    throw err
   }
 
   return data
@@ -229,6 +235,14 @@ export const api = {
     generate: (student, term) =>
       request('/api/reports/generate/', { method: 'POST', body: { student, term } }),
     update: (id, body) => request(`/api/reports/${id}/`, { method: 'PATCH', body }),
+  },
+  announcements: {
+    list: (params) => request('/api/announcements/', { params }),
+    get: (id) => request(`/api/announcements/${id}/`),
+    create: (body) => request('/api/announcements/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/announcements/${id}/`, { method: 'PATCH', body }),
+    publish: (id) => request(`/api/announcements/${id}/publish/`, { method: 'POST' }),
+    archive: (id) => request(`/api/announcements/${id}/archive/`, { method: 'POST' }),
   },
   schools: {
     mine: () => request('/api/schools/'),

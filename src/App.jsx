@@ -9,11 +9,13 @@ import Setup from './panels/Setup.jsx'
 import Grades from './panels/Grades.jsx'
 import Reports from './panels/Reports.jsx'
 import Staff from './panels/Staff.jsx'
+import Announcements from './panels/Announcements.jsx'
 
 const TABS = [
   { key: 'students', label: 'Students', component: Students },
   { key: 'grades', label: 'Grades', component: Grades },
   { key: 'reports', label: 'Reports', component: Reports },
+  { key: 'announcements', label: 'Communications', component: Announcements },
   { key: 'setup', label: 'Setup', component: Setup },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
 ]
@@ -126,7 +128,7 @@ export default function App() {
       </nav>
 
       <main className="content">
-        <ActivePanel />
+        <ActivePanel me={me} />
       </main>
     </div>
   )
