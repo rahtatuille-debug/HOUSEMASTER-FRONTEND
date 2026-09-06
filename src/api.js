@@ -15,14 +15,14 @@ function clearTokens() {
   localStorage.removeItem(TOKEN_KEY)
 }
 
-async function login(username, password) {
+async function login(email, password) {
   const res = await fetch(`${API_BASE}/api/token/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ email, password }),
   })
   if (!res.ok) {
-    throw new Error('Incorrect username or password.')
+    throw new Error('Incorrect email or password.')
   }
   const tokens = await res.json()
   setTokens(tokens)
@@ -41,11 +41,11 @@ async function previewInvite(token) {
   return res.json()
 }
 
-async function acceptInvite(token, username, password) {
+async function acceptInvite(token, password) {
   const res = await fetch(`${API_BASE}/api/invites/accept/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, username, password }),
+    body: JSON.stringify({ token, password }),
   })
   let data = null
   try {

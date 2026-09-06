@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { api } from '../api.js'
 
 export default function Login({ onLoggedIn, onForgotPassword, successMessage }) {
-  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -12,7 +12,7 @@ export default function Login({ onLoggedIn, onForgotPassword, successMessage }) 
     setError('')
     setSubmitting(true)
     try {
-      await api.login(username, password)
+      await api.login(email, password)
       onLoggedIn()
     } catch (err) {
       setError(err.message || 'Could not log in.')
@@ -30,11 +30,12 @@ export default function Login({ onLoggedIn, onForgotPassword, successMessage }) 
         {error && <div className="error-banner">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="field">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="email">Email</label>
             <input
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               autoFocus
               required
             />

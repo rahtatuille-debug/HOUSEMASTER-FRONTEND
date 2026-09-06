@@ -96,13 +96,14 @@ export default function Staff() {
             />
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="invite-email">Email (optional, for your reference)</label>
+            <label htmlFor="invite-email">Email</label>
             <input
               id="invite-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="name@school.org"
+              required
             />
           </div>
           <button type="submit" disabled={creating}>
@@ -110,8 +111,8 @@ export default function Staff() {
           </button>
         </form>
         <p className="hint">
-          The link is single-use and expires in 7 days. Share it directly with the person you're
-          inviting — HouseMaster doesn't send it for you yet.
+          The link is single-use and expires in 7 days. This is the email they'll sign in with —
+          share the link directly with them; HouseMaster doesn't send it for you yet.
         </p>
       </div>
 
@@ -150,7 +151,7 @@ export default function Staff() {
                     {inv.status}
                   </span>
                 </td>
-                <td>{inv.invited_by_username || '—'}</td>
+                <td>{inv.invited_by_email || '—'}</td>
                 <td className="text-muted">{new Date(inv.created_at).toLocaleDateString()}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
                   {inv.status === 'pending' && (

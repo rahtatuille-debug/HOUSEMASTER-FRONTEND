@@ -4,7 +4,6 @@ import { api } from '../api.js'
 export default function AcceptInvite({ token, onAccepted }) {
   const [preview, setPreview] = useState(null)
   const [previewError, setPreviewError] = useState('')
-  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
@@ -26,7 +25,9 @@ export default function AcceptInvite({ token, onAccepted }) {
     }
     setSubmitting(true)
     try {
-      await api.acceptInvite(token, username, password)
+      // Only a password is set here — the account's email (and school and
+      // role) were already fixed by the admin when the invite was made.
+      await api.acceptInvite(token, password)
       onAccepted()
     } catch (err) {
       setError(err.message)
@@ -54,20 +55,11 @@ export default function AcceptInvite({ token, onAccepted }) {
           <>
             <p className="hint" style={{ marginBottom: 18 }}>
               You're joining <strong>{preview.school_name}</strong> as a{' '}
-              <strong>{preview.role}</strong>. Choose a username and password to finish.
+              <strong>{preview.role}</strong>, signing in as <strong>{preview.email}</strong>.
+              Choose a password to finish.
             </p>
             {error && <div className="error-banner">{error}</div>}
             <form onSubmit={handleSubmit}>
-              <div className="field">
-                <label htmlFor="invite-username">Username</label>
-                <input
-                  id="invite-username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  autoFocus
-                  required
-                />
-              </div>
               <div className="field">
                 <label htmlFor="invite-password">Password</label>
                 <input
@@ -75,6 +67,7 @@ export default function AcceptInvite({ token, onAccepted }) {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  autoFocus
                   required
                 />
               </div>

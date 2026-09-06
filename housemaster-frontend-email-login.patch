@@ -1,0 +1,182 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index 97dad9d..a47b7b5 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -106,7 +106,7 @@ export default function App() {
+           {me?.school && <span className="school-name">{me.school.name}</span>}
+         </div>
+         <div className="topbar-right">
+-          {me && <span>{me.username} · {me.role}</span>}
++          {me && <span>{me.email} · {me.role}</span>}
+           <button className="secondary" onClick={handleLogout}>
+             Log out
+           </button>
+diff --git a/src/api.js b/src/api.js
+index 9793bfe..cde85a0 100644
+--- a/src/api.js
++++ b/src/api.js
+@@ -15,14 +15,14 @@ function clearTokens() {
+   localStorage.removeItem(TOKEN_KEY)
+ }
+ 
+-async function login(username, password) {
++async function login(email, password) {
+   const res = await fetch(`${API_BASE}/api/token/`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+-    body: JSON.stringify({ username, password }),
++    body: JSON.stringify({ email, password }),
+   })
+   if (!res.ok) {
+-    throw new Error('Incorrect username or password.')
++    throw new Error('Incorrect email or password.')
+   }
+   const tokens = await res.json()
+   setTokens(tokens)
+@@ -41,11 +41,11 @@ async function previewInvite(token) {
+   return res.json()
+ }
+ 
+-async function acceptInvite(token, username, password) {
++async function acceptInvite(token, password) {
+   const res = await fetch(`${API_BASE}/api/invites/accept/`, {
+     method: 'POST',
+     headers: { 'Content-Type': 'application/json' },
+-    body: JSON.stringify({ token, username, password }),
++    body: JSON.stringify({ token, password }),
+   })
+   let data = null
+   try {
+diff --git a/src/panels/AcceptInvite.jsx b/src/panels/AcceptInvite.jsx
+index 2a24f54..39afcea 100644
+--- a/src/panels/AcceptInvite.jsx
++++ b/src/panels/AcceptInvite.jsx
+@@ -4,7 +4,6 @@ import { api } from '../api.js'
+ export default function AcceptInvite({ token, onAccepted }) {
+   const [preview, setPreview] = useState(null)
+   const [previewError, setPreviewError] = useState('')
+-  const [username, setUsername] = useState('')
+   const [password, setPassword] = useState('')
+   const [confirmPassword, setConfirmPassword] = useState('')
+   const [error, setError] = useState('')
+@@ -26,7 +25,9 @@ export default function AcceptInvite({ token, onAccepted }) {
+     }
+     setSubmitting(true)
+     try {
+-      await api.acceptInvite(token, username, password)
++      // Only a password is set here — the account's email (and school and
++      // role) were already fixed by the admin when the invite was made.
++      await api.acceptInvite(token, password)
+       onAccepted()
+     } catch (err) {
+       setError(err.message)
+@@ -54,20 +55,11 @@ export default function AcceptInvite({ token, onAccepted }) {
+           <>
+             <p className="hint" style={{ marginBottom: 18 }}>
+               You're joining <strong>{preview.school_name}</strong> as a{' '}
+-              <strong>{preview.role}</strong>. Choose a username and password to finish.
++              <strong>{preview.role}</strong>, signing in as <strong>{preview.email}</strong>.
++              Choose a password to finish.
+             </p>
+             {error && <div className="error-banner">{error}</div>}
+             <form onSubmit={handleSubmit}>
+-              <div className="field">
+-                <label htmlFor="invite-username">Username</label>
+-                <input
+-                  id="invite-username"
+-                  value={username}
+-                  onChange={(e) => setUsername(e.target.value)}
+-                  autoFocus
+-                  required
+-                />
+-              </div>
+               <div className="field">
+                 <label htmlFor="invite-password">Password</label>
+                 <input
+@@ -75,6 +67,7 @@ export default function AcceptInvite({ token, onAccepted }) {
+                   type="password"
+                   value={password}
+                   onChange={(e) => setPassword(e.target.value)}
++                  autoFocus
+                   required
+                 />
+               </div>
+diff --git a/src/panels/Login.jsx b/src/panels/Login.jsx
+index 469b694..736c8bf 100644
+--- a/src/panels/Login.jsx
++++ b/src/panels/Login.jsx
+@@ -2,7 +2,7 @@ import { useState } from 'react'
+ import { api } from '../api.js'
+ 
+ export default function Login({ onLoggedIn, onForgotPassword, successMessage }) {
+-  const [username, setUsername] = useState('')
++  const [email, setEmail] = useState('')
+   const [password, setPassword] = useState('')
+   const [error, setError] = useState('')
+   const [submitting, setSubmitting] = useState(false)
+@@ -12,7 +12,7 @@ export default function Login({ onLoggedIn, onForgotPassword, successMessage })
+     setError('')
+     setSubmitting(true)
+     try {
+-      await api.login(username, password)
++      await api.login(email, password)
+       onLoggedIn()
+     } catch (err) {
+       setError(err.message || 'Could not log in.')
+@@ -30,11 +30,12 @@ export default function Login({ onLoggedIn, onForgotPassword, successMessage })
+         {error && <div className="error-banner">{error}</div>}
+         <form onSubmit={handleSubmit}>
+           <div className="field">
+-            <label htmlFor="username">Username</label>
++            <label htmlFor="email">Email</label>
+             <input
+-              id="username"
+-              value={username}
+-              onChange={(e) => setUsername(e.target.value)}
++              id="email"
++              type="email"
++              value={email}
++              onChange={(e) => setEmail(e.target.value)}
+               autoFocus
+               required
+             />
+diff --git a/src/panels/Staff.jsx b/src/panels/Staff.jsx
+index 74130cc..5bf53ad 100644
+--- a/src/panels/Staff.jsx
++++ b/src/panels/Staff.jsx
+@@ -96,13 +96,14 @@ export default function Staff() {
+             />
+           </div>
+           <div className="field" style={{ marginBottom: 0 }}>
+-            <label htmlFor="invite-email">Email (optional, for your reference)</label>
++            <label htmlFor="invite-email">Email</label>
+             <input
+               id="invite-email"
+               type="email"
+               value={email}
+               onChange={(e) => setEmail(e.target.value)}
+               placeholder="name@school.org"
++              required
+             />
+           </div>
+           <button type="submit" disabled={creating}>
+@@ -110,8 +111,8 @@ export default function Staff() {
+           </button>
+         </form>
+         <p className="hint">
+-          The link is single-use and expires in 7 days. Share it directly with the person you're
+-          inviting — HouseMaster doesn't send it for you yet.
++          The link is single-use and expires in 7 days. This is the email they'll sign in with —
++          share the link directly with them; HouseMaster doesn't send it for you yet.
+         </p>
+       </div>
+ 
+@@ -150,7 +151,7 @@ export default function Staff() {
+                     {inv.status}
+                   </span>
+                 </td>
+-                <td>{inv.invited_by_username || '—'}</td>
++                <td>{inv.invited_by_email || '—'}</td>
+                 <td className="text-muted">{new Date(inv.created_at).toLocaleDateString()}</td>
+                 <td style={{ display: 'flex', gap: 8 }}>
+                   {inv.status === 'pending' && (

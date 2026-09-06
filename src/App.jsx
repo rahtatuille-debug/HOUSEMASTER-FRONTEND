@@ -106,7 +106,7 @@ export default function App() {
           {me?.school && <span className="school-name">{me.school.name}</span>}
         </div>
         <div className="topbar-right">
-          {me && <span>{me.username} · {me.role}</span>}
+          {me && <span>{me.email} · {me.role}</span>}
           <button className="secondary" onClick={handleLogout}>
             Log out
           </button>
