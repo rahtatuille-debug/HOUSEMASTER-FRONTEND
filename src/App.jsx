@@ -10,6 +10,8 @@ import Grades from './panels/Grades.jsx'
 import Reports from './panels/Reports.jsx'
 import Staff from './panels/Staff.jsx'
 import Announcements from './panels/Announcements.jsx'
+import Profile from './panels/Profile.jsx'
+import { personIdentity } from './user.js'
 
 const TABS = [
   { key: 'students', label: 'Students', component: Students },
@@ -18,6 +20,7 @@ const TABS = [
   { key: 'announcements', label: 'Communications', component: Announcements },
   { key: 'setup', label: 'Setup', component: Setup },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
+  { key: 'profile', label: 'Profile', component: Profile },
 ]
 
 // No router library — this app is small enough that a plain path check
@@ -108,7 +111,7 @@ export default function App() {
           {me?.school && <span className="school-name">{me.school.name}</span>}
         </div>
         <div className="topbar-right">
-          {me && <span>{me.email} · {me.role}</span>}
+          {me && <span>{personIdentity(me)}</span>}
           <button className="secondary" onClick={handleLogout}>
             Log out
           </button>
@@ -128,7 +131,7 @@ export default function App() {
       </nav>
 
       <main className="content">
-        <ActivePanel me={me} />
+        <ActivePanel me={me} onUserUpdated={setMe} />
       </main>
     </div>
   )

@@ -103,6 +103,10 @@ label {
 }
 
 .field { margin-bottom: 14px; }
+.success-banner { margin-bottom: 14px; padding: 10px 12px; color: var(--stamp-green); background: rgba(63, 107, 69, .1); border: 1px solid rgba(63, 107, 69, .35); }
+.profile-card { max-width: 560px; }
+.profile-readonly { display: grid; gap: 2px; padding: 12px 0; border-top: 1px solid var(--rule); }
+.profile-readonly span { color: var(--navy-2); font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; }
 
 /* Layout shell */
 .app-shell {
@@ -383,6 +387,11 @@ tbody tr:hover { background: var(--paper); }
 .ai-output h3 { font-size: 18px; margin-bottom: 14px; }
 .ai-writing { color: var(--gold-2); font-size: 13px; font-weight: 600; margin: 12px 0 0; }
 .ai-copy-actions { flex-wrap: wrap; }
+.creation-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.creation-option { min-height: 148px; text-align: left; padding: 20px; background: #fff; color: var(--ink); border-color: var(--rule); box-shadow: var(--shadow-card); }
+.creation-option:hover { background: #fffdf8; border-color: var(--gold); }
+.creation-option h3 { font-size: 20px; margin-bottom: 8px; }
+.creation-option span { color: var(--navy-2); font-size: 14px; font-weight: 400; line-height: 1.45; }
 .retry-button { margin-left: 12px; padding: 4px 9px; }
 .announcement-skeleton { display: grid; gap: 12px; }
 .announcement-skeleton span { height: 114px; border: 1px solid var(--rule); background: linear-gradient(90deg, var(--paper-2), #fff, var(--paper-2)); background-size: 200% 100%; animation: shimmer 1.4s infinite; }

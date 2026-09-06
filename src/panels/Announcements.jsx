@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
+import { announcementAuthor } from '../user.js'
 
 const AUDIENCES = {
   all_staff: 'All staff',
@@ -97,7 +98,7 @@ function ReplaceDialog({ onCancel, onConfirm }) {
   )
 }
 
-function AiDraftTool({ yearGroups, classes, initialContext, onUseDraft, teacher = false, onBack, showToast }) {
+function AiDraftTool({ yearGroups, classes, initialContext, onUseDraft, teacher = false, autoApply = false, onBack, onManual, showToast }) {
   const [context, setContext] = useState(() => ({
     summary: '', audience: initialContext?.audience || 'all_staff',
     year_group: initialContext?.year_group || '', school_class: initialContext?.school_class || '',
@@ -114,7 +115,7 @@ function AiDraftTool({ yearGroups, classes, initialContext, onUseDraft, teacher 
   function generationError(err) {
     if (err.status === 403) return "You don’t have permission to do that."
     if (err.status === 404) return 'The selected audience target could not be found.'
-    if (err.status === 503) return 'AI drafting is currently unavailable. Please write the announcement manually or try again later.'
+    if (err.status === 503) return 'AI drafting is currently unavailable. You can still write the announcement manually.'
     return errorMessage(err)
   }
 
@@ -133,7 +134,9 @@ function AiDraftTool({ yearGroups, classes, initialContext, onUseDraft, teacher 
     setGenerating(true)
     setError('')
     try {
-      setGenerated(await api.announcements.generateText(payload))
+      const draft = await api.announcements.generateText(payload)
+      setGenerated(draft)
+      if (!teacher && autoApply) onUseDraft(draft, context, true)
     } catch (err) {
       const data = err.data || {}
       setErrors(data.summary ? { summary: Array.isArray(data.summary) ? data.summary.join(' ') : String(data.summary) } : {})
@@ -157,14 +160,14 @@ function AiDraftTool({ yearGroups, classes, initialContext, onUseDraft, teacher 
     <section className="ai-draft-tool card">
       <div className="ai-heading"><div><p className="eyebrow">Assistive drafting</p><h3>{teacher ? 'AI Announcement Draft' : 'Draft with AI'}</h3></div></div>
       <p className="text-muted">AI creates editable suggested text only. It will not save or publish an announcement.</p>
-      {error && <div className="error-banner">{error}</div>}
+      {error && <div className="error-banner">{error}{onManual && <button type="button" className="secondary retry-button" onClick={onManual}>Write manually</button>}</div>}
       <div className="field"><label htmlFor="ai-summary">What would you like to communicate?</label><textarea id="ai-summary" rows="4" value={context.summary} onChange={(e) => setContext({ ...context, summary: e.target.value })} placeholder="Tell Year 8 parents that assessment week begins Monday and students should bring their normal stationery." aria-invalid={!!errors.summary} /><div className="field-meta">{context.summary.length}/2000</div>{errors.summary && <p className="field-error">{errors.summary}</p>}</div>
       <div className="field"><label htmlFor="ai-audience">Intended audience</label><select id="ai-audience" value={context.audience} onChange={(e) => setAudience(e.target.value)}>{Object.entries(AUDIENCES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
       {context.audience === 'year_group' && <div className="field"><label htmlFor="ai-year-group">Year group</label><select id="ai-year-group" value={context.year_group} onChange={(e) => setContext({ ...context, year_group: e.target.value })} aria-invalid={!!errors.year_group}><option value="">Choose a year group</option>{yearGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select>{errors.year_group && <p className="field-error">{errors.year_group}</p>}</div>}
       {context.audience === 'school_class' && <div className="field"><label htmlFor="ai-class">Class</label><select id="ai-class" value={context.school_class} onChange={(e) => setContext({ ...context, school_class: e.target.value })} aria-invalid={!!errors.school_class}><option value="">Choose a class</option>{classOptions.map((item) => { const group = yearGroups.find((entry) => entry.id === item.year_group); return <option key={item.id} value={item.id}>{group ? `${group.name} — ` : ''}{item.name}</option> })}</select>{errors.school_class && <p className="field-error">{errors.school_class}</p>}</div>}
       <div className="form-actions"><button type="button" onClick={generate} disabled={generating}>{generating ? 'Writing your announcement…' : generated ? 'Regenerate draft' : 'Generate official draft'}</button>{teacher && <button type="button" className="secondary" onClick={onBack}>Back to announcements</button>}</div>
       {generating && <p className="ai-writing" role="status">Writing your announcement…</p>}
-      {generated && <div className="ai-output"><p className="draft-notice">AI-generated draft — review and edit before use.</p><h3>Generated announcement draft</h3><div className="field"><label htmlFor="ai-title">Title</label><input id="ai-title" value={generated.title} onChange={(e) => setGenerated({ ...generated, title: e.target.value })} /></div><div className="field"><label htmlFor="ai-body">Message</label><textarea id="ai-body" rows="7" value={generated.body} onChange={(e) => setGenerated({ ...generated, body: e.target.value })} /></div>{teacher ? <div className="form-actions ai-copy-actions"><button type="button" className="secondary" onClick={() => copy(generated.title)}>Copy title</button><button type="button" className="secondary" onClick={() => copy(generated.body)}>Copy message</button><button type="button" onClick={() => copy(`${generated.title}\n\n${generated.body}`)}>Copy all</button></div> : <div className="form-actions"><button type="button" onClick={() => onUseDraft(generated, context)}>Use this draft</button><button type="button" className="secondary" onClick={() => onUseDraft(generated, context)}>Edit manually</button></div>}{teacher && <p className="hint">Generated text is a draft. Share it with an administrator to publish it.</p>}</div>}
+      {generated && (teacher ? <div className="ai-output"><p className="draft-notice">AI-generated draft — review and edit before use.</p><h3>Generated announcement draft</h3><div className="field"><label htmlFor="ai-title">Title</label><input id="ai-title" value={generated.title} onChange={(e) => setGenerated({ ...generated, title: e.target.value })} /></div><div className="field"><label htmlFor="ai-body">Message</label><textarea id="ai-body" rows="7" value={generated.body} onChange={(e) => setGenerated({ ...generated, body: e.target.value })} /></div><div className="form-actions ai-copy-actions"><button type="button" className="secondary" onClick={() => copy(generated.title)}>Copy title</button><button type="button" className="secondary" onClick={() => copy(generated.body)}>Copy message</button><button type="button" onClick={() => copy(`${generated.title}\n\n${generated.body}`)}>Copy all</button></div><p className="hint">Generated text is a draft. Share it with an administrator to publish it.</p></div> : autoApply ? <p className="draft-notice">AI-generated draft applied below — review and edit before saving.</p> : <div className="ai-output"><p className="draft-notice">AI-generated draft — review and edit before use.</p><div className="field"><label htmlFor="alternative-ai-title">Title</label><input id="alternative-ai-title" value={generated.title} onChange={(e) => setGenerated({ ...generated, title: e.target.value })} /></div><div className="field"><label htmlFor="alternative-ai-body">Message</label><textarea id="alternative-ai-body" rows="6" value={generated.body} onChange={(e) => setGenerated({ ...generated, body: e.target.value })} /></div><div className="form-actions"><button type="button" onClick={() => onUseDraft(generated, context)}>Use this draft</button></div></div>)}
     </section>
   )
 }
@@ -187,6 +190,7 @@ export default function Announcements({ me }) {
   const [acting, setActing] = useState(false)
   const [showAi, setShowAi] = useState(false)
   const [pendingAiDraft, setPendingAiDraft] = useState(null)
+  const [aiCreateMode, setAiCreateMode] = useState(false)
 
   async function load() {
     setLoading(true)
@@ -235,8 +239,15 @@ export default function Announcements({ me }) {
     setForm(blankForm)
     setFormErrors({})
     setShowAi(false)
-    setView('form')
+    setAiCreateMode(false)
     loadTargets()
+    setView('choice')
+  }
+
+  function startCreate(mode) {
+    setShowAi(mode === 'ai')
+    setAiCreateMode(mode === 'ai')
+    setView('form')
   }
 
   function openEdit() {
@@ -244,6 +255,7 @@ export default function Announcements({ me }) {
     setForm({ title: selected.title, body: selected.body, audience: selected.audience, year_group: selected.year_group ? String(selected.year_group) : '', school_class: selected.school_class ? String(selected.school_class) : '' })
     setFormErrors({})
     setShowAi(false)
+    setAiCreateMode(false)
     setView('form')
     loadTargets()
   }
@@ -252,14 +264,14 @@ export default function Announcements({ me }) {
     setForm((current) => ({ ...current, audience, year_group: audience === 'year_group' ? current.year_group : '', school_class: audience === 'school_class' ? current.school_class : '' }))
   }
 
-  function useAiDraft(draft, context) {
+  function useAiDraft(draft, context, fromGeneration = false) {
     const nextForm = { title: draft.title, body: draft.body, audience: context.audience, year_group: context.audience === 'year_group' ? context.year_group : '', school_class: context.audience === 'school_class' ? context.school_class : '' }
-    if (form.title.trim() || form.body.trim()) {
+    if (!fromGeneration && (form.title.trim() || form.body.trim())) {
       setPendingAiDraft(nextForm)
       return
     }
     setForm(nextForm)
-    setShowAi(false)
+    if (!fromGeneration) setShowAi(false)
   }
 
   function applyPendingAiDraft() {
@@ -324,6 +336,17 @@ export default function Announcements({ me }) {
 
   if (view === 'not-found') return <div className="empty-state"><h3>Announcement unavailable</h3><p>{error || 'This announcement could not be found.'}</p><button className="secondary" onClick={backToList}>Back to announcements</button></div>
 
+  if (view === 'choice') return (
+    <div className="announcement-choice">
+      <div className="panel-header"><div><h2>New announcement</h2><p className="text-muted">Choose how you would like to start. You can review and edit everything before saving.</p></div></div>
+      <div className="creation-options">
+        <button className="creation-option" onClick={() => startCreate('manual')}><h3>Write manually</h3><span>Create an announcement using your own title and message.</span></button>
+        <button className="creation-option" onClick={() => startCreate('ai')}><h3>Draft with AI</h3><span>Describe what you need to communicate and receive an editable official draft.</span></button>
+      </div>
+      <button type="button" className="secondary" onClick={backToList}>Cancel</button>
+    </div>
+  )
+
   if (view === 'ai') return (
     <div>
       <div className="panel-header"><div><h2>AI Announcement Draft</h2><p className="text-muted">Create a draft to share with an administrator.</p></div></div>
@@ -336,9 +359,9 @@ export default function Announcements({ me }) {
     <div className="announcement-form">
       <div className="panel-header"><div><h2>{selected ? 'Edit announcement' : 'New announcement'}</h2><p className="text-muted">Save your message as a draft. It will not be published automatically.</p></div></div>
       {error && <div className="error-banner">{error}</div>}
-      {showAi && <AiDraftTool yearGroups={yearGroups} classes={classes} initialContext={form} onUseDraft={useAiDraft} showToast={setToast} />}
+      {showAi && <AiDraftTool yearGroups={yearGroups} classes={classes} initialContext={form} onUseDraft={useAiDraft} autoApply={aiCreateMode} onManual={() => { setShowAi(false); setAiCreateMode(false) }} showToast={setToast} />}
       <form className="card" onSubmit={saveDraft} noValidate>
-        <div className="form-section-heading"><h3>Announcement details</h3><button type="button" className="secondary" onClick={() => setShowAi(!showAi)}>{showAi ? 'Hide AI draft tool' : 'Draft with AI'}</button></div>
+        <div className="form-section-heading"><h3>Announcement details</h3><button type="button" className="secondary" onClick={() => { setShowAi(!showAi); setAiCreateMode(false) }}>{showAi ? 'Hide AI draft tool' : selected ? 'Improve with AI' : 'Draft with AI'}</button></div>
         <div className="field"><label htmlFor="announcement-title">Title</label><input id="announcement-title" maxLength="180" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-invalid={!!formErrors.title} required /><div className="field-meta">{form.title.length}/180</div>{formErrors.title && <p className="field-error">{formErrors.title}</p>}</div>
         <div className="field"><label htmlFor="announcement-body">Message</label><textarea id="announcement-body" rows="8" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} aria-invalid={!!formErrors.body} required />{formErrors.body && <p className="field-error">{formErrors.body}</p>}</div>
         <div className="field"><label htmlFor="announcement-audience">Audience</label><select id="announcement-audience" value={form.audience} onChange={(e) => setAudience(e.target.value)}>{Object.entries(AUDIENCES).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
@@ -357,7 +380,7 @@ export default function Announcements({ me }) {
       <div className="panel-header"><button className="back-button" onClick={backToList}>← Announcements</button>{admin && <div className="form-actions">{selected.status === 'draft' && <><button className="secondary" onClick={openEdit}>Edit</button><button onClick={() => setConfirmAction('publish')}>Publish</button></>}{selected.status === 'published' && <button className="danger" onClick={() => setConfirmAction('archive')}>Archive</button>}</div>}</div>
       {toast && <div className="success-banner" role="status">{toast}</div>}
       {error && <div className="error-banner">{error}</div>}
-      <article className="announcement-detail card"><div className="announcement-detail-heading"><div><p className="eyebrow">{audienceText(selected, yearGroups, classes)}</p><h2>{selected.title}</h2></div>{admin && <StatusBadge status={selected.status} />}</div>{admin && selected.status === 'draft' && <p className="draft-notice">Draft — not visible to recipients.</p>}<div className="announcement-body">{selected.body}</div><dl className="announcement-meta"><div><dt>Audience</dt><dd>{audienceText(selected, yearGroups, classes)}</dd></div><div><dt>Author</dt><dd>{selected.created_by_name || '—'}</dd></div><div><dt>Created</dt><dd>{dateTime(selected.created_at)}</dd></div>{selected.published_at && <div><dt>Published</dt><dd>{dateTime(selected.published_at)}</dd></div>}{selected.archived_at && <div><dt>Archived</dt><dd>{dateTime(selected.archived_at)}</dd></div>}</dl></article>
+      <article className="announcement-detail card"><div className="announcement-detail-heading"><div><p className="eyebrow">{audienceText(selected, yearGroups, classes)}</p><h2>{selected.title}</h2></div>{admin && <StatusBadge status={selected.status} />}</div>{admin && selected.status === 'draft' && <p className="draft-notice">Draft — not visible to recipients.</p>}<div className="announcement-body">{selected.body}</div><dl className="announcement-meta"><div><dt>Audience</dt><dd>{audienceText(selected, yearGroups, classes)}</dd></div><div><dt>Author</dt><dd>{announcementAuthor(selected)}</dd></div><div><dt>Created</dt><dd>{dateTime(selected.created_at)}</dd></div>{selected.published_at && <div><dt>Published</dt><dd>{dateTime(selected.published_at)}</dd></div>}{selected.archived_at && <div><dt>Archived</dt><dd>{dateTime(selected.archived_at)}</dd></div>}</dl></article>
       {confirmAction && <ConfirmDialog action={confirmAction} onCancel={() => setConfirmAction(null)} onConfirm={confirmLifecycle} busy={acting} />}
     </div>
   )
@@ -367,6 +390,6 @@ export default function Announcements({ me }) {
     {toast && <div className="success-banner" role="status">{toast}</div>}
     {admin && <div className="announcement-filters" aria-label="Filter announcements by status">{[['', 'All'], ['draft', 'Drafts'], ['published', 'Published'], ['archived', 'Archived']].map(([value, label]) => <button key={label} className={status === value ? 'active-filter' : 'secondary'} onClick={() => setStatus(value)}>{label}</button>)}</div>}
     {error && <div className="error-banner">{error}<button className="secondary retry-button" onClick={load}>Retry</button></div>}
-    {loading ? <div className="announcement-skeleton" aria-label="Loading announcements"><span /><span /><span /></div> : items.length === 0 ? <div className="empty-state"><h3>{admin ? 'No announcements yet' : 'No staff announcements yet.'}</h3><p>{admin ? 'Create your first announcement.' : 'Published staff announcements will appear here.'}</p>{admin ? <button onClick={openCreate}>New announcement</button> : <button onClick={() => setView('ai')}>Draft with AI</button>}</div> : <div className="announcement-list">{items.map((item) => <button className="announcement-card" key={item.id} onClick={() => openDetail(item.id)}><div className="announcement-card-top"><span className="eyebrow">{audienceText(item, yearGroups, classes)}</span>{admin && <StatusBadge status={item.status} />}</div><h3>{item.title}</h3><p>{item.body}</p><div className="announcement-card-footer"><span>{item.created_by_name || 'Unknown author'}</span><span>{item.status === 'published' ? `Published ${dateTime(item.published_at)}` : item.status === 'archived' ? `Archived ${dateTime(item.archived_at)}` : `Created ${dateTime(item.created_at)}`}</span></div>{admin && item.status === 'draft' && <span className="draft-helper">Draft — not visible to recipients.</span>}</button>)}</div>}
+    {loading ? <div className="announcement-skeleton" aria-label="Loading announcements"><span /><span /><span /></div> : items.length === 0 ? <div className="empty-state"><h3>{admin ? 'No announcements yet' : 'No staff announcements yet.'}</h3><p>{admin ? 'Create your first announcement.' : 'Published staff announcements will appear here.'}</p>{admin ? <button onClick={openCreate}>New announcement</button> : <button onClick={() => setView('ai')}>Draft with AI</button>}</div> : <div className="announcement-list">{items.map((item) => <button className="announcement-card" key={item.id} onClick={() => openDetail(item.id)}><div className="announcement-card-top"><span className="eyebrow">{audienceText(item, yearGroups, classes)}</span>{admin && <StatusBadge status={item.status} />}</div><h3>{item.title}</h3><p>{item.body}</p><div className="announcement-card-footer"><span>{announcementAuthor(item)}</span><span>{item.status === 'published' ? `Published ${dateTime(item.published_at)}` : item.status === 'archived' ? `Archived ${dateTime(item.archived_at)}` : `Created ${dateTime(item.created_at)}`}</span></div>{admin && item.status === 'draft' && <span className="draft-helper">Draft — not visible to recipients.</span>}</button>)}</div>}
   </div>
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import { displayRole, personIdentity } from '../user.js'
 
 export default function Staff() {
   const [invites, setInvites] = useState([])
@@ -93,10 +94,13 @@ export default function Staff() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Jane Wanjiru"
+              minLength="2"
+              maxLength="255"
+              required
             />
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="invite-email">Email</label>
+            <label htmlFor="invite-email">Email address</label>
             <input
               id="invite-email"
               type="email"
@@ -140,7 +144,7 @@ export default function Staff() {
             {invites.map((inv) => (
               <tr key={inv.id}>
                 <td>{inv.name || '—'}</td>
-                <td style={{ textTransform: 'capitalize' }}>{inv.role}</td>
+                <td>{displayRole(inv.role)}</td>
                 <td>{inv.email || '—'}</td>
                 <td>
                   <span
@@ -151,7 +155,7 @@ export default function Staff() {
                     {inv.status}
                   </span>
                 </td>
-                <td>{inv.invited_by_email || '—'}</td>
+                <td>{inv.invited_by_name ? personIdentity({ name: inv.invited_by_name, role: inv.invited_by_role }) : 'School staff'}</td>
                 <td className="text-muted">{new Date(inv.created_at).toLocaleDateString()}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
                   {inv.status === 'pending' && (

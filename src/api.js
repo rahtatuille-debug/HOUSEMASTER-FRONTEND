@@ -189,6 +189,7 @@ export const api = {
   logout,
   isLoggedIn: () => !!getTokens()?.access,
   me: () => request('/api/me/'),
+  updateMe: (body) => request('/api/me/', { method: 'PATCH', body }),
   previewInvite,
   acceptInvite,
   requestPasswordReset,

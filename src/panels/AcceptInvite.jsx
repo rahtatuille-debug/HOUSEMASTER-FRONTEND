@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import { displayRole } from '../user.js'
 
 export default function AcceptInvite({ token, onAccepted }) {
   const [preview, setPreview] = useState(null)
@@ -54,8 +55,8 @@ export default function AcceptInvite({ token, onAccepted }) {
         {preview && preview.status === 'pending' && (
           <>
             <p className="hint" style={{ marginBottom: 18 }}>
-              You're joining <strong>{preview.school_name}</strong> as a{' '}
-              <strong>{preview.role}</strong>, signing in as <strong>{preview.email}</strong>.
+              You're joining <strong>{preview.school_name}</strong> as{' '}
+              <strong>{preview.name || 'School staff'} · {displayRole(preview.role)}</strong>, signing in as <strong>{preview.email}</strong>.
               Choose a password to finish.
             </p>
             {error && <div className="error-banner">{error}</div>}
