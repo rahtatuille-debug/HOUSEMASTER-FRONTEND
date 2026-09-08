@@ -243,6 +243,13 @@ export const api = {
     remove: (id) => request(`/api/guardian-invites/${id}/`, { method: 'DELETE' }),
   },
 
+  guardianStudents: {
+    list: () => request('/api/guardian-students/'),
+    get: (id) => request(`/api/guardian-students/${id}/`),
+    grades: (id, params) => request(`/api/guardian-students/${id}/grades/`, { params }),
+    reports: (id) => request(`/api/guardian-students/${id}/reports/`),
+  },
+
   conversations: {
     list: () => request('/api/conversations/'),
     create: (body) => request('/api/conversations/', { method: 'POST', body }),

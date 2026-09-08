@@ -14,6 +14,8 @@ import GuardianInvites from './panels/GuardianInvites.jsx'
 import Announcements from './panels/Announcements.jsx'
 import Messages from './panels/Messages.jsx'
 import Profile from './panels/Profile.jsx'
+import GuardianStudents from './panels/GuardianStudents.jsx'
+import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
 
 const TABS = [
@@ -29,6 +31,8 @@ const TABS = [
 ]
 
 const GUARDIAN_TABS = [
+  { key: 'students', label: 'Students', component: GuardianStudents },
+  { key: 'announcements', label: 'Communications', component: GuardianAnnouncements },
   { key: 'messages', label: 'Messages', component: Messages },
   { key: 'profile', label: 'Profile', component: Profile },
 ]
@@ -243,4 +247,3 @@ export default function App() {
     </div>
   )
 }
-

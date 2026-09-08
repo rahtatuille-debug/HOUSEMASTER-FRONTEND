@@ -491,6 +491,23 @@ tbody tr:hover { background: var(--paper); }
 button.danger-solid { background: var(--stamp-red); border-color: var(--stamp-red); }
 button.danger-solid:hover { background: #7f2929; }
 
+/* Guardian portal */
+.guardian-student-list { display: grid; gap: 12px; }
+.guardian-student-card { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.guardian-student-card h3 { margin: 3px 0; font-size: 20px; }
+.guardian-student-card .text-muted { margin: 0; }
+.guardian-student-detail { max-width: 860px; }
+.guardian-subtabs { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 12px 0; margin: 20px 0; }
+.guardian-subtabs button { padding: 6px 12px; }
+.guardian-overview { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; }
+.guardian-overview div { display: grid; gap: 2px; }
+.guardian-overview span { color: var(--navy-2); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.guardian-reports { display: grid; gap: 14px; }
+.guardian-reports .report-doc h3 { margin: 5px 0 14px; }
+.guardian-reports .report-doc h4 { font-family: var(--font-body); font-size: 12px; letter-spacing: .03em; text-transform: uppercase; color: var(--navy-2); margin: 16px 0 3px; }
+.guardian-reports .report-doc p { white-space: pre-wrap; margin: 0; }
+@media (max-width: 620px) { .guardian-student-card { align-items: flex-start; flex-direction: column; } }
+
 .messages-layout {
   display: grid;
   grid-template-columns: 300px 1fr;
