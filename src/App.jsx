@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from './api.js'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
+import AcceptGuardianInvite from './panels/AcceptGuardianInvite.jsx'
 import ForgotPassword from './panels/ForgotPassword.jsx'
 import ResetPassword from './panels/ResetPassword.jsx'
 import Students from './panels/Students.jsx'
@@ -9,25 +10,40 @@ import Setup from './panels/Setup.jsx'
 import Grades from './panels/Grades.jsx'
 import Reports from './panels/Reports.jsx'
 import Staff from './panels/Staff.jsx'
+import GuardianInvites from './panels/GuardianInvites.jsx'
 import Announcements from './panels/Announcements.jsx'
+import Messages from './panels/Messages.jsx'
 import Profile from './panels/Profile.jsx'
-import { personIdentity } from './user.js'
+import { personIdentity, guardianIdentity } from './user.js'
 
 const TABS = [
   { key: 'students', label: 'Students', component: Students },
   { key: 'grades', label: 'Grades', component: Grades },
   { key: 'reports', label: 'Reports', component: Reports },
   { key: 'announcements', label: 'Communications', component: Announcements },
+  { key: 'messages', label: 'Messages', component: Messages },
   { key: 'setup', label: 'Setup', component: Setup },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
+  { key: 'parents', label: 'Parents', component: GuardianInvites, adminOnly: true },
+  { key: 'profile', label: 'Profile', component: Profile },
+]
+
+const GUARDIAN_TABS = [
+  { key: 'messages', label: 'Messages', component: Messages },
   { key: 'profile', label: 'Profile', component: Profile },
 ]
 
 // No router library — this app is small enough that a plain path check
-// for the public routes (/invite/:token, /reset-password/:token) plus tab
-// state for everything else is simpler than pulling in react-router.
+// for the public routes (/invite/:token, /guardian-invite/:token,
+// /reset-password/:token) plus tab state for everything else is simpler
+// than pulling in react-router.
 function getInviteToken() {
   const match = window.location.pathname.match(/^\/invite\/([^/]+)\/?$/)
+  return match ? match[1] : null
+}
+
+function getGuardianInviteToken() {
+  const match = window.location.pathname.match(/^\/guardian-invite\/([^/]+)\/?$/)
   return match ? match[1] : null
 }
 
@@ -38,9 +54,12 @@ function getResetToken() {
 
 export default function App() {
   const [inviteToken, setInviteToken] = useState(getInviteToken())
+  const [guardianInviteToken, setGuardianInviteToken] = useState(getGuardianInviteToken())
   const [resetToken, setResetToken] = useState(getResetToken())
   const [loggedIn, setLoggedIn] = useState(api.isLoggedIn())
   const [me, setMe] = useState(null)
+  // 'staff' | 'guardian' | null (unknown until /api/me/ or /api/guardian-me/ resolves)
+  const [identityKind, setIdentityKind] = useState(null)
   const [activeTab, setActiveTab] = useState('students')
   // Which screen to show when logged out and not on a token route.
   const [authView, setAuthView] = useState('login') // 'login' | 'forgot'
@@ -48,24 +67,47 @@ export default function App() {
 
   useEffect(() => {
     if (!loggedIn) return
+    // A logged-in account is either staff (has a Profile, /api/me/ works)
+    // or a guardian (has no Profile, /api/me/ 403s — try /api/guardian-me/
+    // instead). Whichever succeeds first tells us which shell to render.
     api
       .me()
-      .then(setMe)
-      .catch(() => {
-        // If /me/ fails (e.g. expired session), fall back to the login screen.
-        setLoggedIn(false)
+      .then((data) => {
+        setMe(data)
+        setIdentityKind('staff')
+      })
+      .catch((err) => {
+        if (err.status === 403) {
+          api
+            .guardianMe()
+            .then((data) => {
+              setMe(data)
+              setIdentityKind('guardian')
+            })
+            .catch(() => setLoggedIn(false))
+        } else {
+          // Any other failure (e.g. expired session) falls back to login.
+          setLoggedIn(false)
+        }
       })
   }, [loggedIn])
 
   function handleLogout() {
     api.logout()
     setMe(null)
+    setIdentityKind(null)
     setLoggedIn(false)
   }
 
   function handleInviteAccepted() {
     window.history.replaceState({}, '', '/')
     setInviteToken(null)
+    setLoggedIn(true)
+  }
+
+  function handleGuardianInviteAccepted() {
+    window.history.replaceState({}, '', '/')
+    setGuardianInviteToken(null)
     setLoggedIn(true)
   }
 
@@ -78,6 +120,10 @@ export default function App() {
 
   if (inviteToken) {
     return <AcceptInvite token={inviteToken} onAccepted={handleInviteAccepted} />
+  }
+
+  if (guardianInviteToken) {
+    return <AcceptGuardianInvite token={guardianInviteToken} onAccepted={handleGuardianInviteAccepted} />
   }
 
   if (resetToken) {
@@ -100,8 +146,15 @@ export default function App() {
     )
   }
 
-  const visibleTabs = TABS.filter((t) => !t.adminOnly || me?.role === 'admin')
-  const ActivePanel = visibleTabs.find((t) => t.key === activeTab)?.component || Students
+  // Still resolving which identity type this account is.
+  if (!identityKind) {
+    return null
+  }
+
+  const tabSet = identityKind === 'guardian' ? GUARDIAN_TABS : TABS
+  const visibleTabs = tabSet.filter((t) => !t.adminOnly || me?.role === 'admin')
+  const activeKey = visibleTabs.some((t) => t.key === activeTab) ? activeTab : visibleTabs[0]?.key
+  const ActivePanel = visibleTabs.find((t) => t.key === activeKey)?.component
 
   return (
     <div className="app-shell">
@@ -111,7 +164,7 @@ export default function App() {
           {me?.school && <span className="school-name">{me.school.name}</span>}
         </div>
         <div className="topbar-right">
-          {me && <span>{personIdentity(me)}</span>}
+          {me && <span>{identityKind === 'guardian' ? guardianIdentity(me) : personIdentity(me)}</span>}
           <button className="secondary" onClick={handleLogout}>
             Log out
           </button>
@@ -122,7 +175,7 @@ export default function App() {
         {visibleTabs.map((t) => (
           <button
             key={t.key}
-            className={activeTab === t.key ? 'active' : ''}
+            className={activeKey === t.key ? 'active' : ''}
             onClick={() => setActiveTab(t.key)}
           >
             {t.label}
@@ -131,8 +184,9 @@ export default function App() {
       </nav>
 
       <main className="content">
-        <ActivePanel me={me} onUserUpdated={setMe} />
+        {ActivePanel && <ActivePanel me={me} identityKind={identityKind} onUserUpdated={setMe} />}
       </main>
     </div>
   )
 }
+

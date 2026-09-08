@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { getRoleLabel } from '../user.js'
 
-export default function Profile({ me, onUserUpdated }) {
+export default function Profile({ me, identityKind, onUserUpdated }) {
   const [name, setName] = useState(me?.name || '')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [saving, setSaving] = useState(false)
+  const isGuardian = identityKind === 'guardian'
 
   useEffect(() => {
     setName(me?.name || '')
@@ -23,7 +24,9 @@ export default function Profile({ me, onUserUpdated }) {
     }
     setSaving(true)
     try {
-      const updated = await api.updateMe({ name: displayName })
+      const updated = isGuardian
+        ? await api.updateGuardianMe({ name: displayName })
+        : await api.updateMe({ name: displayName })
       onUserUpdated({ ...me, ...updated, name: updated?.name || displayName })
       setSuccess('Your display name has been updated.')
     } catch (err) {
@@ -43,8 +46,16 @@ export default function Profile({ me, onUserUpdated }) {
           <label htmlFor="display-name">Display name</label>
           <input id="display-name" value={name} onChange={(e) => setName(e.target.value)} minLength="2" maxLength="255" required />
         </div>
-        <div className="profile-readonly"><span>Role</span><strong>{getRoleLabel(me?.role)}</strong></div>
+        {!isGuardian && (
+          <div className="profile-readonly"><span>Role</span><strong>{getRoleLabel(me?.role)}</strong></div>
+        )}
         <div className="profile-readonly"><span>School</span><strong>{me?.school?.name || '—'}</strong></div>
+        {isGuardian && (
+          <div className="profile-readonly">
+            <span>Children</span>
+            <strong>{me?.students?.map((s) => `${s.first_name} ${s.last_name}`).join(', ') || '—'}</strong>
+          </div>
+        )}
         <div className="form-actions"><button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
       </form>
     </section>

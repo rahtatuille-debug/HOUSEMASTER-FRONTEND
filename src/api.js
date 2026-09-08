@@ -33,6 +33,38 @@ function logout() {
   clearTokens()
 }
 
+async function previewGuardianInvite(token) {
+  const res = await fetch(`${API_BASE}/api/guardian-invites/preview/${token}/`)
+  if (!res.ok) {
+    throw new Error(res.status === 404 ? 'This invite link is invalid.' : 'Could not load invite.')
+  }
+  return res.json()
+}
+
+async function acceptGuardianInvite(token, password) {
+  const res = await fetch(`${API_BASE}/api/guardian-invites/accept/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token, password }),
+  })
+  let data = null
+  try {
+    data = await res.json()
+  } catch {
+    // no body
+  }
+  if (!res.ok) {
+    const message =
+      (data && (data.detail || Object.values(data).flat().join(' '))) || 'Could not accept invite.'
+    const err = new Error(message)
+    err.status = res.status
+    err.data = data
+    throw err
+  }
+  setTokens(data)
+  return data
+}
+
 async function previewInvite(token) {
   const res = await fetch(`${API_BASE}/api/invites/preview/${token}/`)
   if (!res.ok) {
@@ -192,6 +224,10 @@ export const api = {
   updateMe: (body) => request('/api/me/', { method: 'PATCH', body }),
   previewInvite,
   acceptInvite,
+  previewGuardianInvite,
+  acceptGuardianInvite,
+  guardianMe: () => request('/api/guardian-me/'),
+  updateGuardianMe: (body) => request('/api/guardian-me/', { method: 'PATCH', body }),
   requestPasswordReset,
   confirmPasswordReset,
 
@@ -199,6 +235,21 @@ export const api = {
     list: () => request('/api/invites/'),
     create: (body) => request('/api/invites/', { method: 'POST', body }),
     remove: (id) => request(`/api/invites/${id}/`, { method: 'DELETE' }),
+  },
+
+  guardianInvites: {
+    list: () => request('/api/guardian-invites/'),
+    create: (body) => request('/api/guardian-invites/', { method: 'POST', body }),
+    remove: (id) => request(`/api/guardian-invites/${id}/`, { method: 'DELETE' }),
+  },
+
+  conversations: {
+    list: () => request('/api/conversations/'),
+    create: (body) => request('/api/conversations/', { method: 'POST', body }),
+    messages: (id) => request(`/api/conversations/${id}/messages/`),
+    sendMessage: (id, body) => request(`/api/conversations/${id}/messages/`, { method: 'POST', body }),
+    markRead: (id) => request(`/api/conversations/${id}/read/`, { method: 'POST' }),
+    contacts: () => request('/api/conversations/contacts/'),
   },
 
   students: {

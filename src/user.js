@@ -43,6 +43,12 @@ export function personIdentity(person) {
   return name ? `${name} · ${displayRole(person.role)}` : 'School staff'
 }
 
+/** @param {{ name?: string | null }} guardian */
+export function guardianIdentity(guardian) {
+  const name = guardian?.name?.trim()
+  return name ? `${name} · Parent/Guardian` : 'Parent/Guardian'
+}
+
 /** @param {{ created_by_name?: string | null, created_by_role?: string | null }} announcement */
 export function announcementAuthor(announcement) {
   const name = announcement?.created_by_name?.trim()
