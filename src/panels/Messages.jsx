@@ -109,6 +109,12 @@ export default function Messages({ me, identityKind }) {
     }
   }
 
+  function goBackToList() {
+    setActiveId(null)
+    setThread(null)
+    setComposing(false)
+  }
+
   function otherParticipants(conv) {
     return conv.participants.filter((p) => p.id !== me?.id).map((p) => p.name)
   }
@@ -122,8 +128,8 @@ export default function Messages({ me, identityKind }) {
 
       {error && <div className="error-banner">{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20, alignItems: 'start' }}>
-        <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className={`messages-layout${composing || thread ? ' showing-detail' : ''}`}>
+        <div className="card messages-list-pane" style={{ padding: 0, overflow: 'hidden' }}>
           {loading ? (
             <p className="text-muted" style={{ padding: 16 }}>Loading…</p>
           ) : conversations.length === 0 ? (
@@ -167,7 +173,12 @@ export default function Messages({ me, identityKind }) {
           )}
         </div>
 
-        <div className="card">
+        <div className="card messages-detail-pane">
+          {(composing || thread) && (
+            <button type="button" className="secondary back-to-list" onClick={goBackToList}>
+              ← Back to conversations
+            </button>
+          )}
           {composing && (
             <>
               <h3 style={{ marginBottom: 14, fontSize: 15 }}>New message</h3>

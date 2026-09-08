@@ -61,6 +61,7 @@ export default function App() {
   // 'staff' | 'guardian' | null (unknown until /api/me/ or /api/guardian-me/ resolves)
   const [identityKind, setIdentityKind] = useState(null)
   const [activeTab, setActiveTab] = useState('students')
+  const [menuOpen, setMenuOpen] = useState(false)
   // Which screen to show when logged out and not on a token route.
   const [authView, setAuthView] = useState('login') // 'login' | 'forgot'
   const [authMessage, setAuthMessage] = useState('')
@@ -92,11 +93,21 @@ export default function App() {
       })
   }, [loggedIn])
 
+  useEffect(() => {
+    if (!menuOpen) return
+    function onKeyDown(e) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [menuOpen])
+
   function handleLogout() {
     api.logout()
     setMe(null)
     setIdentityKind(null)
     setLoggedIn(false)
+    setMenuOpen(false)
   }
 
   function handleInviteAccepted() {
@@ -159,9 +170,22 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="brand">
-          HouseMaster
-          {me?.school && <span className="school-name">{me.school.name}</span>}
+        <div className="topbar-left">
+          <button
+            type="button"
+            className="menu-toggle"
+            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span />
+            <span />
+            <span />
+          </button>
+          <div className="brand">
+            HouseMaster
+            {me?.school && <span className="school-name">{me.school.name}</span>}
+          </div>
         </div>
         <div className="topbar-right">
           {me && <span>{identityKind === 'guardian' ? guardianIdentity(me) : personIdentity(me)}</span>}
@@ -177,6 +201,36 @@ export default function App() {
             key={t.key}
             className={activeKey === t.key ? 'active' : ''}
             onClick={() => setActiveTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      {menuOpen && (
+        <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
+      )}
+
+      <nav className={`nav-drawer${menuOpen ? ' open' : ''}`} aria-label="Main navigation">
+        <div className="nav-drawer-header">
+          <span>Menu</span>
+          <button
+            type="button"
+            className="secondary nav-drawer-close"
+            aria-label="Close menu"
+            onClick={() => setMenuOpen(false)}
+          >
+            ✕
+          </button>
+        </div>
+        {visibleTabs.map((t) => (
+          <button
+            key={t.key}
+            className={activeKey === t.key ? 'active' : ''}
+            onClick={() => {
+              setActiveTab(t.key)
+              setMenuOpen(false)
+            }}
           >
             {t.label}
           </button>

@@ -125,6 +125,29 @@ label {
   border-bottom: 3px solid var(--gold);
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.menu-toggle {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid rgba(250, 247, 240, 0.35);
+  padding: 8px 10px;
+}
+.menu-toggle:hover { background: rgba(250, 247, 240, 0.08); }
+.menu-toggle span {
+  display: block;
+  width: 18px;
+  height: 2px;
+  background: var(--paper);
+}
+
 .brand {
   font-family: var(--font-display);
   font-size: 20px;
@@ -170,6 +193,71 @@ nav.tabs button:hover { background: rgba(30, 47, 82, 0.05); }
 nav.tabs button.active {
   color: var(--navy);
   border-bottom-color: var(--gold);
+}
+
+/* Off-canvas mobile nav — hidden entirely above the breakpoint, where
+   nav.tabs (the existing horizontal bar) is used instead. */
+.nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(27, 35, 51, 0.5);
+}
+
+.nav-drawer {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 21;
+  width: min(78vw, 280px);
+  background: var(--navy);
+  border-right: 3px solid var(--gold);
+  padding: 8px 0 20px;
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform 0.2s ease;
+  overflow-y: auto;
+}
+.nav-drawer.open {
+  transform: translateX(0);
+  visibility: visible;
+}
+.nav-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(250, 247, 240, 0.15);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+.nav-drawer-close {
+  background: transparent;
+  border: none;
+  color: var(--paper);
+  padding: 2px 8px;
+}
+.nav-drawer-close:hover { background: rgba(250, 247, 240, 0.1); }
+.nav-drawer button:not(.nav-drawer-close) {
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  color: rgba(250, 247, 240, 0.75);
+  text-align: left;
+  padding: 13px 20px;
+  font-size: 14px;
+}
+.nav-drawer button:not(.nav-drawer-close):hover { background: rgba(250, 247, 240, 0.06); }
+.nav-drawer button.active {
+  color: var(--paper);
+  background: rgba(250, 247, 240, 0.08);
+  border-left-color: var(--gold);
 }
 
 main.content {
@@ -403,12 +491,61 @@ tbody tr:hover { background: var(--paper); }
 button.danger-solid { background: var(--stamp-red); border-color: var(--stamp-red); }
 button.danger-solid:hover { background: #7f2929; }
 
+.messages-layout {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.back-to-list { display: none; }
+
 @media (max-width: 620px) {
   .topbar { padding: 12px 16px; align-items: flex-start; gap: 10px; }
   .topbar-right { gap: 8px; align-items: flex-end; flex-direction: column; }
-  nav.tabs { overflow-x: auto; padding: 0 8px; }
-  nav.tabs button { padding: 10px 11px; white-space: nowrap; }
   main.content { padding: 20px 16px 44px; }
   .announcement-detail h2 { font-size: 24px; }
   .announcement-card { padding: 16px; }
+}
+
+/* Below this width, swap the horizontal tab bar for a hamburger + off-canvas
+   drawer — a row of tabs stops being a usable nav pattern once it has to
+   scroll horizontally on a phone. */
+@media (max-width: 768px) {
+  nav.tabs { display: none; }
+  .menu-toggle { display: flex; }
+}
+
+/* Above the breakpoint, the drawer/backdrop/hamburger must never appear or
+   take up layout space, regardless of open state — nav.tabs is already the
+   default, always-visible nav there. */
+@media (min-width: 769px) {
+  .menu-toggle,
+  .nav-drawer,
+  .nav-backdrop {
+    display: none !important;
+  }
+}
+
+/* Tables: rather than reworking every panel's markup, let a table that's
+   wider than its container scroll horizontally as one block. Lightweight
+   and covers every existing/future table-using panel automatically. */
+@media (max-width: 768px) {
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+}
+
+/* The login/accept-invite card had a fixed 360px width, which overflows
+   on phones narrower than that. */
+@media (max-width: 400px) {
+  .login-card { width: min(360px, 100%); padding: 24px 20px; }
+}
+
+/* Messages: side-by-side panes don't work on a phone-width screen — show
+   only the conversation list until one is opened/composing, then show
+   only that pane with a way back, matching a normal mobile chat app. */
+@media (max-width: 768px) {
+  .messages-layout { display: block; }
+  .messages-detail-pane { display: none; }
+  .messages-layout.showing-detail .messages-list-pane { display: none; }
+  .messages-layout.showing-detail .messages-detail-pane { display: block; }
+  .back-to-list { display: inline-block; margin-bottom: 14px; }
 }
