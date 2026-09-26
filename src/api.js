@@ -401,7 +401,12 @@ export const api = {
     create: (body) => request('/api/terms/', { method: 'POST', body }),
     update: (id, body) => request(`/api/terms/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/terms/${id}/`, { method: 'DELETE' }),
+    // Admins. A locked term's grades, reports and attendance can't change.
+    lock: (id) => request(`/api/terms/${id}/lock/`, { method: 'POST' }),
+    unlock: (id) => request(`/api/terms/${id}/unlock/`, { method: 'POST' }),
   },
+  // End of year (admins): moves = [{ from_class, to_class or null for leaving }].
+  promotion: (moves, commit) => request('/api/promotion/', { method: 'POST', body: { moves, commit } }),
   attendance: {
     list: (params) => request('/api/attendance/', { params }),
     create: (body) => request('/api/attendance/', { method: 'POST', body }),

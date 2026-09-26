@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, needsApproval } from '../api.js'
 import ImportCard from './ImportCard.jsx'
+import YearEndCard from './YearEndCard.jsx'
 
 const TONES = [
   { key: 'formal', label: 'Formal' },
@@ -252,6 +253,7 @@ export default function Setup({ me }) {
                 <th>Name</th>
                 <th>Start</th>
                 <th>End</th>
+                <th>Status</th>
                 <th></th>
               </tr>
             </thead>
@@ -262,9 +264,25 @@ export default function Setup({ me }) {
                   <td>{t.start_date}</td>
                   <td>{t.end_date}</td>
                   <td>
-                    <button className="danger" onClick={() => remove(api.terms, t, 'term')}>
-                      {isAdmin ? 'Delete' : 'Request delete'}
-                    </button>
+                    <span className={`badge ${t.is_locked ? 'cancelled' : 'active'}`}>{t.is_locked ? 'Locked' : 'Open'}</span>
+                  </td>
+                  <td style={{ display: 'flex', gap: 8 }}>
+                    {isAdmin && (
+                      <button
+                        className="secondary"
+                        onClick={() => {
+                          if (!t.is_locked && !window.confirm(`Lock ${t.name}? Nobody, including admins, can change its grades, reports or attendance until it's unlocked.`)) return
+                          change(() => (t.is_locked ? api.terms.unlock(t.id) : api.terms.lock(t.id)), `${t.name} is ${t.is_locked ? 'unlocked' : 'locked'}.`)
+                        }}
+                      >
+                        {t.is_locked ? 'Unlock' : 'Lock'}
+                      </button>
+                    )}
+                    {!t.is_locked && (
+                      <button className="danger" onClick={() => remove(api.terms, t, 'term')}>
+                        {isAdmin ? 'Delete' : 'Request delete'}
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -379,6 +397,7 @@ export default function Setup({ me }) {
           </>
         )}
       </div>
+      {isAdmin && <YearEndCard classes={classes} onDone={loadAll} />}
     </div>
   )
 }
