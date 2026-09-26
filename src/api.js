@@ -1,3 +1,5 @@
+import { reportApiError } from './sentry.js'
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 
 const TOKEN_KEY = 'housemaster_tokens'
@@ -178,7 +180,15 @@ async function request(path, { method = 'GET', body, params } = {}) {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
 
-  let res = await doFetch(tokens?.access)
+  let res
+  try {
+    res = await doFetch(tokens?.access)
+  } catch (networkErr) {
+    // fetch() only rejects when the request never got a response (backend
+    // down, Render cold start timing out, user offline).
+    reportApiError(networkErr, { method, path })
+    throw new Error('Could not reach the server. Please try again.')
+  }
 
   if (res.status === 401 && tokens?.refresh) {
     const newAccess = await refreshAccessToken()
@@ -210,6 +220,7 @@ async function request(path, { method = 'GET', body, params } = {}) {
     const err = new Error(message)
     err.status = res.status
     err.data = data
+    reportApiError(err, { method, path })
     throw err
   }
 
