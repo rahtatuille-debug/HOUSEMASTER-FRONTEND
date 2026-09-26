@@ -649,3 +649,41 @@ button.danger-solid:hover { background: #7f2929; }
   .messages-layout.showing-detail .messages-detail-pane { display: block; }
   .back-to-list { display: inline-block; margin-bottom: 14px; }
 }
+
+/* Urgent alerts: the only full-red surface in the app, so it can't be
+   mistaken for an ordinary notice. */
+.urgent-banner {
+  background: var(--stamp-red);
+  color: var(--paper);
+  padding: 12px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  border-bottom: 3px solid #6e2222;
+}
+.urgent-banner .urgent-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: var(--paper);
+  color: var(--stamp-red);
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-right: 8px;
+}
+.urgent-banner strong { font-family: var(--font-display); font-size: 17px; }
+.urgent-banner p { margin: 4px 0 0; font-size: 14px; }
+.urgent-banner .urgent-meta { font-size: 12px; opacity: .85; }
+.urgent-banner button {
+  background: var(--paper);
+  color: var(--stamp-red);
+  border-color: var(--paper);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.urgent-banner button:hover { background: #fff; }
+.urgent-card { border-top: 3px solid var(--stamp-red); }

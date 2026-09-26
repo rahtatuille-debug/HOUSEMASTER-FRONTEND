@@ -17,6 +17,7 @@ import Profile from './panels/Profile.jsx'
 import Attendance from './panels/Attendance.jsx'
 import Approvals from './panels/Approvals.jsx'
 import Activity from './panels/Activity.jsx'
+import Alerts from './panels/Alerts.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
@@ -28,6 +29,7 @@ const TABS = [
   { key: 'reports', label: 'Reports', component: Reports },
   { key: 'announcements', label: 'Communications', component: Announcements },
   { key: 'messages', label: 'Messages', component: Messages },
+  { key: 'alerts', label: 'Urgent alerts', component: Alerts },
   { key: 'approvals', label: 'Approvals', teacherLabel: 'My requests', component: Approvals },
   { key: 'setup', label: 'Setup', component: Setup },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
@@ -122,6 +124,8 @@ export default function App() {
 
   // Admins: teachers' requests plus reports waiting to be finalized.
   const [waitingCount, setWaitingCount] = useState(0)
+  // Urgent alerts this person hasn't confirmed seeing yet (the red banner).
+  const [urgentAlerts, setUrgentAlerts] = useState([])
 
   const notifRef = useRef(null)
   const profileRef = useRef(null)
@@ -167,6 +171,33 @@ export default function App() {
     refreshWaitingCount()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identityKind, me?.role, activeTab])
+
+  // Check for urgent alerts on load and every minute after, for staff and parents.
+  useEffect(() => {
+    if (!identityKind) return
+    let cancelled = false
+    function check() {
+      api.alerts
+        .active()
+        .then((list) => !cancelled && setUrgentAlerts(list))
+        .catch(() => {})
+    }
+    check()
+    const timer = setInterval(check, 60000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [identityKind])
+
+  async function acknowledgeAlert(id) {
+    try {
+      await api.alerts.acknowledge(id)
+      setUrgentAlerts((list) => list.filter((a) => a.id !== id))
+    } catch {
+      // Leave the banner up if it didn't save; they can tap again.
+    }
+  }
 
   // Shared close-on-Escape / close-on-outside-click handling for the three
   // overlay affordances (mobile sidebar, notifications popover, profile menu).
@@ -404,6 +435,22 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {urgentAlerts.map((a) => (
+          <div className="urgent-banner" role="alert" key={a.id}>
+            <div>
+              <span className="urgent-label">Urgent</span>
+              <strong>{a.title}</strong>
+              <p>{a.body}</p>
+              <span className="urgent-meta">
+                {a.created_by_name} · {new Date(a.created_at).toLocaleString()}
+              </span>
+            </div>
+            <button type="button" onClick={() => acknowledgeAlert(a.id)}>
+              I've seen this
+            </button>
+          </div>
+        ))}
 
         <main className="content">
           {ActivePanel && (

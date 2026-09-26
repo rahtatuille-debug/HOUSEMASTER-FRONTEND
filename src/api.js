@@ -271,6 +271,17 @@ export const api = {
     sendMessage: (id, body) => request(`/api/conversations/${id}/messages/`, { method: 'POST', body }),
     markRead: (id) => request(`/api/conversations/${id}/read/`, { method: 'POST' }),
     contacts: () => request('/api/conversations/contacts/'),
+    // Every parent of one class. kind: 'class_notice' (one-way) or 'class_group' (discussion).
+    messageClass: (body) => request('/api/conversations/class/', { method: 'POST', body }),
+  },
+
+  alerts: {
+    list: () => request('/api/alerts/'),
+    active: () => request('/api/alerts/active/'),
+    create: (body) => request('/api/alerts/', { method: 'POST', body }),
+    acknowledge: (id) => request(`/api/alerts/${id}/acknowledge/`, { method: 'POST' }),
+    recipients: (id) => request(`/api/alerts/${id}/recipients/`),
+    end: (id) => request(`/api/alerts/${id}/end/`, { method: 'POST' }),
   },
 
   students: {

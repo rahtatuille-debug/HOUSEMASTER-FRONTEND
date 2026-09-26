@@ -13,6 +13,8 @@ const CATEGORIES = [
   { key: 'school,year_group,school_class,subject,term', label: 'Setup and settings' },
   { key: 'change_request', label: 'Approval requests' },
   { key: 'announcement', label: 'Announcements' },
+  { key: 'alert', label: 'Urgent alerts' },
+  { key: 'class_message', label: 'Class messages' },
 ]
 
 // Admin-only record of who did what and when.
