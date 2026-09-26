@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 
-export default function Grades() {
+// Teachers can see every subject's grades for students in their classes,
+// but only add or change grades for the subjects they teach there.
+export default function Grades({ me }) {
+  const isAdmin = me?.role === 'admin'
   const [students, setStudents] = useState([])
   const [subjects, setSubjects] = useState([])
   const [terms, setTerms] = useState([])
@@ -107,6 +110,17 @@ export default function Grades() {
   const subjectName = (id) => subjects.find((s) => s.id === id)?.name || `#${id}`
   const termName = (id) => terms.find((t) => t.id === id)?.name || `#${id}`
 
+  function canGrade(studentId, subjectId) {
+    if (isAdmin) return true
+    const student = students.find((s) => s.id === Number(studentId))
+    if (!student) return false
+    return (me?.assignments || []).some(
+      (a) => a.school_class === student.school_class && a.subject === Number(subjectId)
+    )
+  }
+
+  const formSubjects = form.student ? subjects.filter((s) => canGrade(form.student, s.id)) : subjects
+
   const noPrereqs = subjects.length === 0 || terms.length === 0
 
   return (
@@ -158,7 +172,7 @@ export default function Grades() {
                   required
                 >
                   <option value="">Select…</option>
-                  {subjects.map((s) => (
+                  {formSubjects.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.name}
                     </option>
@@ -266,12 +280,16 @@ export default function Grades() {
                 <td>{termName(g.term)}</td>
                 <td className="mono">{g.score} / {g.max_score}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
-                  <button className="secondary" onClick={() => startEdit(g)}>
-                    Edit
-                  </button>
-                  <button className="danger" onClick={() => remove(g.id)}>
-                    Delete
-                  </button>
+                  {canGrade(g.student, g.subject) && (
+                    <>
+                      <button className="secondary" onClick={() => startEdit(g)}>
+                        Edit
+                      </button>
+                      <button className="danger" onClick={() => remove(g.id)}>
+                        Delete
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

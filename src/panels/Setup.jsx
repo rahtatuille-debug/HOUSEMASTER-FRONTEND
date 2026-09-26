@@ -1,7 +1,20 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api.js'
+import { api, needsApproval } from '../api.js'
 
-export default function Setup() {
+const TONES = [
+  { key: 'formal', label: 'Formal' },
+  { key: 'warm', label: 'Warm / encouraging' },
+  { key: 'concise', label: 'Concise / direct' },
+]
+
+// Admins' changes apply straight away. A teacher's change is sent to an
+// admin for approval instead (the API answers 202), and this screen says so.
+export default function Setup({ me }) {
+  const isAdmin = me?.role === 'admin'
+  const [school, setSchool] = useState(null)
+  const [schoolName, setSchoolName] = useState('')
+  const [tone, setTone] = useState('formal')
+  const [notice, setNotice] = useState('')
   const [subjects, setSubjects] = useState([])
   const [terms, setTerms] = useState([])
   const [yearGroups, setYearGroups] = useState([])
@@ -22,12 +35,18 @@ export default function Setup() {
     setLoading(true)
     setError('')
     try {
-      const [s, t, yg, cls] = await Promise.all([
+      const [s, t, yg, cls, schools] = await Promise.all([
         api.subjects.list(),
         api.terms.list(),
         api.yearGroups.list(),
         api.schoolClasses.list(),
+        api.schools.mine(),
       ])
+      if (schools[0]) {
+        setSchool(schools[0])
+        setSchoolName(schools[0].name)
+        setTone(schools[0].report_tone)
+      }
       setSubjects(s)
       setTerms(t)
       setYearGroups(yg)
@@ -43,69 +62,90 @@ export default function Setup() {
     loadAll()
   }, [])
 
+  // Runs a create/update/delete and reports whether it was applied or sent
+  // for approval. Returns true when the caller should clear its form.
+  async function change(action, doneMessage) {
+    setError('')
+    setNotice('')
+    try {
+      const result = await action()
+      setNotice(
+        needsApproval(result)
+          ? 'Sent to an admin for approval. You can follow it under My requests.'
+          : doneMessage
+      )
+      loadAll()
+      return true
+    } catch (err) {
+      setError(err.message)
+      return false
+    }
+  }
+
+  function remove(apiGroup, item, what) {
+    const warning = isAdmin
+      ? `Delete ${what} "${item.name}"? This can't be undone.`
+      : `Ask an admin to delete ${what} "${item.name}"?`
+    if (!window.confirm(warning)) return
+    change(() => apiGroup.remove(item.id), `Deleted ${what} "${item.name}".`)
+  }
+
+  async function saveSchool(e) {
+    e.preventDefault()
+    if (!school) return
+    const body = {}
+    if (schoolName.trim() && schoolName.trim() !== school.name) body.name = schoolName.trim()
+    if (tone !== school.report_tone) body.report_tone = tone
+    if (Object.keys(body).length === 0) return
+    change(() => api.schools.update(school.id, body), 'School settings saved.')
+  }
+
   async function addSubject(e) {
     e.preventDefault()
     if (!subjectName.trim()) return
-    try {
-      await api.subjects.create({ name: subjectName.trim() })
-      setSubjectName('')
-      loadAll()
-    } catch (err) {
-      setError(err.message)
-    }
+    if (await change(() => api.subjects.create({ name: subjectName.trim() }), 'Subject added.')) setSubjectName('')
   }
 
   async function addTerm(e) {
     e.preventDefault()
     if (!termName.trim() || !termStart || !termEnd) return
-    try {
-      await api.terms.create({ name: termName.trim(), start_date: termStart, end_date: termEnd })
+    const ok = await change(
+      () => api.terms.create({ name: termName.trim(), start_date: termStart, end_date: termEnd }),
+      'Term added.'
+    )
+    if (ok) {
       setTermName('')
       setTermStart('')
       setTermEnd('')
-      loadAll()
-    } catch (err) {
-      setError(err.message)
     }
   }
 
   async function addYearGroup(e) {
     e.preventDefault()
     if (!yearGroupName.trim()) return
-    try {
-      await api.yearGroups.create({ name: yearGroupName.trim() })
+    if (await change(() => api.yearGroups.create({ name: yearGroupName.trim() }), 'Year group added.')) {
       setYearGroupName('')
-      loadAll()
-    } catch (err) {
-      setError(err.message)
     }
   }
 
   async function addClass(e) {
     e.preventDefault()
     if (!className.trim() || !classYearGroup) return
-    try {
-      await api.schoolClasses.create({
-        name: className.trim(),
-        year_group: Number(classYearGroup),
-        house: classHouse.trim(),
-      })
+    const ok = await change(
+      () =>
+        api.schoolClasses.create({
+          name: className.trim(),
+          year_group: Number(classYearGroup),
+          house: classHouse.trim(),
+        }),
+      'Class added.'
+    )
+    if (ok) {
       setClassName('')
       setClassHouse('')
-      loadAll()
-    } catch (err) {
-      setError(err.message)
     }
   }
 
-  async function removeClass(id) {
-    try {
-      await api.schoolClasses.remove(id)
-      loadAll()
-    } catch (err) {
-      setError(err.message)
-    }
-  }
 
   const yearGroupName_ = (id) => yearGroups.find((yg) => yg.id === id)?.name || `#${id}`
 
@@ -115,6 +155,36 @@ export default function Setup() {
         <h2>Setup</h2>
       </div>
       {error && <div className="error-banner">{error}</div>}
+      {notice && <div className="success-banner">{notice}</div>}
+      {!isAdmin && (
+        <p className="hint" style={{ marginTop: 0 }}>
+          Changes you make here are sent to an admin for approval before they take effect.
+        </p>
+      )}
+
+      <div className="card">
+        <h3 style={{ marginBottom: 14 }}>School settings</h3>
+        <form onSubmit={saveSchool} className="form-row">
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor="school-name">School name</label>
+            <input id="school-name" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} />
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor="school-tone">Report tone</label>
+            <select id="school-tone" value={tone} onChange={(e) => setTone(e.target.value)}>
+              {TONES.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" disabled={!school || (schoolName.trim() === school.name && tone === school.report_tone)}>
+            {isAdmin ? 'Save settings' : 'Ask for approval'}
+          </button>
+        </form>
+        <p className="hint">The report tone is how AI-written report comments are phrased.</p>
+      </div>
 
       <div className="card">
         <h3 style={{ marginBottom: 14 }}>Subjects</h3>
@@ -128,7 +198,7 @@ export default function Setup() {
               placeholder="e.g. Mathematics"
             />
           </div>
-          <button type="submit">Add subject</button>
+          <button type="submit">{isAdmin ? 'Add subject' : 'Ask to add subject'}</button>
         </form>
         {!loading && subjects.length === 0 && (
           <p className="hint">No subjects yet — add one above before recording grades.</p>
@@ -136,7 +206,12 @@ export default function Setup() {
         {subjects.length > 0 && (
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {subjects.map((s) => (
-              <li key={s.id}>{s.name}</li>
+              <li key={s.id} style={{ marginBottom: 4 }}>
+                {s.name}{' '}
+                <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: '0 6px' }} onClick={() => remove(api.subjects, s, 'subject')}>
+                  {isAdmin ? 'Delete' : 'Request delete'}
+                </button>
+              </li>
             ))}
           </ul>
         )}
@@ -162,7 +237,7 @@ export default function Setup() {
             <label htmlFor="term-end">End date</label>
             <input id="term-end" type="date" value={termEnd} onChange={(e) => setTermEnd(e.target.value)} />
           </div>
-          <button type="submit">Add term</button>
+          <button type="submit">{isAdmin ? 'Add term' : 'Ask to add term'}</button>
         </form>
         {!loading && terms.length === 0 && (
           <p className="hint">No terms yet — add one above before recording grades or generating reports.</p>
@@ -174,6 +249,7 @@ export default function Setup() {
                 <th>Name</th>
                 <th>Start</th>
                 <th>End</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -182,6 +258,11 @@ export default function Setup() {
                   <td>{t.name}</td>
                   <td>{t.start_date}</td>
                   <td>{t.end_date}</td>
+                  <td>
+                    <button className="danger" onClick={() => remove(api.terms, t, 'term')}>
+                      {isAdmin ? 'Delete' : 'Request delete'}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -201,7 +282,7 @@ export default function Setup() {
               placeholder="e.g. Year 7"
             />
           </div>
-          <button type="submit">Add year group</button>
+          <button type="submit">{isAdmin ? 'Add year group' : 'Ask to add year group'}</button>
         </form>
         {!loading && yearGroups.length === 0 && (
           <p className="hint">No year groups yet — add one above before creating classes.</p>
@@ -209,7 +290,12 @@ export default function Setup() {
         {yearGroups.length > 0 && (
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {yearGroups.map((yg) => (
-              <li key={yg.id}>{yg.name}</li>
+              <li key={yg.id} style={{ marginBottom: 4 }}>
+                {yg.name}{' '}
+                <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: '0 6px' }} onClick={() => remove(api.yearGroups, yg, 'year group')}>
+                  {isAdmin ? 'Delete' : 'Request delete'}
+                </button>
+              </li>
             ))}
           </ul>
         )}
@@ -257,7 +343,7 @@ export default function Setup() {
                   placeholder="optional"
                 />
               </div>
-              <button type="submit">Add class</button>
+              <button type="submit">{isAdmin ? 'Add class' : 'Ask to add class'}</button>
             </form>
             {classes.length === 0 ? (
               <p className="hint">No classes yet — add one above.</p>
@@ -278,8 +364,8 @@ export default function Setup() {
                       <td>{yearGroupName_(c.year_group)}</td>
                       <td>{c.house || '—'}</td>
                       <td>
-                        <button className="danger" onClick={() => removeClass(c.id)}>
-                          Delete
+                        <button className="danger" onClick={() => remove(api.schoolClasses, c, 'class')}>
+                          {isAdmin ? 'Delete' : 'Request delete'}
                         </button>
                       </td>
                     </tr>

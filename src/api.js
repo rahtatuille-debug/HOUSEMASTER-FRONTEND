@@ -274,6 +274,8 @@ export const api = {
     list: (params) => request('/api/students/', { params }),
     create: (body) => request('/api/students/', { method: 'POST', body }),
     update: (id, body) => request(`/api/students/${id}/`, { method: 'PATCH', body }),
+    // Permanent. For a teacher this only sends a request for an admin to approve.
+    remove: (id, reason) => request(`/api/students/${id}/`, { method: 'DELETE', body: reason ? { reason } : undefined }),
   },
   schoolClasses: {
     list: () => request('/api/school-classes/'),
@@ -284,15 +286,25 @@ export const api = {
   yearGroups: {
     list: () => request('/api/year-groups/'),
     create: (body) => request('/api/year-groups/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/year-groups/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/year-groups/${id}/`, { method: 'DELETE' }),
   },
   subjects: {
     list: () => request('/api/subjects/'),
     create: (body) => request('/api/subjects/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/subjects/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/subjects/${id}/`, { method: 'DELETE' }),
   },
   terms: {
     list: () => request('/api/terms/'),
     create: (body) => request('/api/terms/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/terms/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/terms/${id}/`, { method: 'DELETE' }),
+  },
+  attendance: {
+    list: (params) => request('/api/attendance/', { params }),
+    create: (body) => request('/api/attendance/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/attendance/${id}/`, { method: 'PATCH', body }),
   },
   grades: {
     list: (params) => request('/api/grades/', { params }),
@@ -305,6 +317,9 @@ export const api = {
     generate: (student, term) =>
       request('/api/reports/generate/', { method: 'POST', body: { student, term } }),
     update: (id, body) => request(`/api/reports/${id}/`, { method: 'PATCH', body }),
+    submit: (id) => request(`/api/reports/${id}/submit/`, { method: 'POST' }),
+    finalize: (id) => request(`/api/reports/${id}/finalize/`, { method: 'POST' }),
+    sendBack: (id, note) => request(`/api/reports/${id}/send-back/`, { method: 'POST', body: { note } }),
   },
   announcements: {
     list: (params) => request('/api/announcements/', { params }),
@@ -317,5 +332,42 @@ export const api = {
   },
   schools: {
     mine: () => request('/api/schools/'),
+    update: (id, body) => request(`/api/schools/${id}/`, { method: 'PATCH', body }),
   },
+
+  // Admin only.
+  staff: {
+    list: () => request('/api/staff/'),
+    setRole: (id, role) => request(`/api/staff/${id}/`, { method: 'PATCH', body: { role } }),
+    deactivate: (id) => request(`/api/staff/${id}/deactivate/`, { method: 'POST' }),
+    reactivate: (id) => request(`/api/staff/${id}/reactivate/`, { method: 'POST' }),
+  },
+  teachingAssignments: {
+    list: (params) => request('/api/teaching-assignments/', { params }),
+    create: (body) => request('/api/teaching-assignments/', { method: 'POST', body }),
+    remove: (id) => request(`/api/teaching-assignments/${id}/`, { method: 'DELETE' }),
+  },
+  parents: {
+    list: () => request('/api/parents/'),
+    setStudents: (id, students) => request(`/api/parents/${id}/`, { method: 'PATCH', body: { students } }),
+    deactivate: (id) => request(`/api/parents/${id}/deactivate/`, { method: 'POST' }),
+    reactivate: (id) => request(`/api/parents/${id}/reactivate/`, { method: 'POST' }),
+  },
+  activity: {
+    list: (params) => request('/api/activity/', { params }),
+  },
+
+  // Admins see and decide every request; teachers see and cancel their own.
+  changeRequests: {
+    list: (params) => request('/api/change-requests/', { params }),
+    approve: (id, note) => request(`/api/change-requests/${id}/approve/`, { method: 'POST', body: { note } }),
+    reject: (id, note) => request(`/api/change-requests/${id}/reject/`, { method: 'POST', body: { note } }),
+    cancel: (id) => request(`/api/change-requests/${id}/cancel/`, { method: 'POST' }),
+  },
+}
+
+// When a teacher makes a change that needs an admin's approval, the API
+// answers 202 with { detail, change_request } instead of the saved object.
+export function needsApproval(result) {
+  return Boolean(result && result.change_request)
 }

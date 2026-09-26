@@ -1,11 +1,16 @@
 import { useEffect, useState } from 'react'
-import { api } from '../api.js'
+import { api, needsApproval } from '../api.js'
 
 const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', school_class: '' }
 
-export default function Students() {
+// Teachers only see and add students in the classes they teach. Deleting a
+// student permanently (with all their grades, attendance and reports) is
+// admin-only; a teacher's delete becomes a request for an admin to approve.
+export default function Students({ me }) {
+  const isAdmin = me?.role === 'admin'
+  const [notice, setNotice] = useState('')
   const [students, setStudents] = useState([])
-  const [classes, setClasses] = useState([])
+  const [allClasses, setAllClasses] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(emptyForm)
@@ -19,7 +24,7 @@ export default function Students() {
       const params = showInactive ? {} : { is_active: true }
       const [data, cls] = await Promise.all([api.students.list(params), api.schoolClasses.list()])
       setStudents(data)
-      setClasses(cls)
+      setAllClasses(cls)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -77,9 +82,34 @@ export default function Students() {
     }
   }
 
+  async function removeStudent(student) {
+    const name = `${student.first_name} ${student.last_name}`
+    setError('')
+    setNotice('')
+    let reason
+    if (isAdmin) {
+      if (!window.confirm(`Permanently delete ${name}? This also deletes all their grades, attendance and reports, and can't be undone. To keep their history, deactivate them instead.`)) return
+    } else {
+      reason = window.prompt(`Ask an admin to permanently delete ${name}? You can add a reason (optional).`, '')
+      if (reason === null) return
+    }
+    try {
+      const result = await api.students.remove(student.id, reason?.trim())
+      setNotice(needsApproval(result) ? `Sent to an admin for approval to delete ${name}.` : `${name} was deleted.`)
+      load()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  // Teachers can only put students in classes they teach.
+  const classes = isAdmin
+    ? allClasses
+    : allClasses.filter((c) => (me?.assignments || []).some((a) => a.school_class === c.id))
+
   const className = (id) => {
     if (!id) return '—'
-    return classes.find((c) => c.id === id)?.name || `#${id}`
+    return allClasses.find((c) => c.id === id)?.name || `#${id}`
   }
 
   return (
@@ -98,6 +128,12 @@ export default function Students() {
       </div>
 
       {error && <div className="error-banner">{error}</div>}
+      {notice && <div className="success-banner">{notice}</div>}
+      {!isAdmin && classes.length === 0 && !loading && (
+        <p className="hint" style={{ marginTop: 0 }}>
+          You aren't assigned to any classes yet, so there are no students to show. Ask an admin to assign you.
+        </p>
+      )}
 
       <div className="card">
         <h3 style={{ marginBottom: 14, fontSize: 15 }}>
@@ -129,8 +165,9 @@ export default function Students() {
                 id="student-class"
                 value={form.school_class}
                 onChange={(e) => setForm({ ...form, school_class: e.target.value })}
+                required={!isAdmin}
               >
-                <option value="">Unassigned</option>
+                <option value="">{isAdmin ? 'Unassigned' : 'Select…'}</option>
                 {classes.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -204,6 +241,9 @@ export default function Students() {
                   </button>
                   <button className="secondary" onClick={() => toggleActive(s)}>
                     {s.is_active ? 'Deactivate' : 'Reactivate'}
+                  </button>
+                  <button className="danger" onClick={() => removeStudent(s)}>
+                    {isAdmin ? 'Delete' : 'Request delete'}
                   </button>
                 </td>
               </tr>
