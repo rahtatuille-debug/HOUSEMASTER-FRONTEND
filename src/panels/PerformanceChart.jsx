@@ -24,12 +24,12 @@ export default function PerformanceChart({ data }) {
   const step = data.length > 1 ? plotW / (data.length - 1) : 0
   const x = (i) => PAD.left + (data.length > 1 ? i * step : plotW / 2)
   const y = (v) => PAD.top + plotH - (v / 100) * plotH
-  const series = SERIES.filter((s) => data.some((d) => d[s.key] !== null))
+  const series = SERIES.filter((s) => data.some((d) => d[s.key] != null))
 
   function path(key) {
     let d = ''
     data.forEach((row, i) => {
-      if (row[key] === null) return
+      if (row[key] == null) return
       d += `${d ? 'L' : 'M'}${x(i)},${y(row[key])}`
     })
     return d
@@ -45,7 +45,7 @@ export default function PerformanceChart({ data }) {
   // Direct labels at each line's last point, nudged apart if they'd overlap.
   const endLabels = series
     .map((s) => {
-      const last = [...data.keys()].reverse().find((i) => data[i][s.key] !== null)
+      const last = [...data.keys()].reverse().find((i) => data[i][s.key] != null)
       return { ...s, i: last, yPos: y(data[last][s.key]) }
     })
     .sort((a, b) => a.yPos - b.yPos)
@@ -95,7 +95,7 @@ export default function PerformanceChart({ data }) {
             <g key={s.key}>
               <path d={path(s.key)} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
               {data.map((d, i) =>
-                d[s.key] === null ? null : (
+                d[s.key] == null ? null : (
                   <circle key={i} cx={x(i)} cy={y(d[s.key])} r={hover === i ? 5 : 4} fill={s.color} stroke="#fff" strokeWidth="2" />
                 )
               )}
@@ -115,7 +115,7 @@ export default function PerformanceChart({ data }) {
             <strong>{hovered.term}</strong>
             {series.map((s) => (
               <div key={s.key}>
-                <i style={{ background: s.color }} /> {s.label}: {hovered[s.key] === null ? '—' : `${hovered[s.key]}%`}
+                <i style={{ background: s.color }} /> {s.label}: {hovered[s.key] == null ? '—' : `${hovered[s.key]}%`}
               </div>
             ))}
           </div>

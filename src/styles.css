@@ -719,3 +719,9 @@ button.danger-solid:hover { background: #7f2929; }
   .profile-nav button { border-bottom: none; border-right: 1px solid var(--rule); white-space: nowrap; }
   .profile-head { grid-template-columns: 1fr; justify-items: start; }
 }
+
+/* Admin home page */
+.home-grid { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.stat-tile-button { display: block; width: 100%; text-align: left; color: var(--ink); font-weight: 400; cursor: pointer; background: var(--paper); border: 1px solid var(--rule); border-radius: var(--radius); padding: 12px 14px; }
+.stat-tile-button:hover { background: var(--paper-2); border-color: var(--gold); }
+@media (max-width: 860px) { .home-grid { grid-template-columns: 1fr; } }

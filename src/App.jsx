@@ -18,11 +18,13 @@ import Attendance from './panels/Attendance.jsx'
 import Approvals from './panels/Approvals.jsx'
 import Activity from './panels/Activity.jsx'
 import Alerts from './panels/Alerts.jsx'
+import Home from './panels/Home.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
 
 const TABS = [
+  { key: 'home', label: 'Home', component: Home, adminOnly: true },
   { key: 'students', label: 'Students', component: Students },
   { key: 'attendance', label: 'Attendance', component: Attendance },
   { key: 'grades', label: 'Grades', component: Grades },
@@ -114,7 +116,7 @@ export default function App() {
   const [me, setMe] = useState(null)
   // 'staff' | 'guardian' | null (unknown until /api/me/ or /api/guardian-me/ resolves)
   const [identityKind, setIdentityKind] = useState(null)
-  const [activeTab, setActiveTab] = useState('students')
+  const [activeTab, setActiveTab] = useState('home')
   const [menuOpen, setMenuOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
@@ -459,6 +461,7 @@ export default function App() {
               identityKind={identityKind}
               onUserUpdated={setMe}
               onCountsChanged={refreshWaitingCount}
+              onNavigate={selectTab}
             />
           )}
         </main>

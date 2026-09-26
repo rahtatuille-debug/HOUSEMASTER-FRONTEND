@@ -266,6 +266,8 @@ export const api = {
   logout,
   isLoggedIn: () => !!getTokens()?.access,
   me: () => request('/api/me/'),
+  // Admin home page.
+  dashboard: () => request('/api/dashboard/'),
   updateMe: (body) => request('/api/me/', { method: 'PATCH', body }),
   previewInvite,
   acceptInvite,
@@ -296,6 +298,11 @@ export const api = {
     get: (id) => request(`/api/guardian-students/${id}/`),
     grades: (id, params) => request(`/api/guardian-students/${id}/grades/`, { params }),
     reports: (id) => request(`/api/guardian-students/${id}/reports/`),
+    profile: (id) => request(`/api/guardian-students/${id}/profile/`),
+    photoUrl: async (id) => {
+      const res = await authedFetch(`/api/guardian-students/${id}/photo/`)
+      return res.ok ? URL.createObjectURL(await res.blob()) : null
+    },
   },
 
   conversations: {

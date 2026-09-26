@@ -1,5 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import PerformanceChart from './PerformanceChart.jsx'
+
+const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
+const MODES = { day: 'Day', boarding: 'Boarding' }
+const TABS = ['overview', 'progress', 'grades', 'attendance', 'reports']
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString() : '—'
@@ -19,6 +24,8 @@ export default function GuardianStudents() {
   const [tab, setTab] = useState('overview')
   const [grades, setGrades] = useState([])
   const [reports, setReports] = useState([])
+  const [profile, setProfile] = useState(null)
+  const [photoUrl, setPhotoUrl] = useState(null)
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState('')
@@ -41,14 +48,17 @@ export default function GuardianStudents() {
     setDetailLoading(true)
     setError('')
     try {
-      const [student, studentGrades, studentReports] = await Promise.all([
-        api.guardianStudents.get(id),
+      const [studentProfile, studentGrades, studentReports] = await Promise.all([
+        api.guardianStudents.profile(id),
         api.guardianStudents.grades(id),
         api.guardianStudents.reports(id),
       ])
-      setSelected(student)
+      setSelected(studentProfile.student)
+      setProfile(studentProfile)
       setGrades(studentGrades)
       setReports(studentReports)
+      setPhotoUrl((old) => (old && URL.revokeObjectURL(old), null))
+      if (studentProfile.student.has_photo) setPhotoUrl(await api.guardianStudents.photoUrl(id))
       setTab('overview')
     } catch (err) {
       setError(err.status === 404 ? 'This student is unavailable.' : err.message)
@@ -69,9 +79,66 @@ export default function GuardianStudents() {
           <h2>{selected.first_name} {selected.last_name}</h2>
           <p className="text-muted">{selected.school_class_name || 'Class not assigned'}{selected.house ? ` · ${selected.house} House` : ''}</p>
           <div className="guardian-subtabs" role="tablist" aria-label="Student information">
-            {['overview', 'grades', 'reports'].map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
+            {TABS.map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
           </div>
-          {tab === 'overview' && <div className="guardian-overview"><div><span>Class</span><strong>{selected.school_class_name || '—'}</strong></div><div><span>House</span><strong>{selected.house || '—'}</strong></div><div><span>Enrolled</span><strong>{formatDate(selected.enrolled_on)}</strong></div></div>}
+          {tab === 'overview' && profile && (
+            <>
+              <div className="card">
+                <div className="profile-head" style={{ gridTemplateColumns: '160px 1fr 1fr' }}>
+                  {photoUrl ? (
+                    <img className="profile-photo" src={photoUrl} alt={`Photo of ${selected.first_name}`} />
+                  ) : (
+                    <div className="profile-photo" aria-label="No photo">{`${selected.first_name[0] || ''}${selected.last_name[0] || ''}`}</div>
+                  )}
+                  <ul className="fact-list">
+                    <li><span>Class</span> {selected.school_class_name || '—'}</li>
+                    <li><span>Admission no.</span> {selected.external_id || '—'}</li>
+                    <li><span>House</span> {selected.house || '—'}</li>
+                    <li><span>Date of birth</span> {formatDate(selected.date_of_birth)}{profile.age != null && ` (age ${profile.age})`}</li>
+                    <li><span>Gender</span> {GENDERS[selected.gender] || '—'}</li>
+                    <li><span>Mode of learning</span> {MODES[selected.mode_of_learning] || '—'}</li>
+                    <li><span>Admission date</span> {formatDate(selected.enrolled_on)}</li>
+                  </ul>
+                  <div>
+                    <h3 style={{ fontSize: 15, marginBottom: 8 }}>Health notes on file</h3>
+                    {selected.medical_notes ? <div className="health-box">{selected.medical_notes}</div> : <p className="text-muted" style={{ marginTop: 0 }}>None recorded.</p>}
+                    <p className="hint">If anything here is wrong or missing, please tell the school.</p>
+                  </div>
+                </div>
+              </div>
+              <div className="card">
+                <h3 style={{ fontSize: 15, marginBottom: 10 }}>Teachers</h3>
+                {profile.teachers.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>Not listed yet.</p> : (
+                  <table><thead><tr><th>Subject</th><th>Teacher</th></tr></thead>
+                    <tbody>{profile.teachers.map((t, i) => <tr key={i}><td>{t.subject}</td><td>{t.teacher}</td></tr>)}</tbody></table>
+                )}
+              </div>
+            </>
+          )}
+          {tab === 'progress' && profile && (
+            <div className="card">
+              <h3 style={{ fontSize: 15, marginBottom: 4 }}>Average score by term</h3>
+              <p className="hint" style={{ marginTop: 0 }}>{selected.first_name}'s average across all subjects each term.</p>
+              <PerformanceChart data={profile.performance} />
+            </div>
+          )}
+          {tab === 'attendance' && profile && (
+            <div className="card">
+              <div className="stat-row">
+                {[['Attendance', profile.attendance.overall.rate != null ? `${profile.attendance.overall.rate}%` : '—'],
+                  ['Present', profile.attendance.overall.present], ['Absent', profile.attendance.overall.absent],
+                  ['Late', profile.attendance.overall.late], ['Excused', profile.attendance.overall.excused]].map(([label, value]) => (
+                  <div className="stat-tile" key={label}><div className="stat-label">{label}</div><div className="stat-value">{value}</div></div>
+                ))}
+              </div>
+              {profile.attendance.recent.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>No attendance recorded yet.</p> : (
+                <table><thead><tr><th>Date</th><th>Status</th><th>Note</th></tr></thead>
+                  <tbody>{profile.attendance.recent.map((r) => (
+                    <tr key={r.date}><td>{formatDate(r.date)}</td><td><span className={`badge ${r.status}`}>{r.status}</span></td><td className="text-muted">{r.notes || '—'}</td></tr>
+                  ))}</tbody></table>
+              )}
+            </div>
+          )}
           {tab === 'grades' && (grades.length ? <div className="table-wrap"><table><thead><tr><th>Subject</th><th>Term</th><th>Score</th><th>Result</th><th>Recorded</th></tr></thead><tbody>{grades.map((grade) => <tr key={grade.id}><td>{grade.subject_name}</td><td>{grade.term_name}</td><td>{grade.score} / {grade.max_score}</td><td>{percentage(grade)}</td><td>{formatDate(grade.recorded_at)}</td></tr>)}</tbody></table></div> : <div className="empty-state"><h3>No grades have been recorded yet.</h3></div>)}
           {tab === 'reports' && (reports.length ? <div className="guardian-reports">{reports.map((report) => <article className="report-doc" key={report.id}><p className="eyebrow">{report.term_name}</p><h3>Progress review</h3><h4>Progress summary</h4><p>{report.progress_summary}</p><h4>School comment</h4><p>{report.report_comment}</p><p className="text-muted">Finalized {formatDate(report.edited_at || report.generated_at)}</p></article>)}</div> : <div className="empty-state"><h3>No finalized reports are available yet.</h3></div>)}
         </article>
