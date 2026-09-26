@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from './api.js'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
@@ -56,6 +56,48 @@ function getResetToken() {
   return match ? match[1] : null
 }
 
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true">
+      <path
+        d="M10 2.5c-2.2 0-4 1.8-4 4v2.3c0 .5-.2 1-.5 1.4l-1 1.3c-.6.8 0 2 1 2h9c1 0 1.6-1.2 1-2l-1-1.3c-.3-.4-.5-.9-.5-1.4V6.5c0-2.2-1.8-4-4-4z"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+      <path d="M8.2 15.5a1.8 1.8 0 0 0 3.6 0" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true">
+      <circle cx="10" cy="10" r="2.6" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M10 2.7v1.8M10 15.5v1.8M17.3 10h-1.8M4.5 10H2.7M15.1 4.9l-1.3 1.3M6.2 13.8l-1.3 1.3M15.1 15.1l-1.3-1.3M6.2 6.2 4.9 4.9"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true">
+      <circle cx="10" cy="7" r="3.2" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M3.8 16.3c1-2.8 3.5-4.5 6.2-4.5s5.2 1.7 6.2 4.5"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 export default function App() {
   const [inviteToken, setInviteToken] = useState(getInviteToken())
   const [guardianInviteToken, setGuardianInviteToken] = useState(getGuardianInviteToken())
@@ -66,9 +108,14 @@ export default function App() {
   const [identityKind, setIdentityKind] = useState(null)
   const [activeTab, setActiveTab] = useState('students')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [profileOpen, setProfileOpen] = useState(false)
   // Which screen to show when logged out and not on a token route.
   const [authView, setAuthView] = useState('login') // 'login' | 'forgot'
   const [authMessage, setAuthMessage] = useState('')
+
+  const notifRef = useRef(null)
+  const profileRef = useRef(null)
 
   useEffect(() => {
     if (!loggedIn) return
@@ -97,14 +144,27 @@ export default function App() {
       })
   }, [loggedIn])
 
+  // Shared close-on-Escape / close-on-outside-click handling for the three
+  // overlay affordances (mobile sidebar, notifications popover, profile menu).
   useEffect(() => {
-    if (!menuOpen) return
+    if (!menuOpen && !notifOpen && !profileOpen) return
     function onKeyDown(e) {
-      if (e.key === 'Escape') setMenuOpen(false)
+      if (e.key !== 'Escape') return
+      setMenuOpen(false)
+      setNotifOpen(false)
+      setProfileOpen(false)
+    }
+    function onClickOutside(e) {
+      if (notifOpen && notifRef.current && !notifRef.current.contains(e.target)) setNotifOpen(false)
+      if (profileOpen && profileRef.current && !profileRef.current.contains(e.target)) setProfileOpen(false)
     }
     window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [menuOpen])
+    window.addEventListener('mousedown', onClickOutside)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('mousedown', onClickOutside)
+    }
+  }, [menuOpen, notifOpen, profileOpen])
 
   function handleLogout() {
     api.logout()
@@ -112,6 +172,7 @@ export default function App() {
     setIdentityKind(null)
     setLoggedIn(false)
     setMenuOpen(false)
+    setProfileOpen(false)
   }
 
   function handleInviteAccepted() {
@@ -170,11 +231,53 @@ export default function App() {
   const visibleTabs = tabSet.filter((t) => !t.adminOnly || me?.role === 'admin')
   const activeKey = visibleTabs.some((t) => t.key === activeTab) ? activeTab : visibleTabs[0]?.key
   const ActivePanel = visibleTabs.find((t) => t.key === activeKey)?.component
+  const identityLine = identityKind === 'guardian' ? guardianIdentity(me) : personIdentity(me)
+  // Settings has nowhere sensible to send a guardian yet (no Setup-equivalent
+  // for them), so it's staff-only — same gate as the Setup tab itself.
+  const showSettings = identityKind === 'staff'
+
+  function selectTab(key) {
+    setActiveTab(key)
+    setMenuOpen(false)
+  }
+
+  const sidebarContent = (
+    <>
+      <div className="sidebar-brand">
+        HouseMaster
+        {me?.school && <span className="school-name">{me.school.name}</span>}
+      </div>
+      <nav className="sidebar-nav" aria-label="Main navigation">
+        {visibleTabs.map((t) => (
+          <button key={t.key} className={activeKey === t.key ? 'active' : ''} onClick={() => selectTab(t.key)}>
+            {t.label}
+          </button>
+        ))}
+      </nav>
+    </>
+  )
 
   return (
     <div className="app-shell">
-      <header className="topbar">
-        <div className="topbar-left">
+      {menuOpen && <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
+
+      <aside className={`sidebar${menuOpen ? ' open' : ''}`}>
+        <div className="sidebar-mobile-header">
+          <span>Menu</span>
+          <button
+            type="button"
+            className="secondary nav-drawer-close"
+            aria-label="Close menu"
+            onClick={() => setMenuOpen(false)}
+          >
+            ✕
+          </button>
+        </div>
+        {sidebarContent}
+      </aside>
+
+      <div className="main-column">
+        <header className="topbar">
           <button
             type="button"
             className="menu-toggle"
@@ -186,64 +289,83 @@ export default function App() {
             <span />
             <span />
           </button>
-          <div className="brand">
-            HouseMaster
-            {me?.school && <span className="school-name">{me.school.name}</span>}
+
+          <div className="topbar-spacer" />
+
+          <div className="topbar-icons">
+            <div className="icon-menu-wrap" ref={notifRef}>
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Notifications"
+                aria-expanded={notifOpen}
+                onClick={() => {
+                  setNotifOpen((open) => !open)
+                  setProfileOpen(false)
+                }}
+              >
+                <BellIcon />
+              </button>
+              {notifOpen && (
+                <div className="icon-popover">
+                  <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+                    No new notifications yet.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {showSettings && (
+              <button
+                type="button"
+                className="icon-button"
+                aria-label="Settings"
+                onClick={() => selectTab('setup')}
+              >
+                <GearIcon />
+              </button>
+            )}
+
+            <div className="icon-menu-wrap" ref={profileRef}>
+              <button
+                type="button"
+                className="icon-button avatar-button"
+                aria-label="Your profile"
+                aria-expanded={profileOpen}
+                onClick={() => {
+                  setProfileOpen((open) => !open)
+                  setNotifOpen(false)
+                }}
+              >
+                <UserIcon />
+              </button>
+              {profileOpen && (
+                <div className="icon-popover profile-popover">
+                  <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 600 }}>{identityLine}</p>
+                  <button
+                    type="button"
+                    className="secondary"
+                    style={{ width: '100%', marginBottom: 8 }}
+                    onClick={() => {
+                      selectTab('profile')
+                      setProfileOpen(false)
+                    }}
+                  >
+                    View profile
+                  </button>
+                  <button type="button" className="danger" style={{ width: '100%' }} onClick={handleLogout}>
+                    Log out
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-        <div className="topbar-right">
-          {me && <span>{identityKind === 'guardian' ? guardianIdentity(me) : personIdentity(me)}</span>}
-          <button className="secondary" onClick={handleLogout}>
-            Log out
-          </button>
-        </div>
-      </header>
+        </header>
 
-      <nav className="tabs">
-        {visibleTabs.map((t) => (
-          <button
-            key={t.key}
-            className={activeKey === t.key ? 'active' : ''}
-            onClick={() => setActiveTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      {menuOpen && (
-        <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />
-      )}
-
-      <nav className={`nav-drawer${menuOpen ? ' open' : ''}`} aria-label="Main navigation">
-        <div className="nav-drawer-header">
-          <span>Menu</span>
-          <button
-            type="button"
-            className="secondary nav-drawer-close"
-            aria-label="Close menu"
-            onClick={() => setMenuOpen(false)}
-          >
-            ✕
-          </button>
-        </div>
-        {visibleTabs.map((t) => (
-          <button
-            key={t.key}
-            className={activeKey === t.key ? 'active' : ''}
-            onClick={() => {
-              setActiveTab(t.key)
-              setMenuOpen(false)
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
-      </nav>
-
-      <main className="content">
-        {ActivePanel && <ActivePanel me={me} identityKind={identityKind} onUserUpdated={setMe} />}
-      </main>
+        <main className="content">
+          {ActivePanel && <ActivePanel me={me} identityKind={identityKind} onUserUpdated={setMe} />}
+        </main>
+      </div>
     </div>
   )
 }

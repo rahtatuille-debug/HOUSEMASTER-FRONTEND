@@ -108,9 +108,95 @@ label {
 .profile-readonly { display: grid; gap: 2px; padding: 12px 0; border-top: 1px solid var(--rule); }
 .profile-readonly span { color: var(--navy-2); font-size: 12px; font-weight: 600; letter-spacing: .02em; text-transform: uppercase; }
 
-/* Layout shell */
+/* Layout shell — persistent left sidebar (desktop) + slim icon-only top bar,
+   matching a dashboard pattern like Render's rather than a horizontal tab
+   row. Below the mobile breakpoint the sidebar becomes an off-canvas drawer
+   toggled by the hamburger in the top bar. */
 .app-shell {
   min-height: 100%;
+  display: flex;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 240px;
+  flex-shrink: 0;
+  background: var(--navy);
+  border-right: 3px solid var(--gold);
+}
+
+.sidebar-mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid rgba(250, 247, 240, 0.15);
+  color: var(--paper);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+.sidebar-brand {
+  font-family: var(--font-display);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--paper);
+  padding: 20px 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-bottom: 1px solid rgba(250, 247, 240, 0.12);
+  margin-bottom: 10px;
+}
+.sidebar-brand .school-name {
+  font-family: var(--font-body);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(250, 247, 240, 0.65);
+}
+
+.sidebar-nav {
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-nav button {
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  border-radius: 0;
+  color: rgba(250, 247, 240, 0.75);
+  text-align: left;
+  padding: 12px 20px;
+  font-size: 14px;
+}
+.sidebar-nav button:hover { background: rgba(250, 247, 240, 0.06); }
+.sidebar-nav button.active {
+  color: var(--paper);
+  background: rgba(250, 247, 240, 0.08);
+  border-left-color: var(--gold);
+}
+
+.nav-drawer-close {
+  background: transparent;
+  border: none;
+  color: var(--paper);
+  padding: 2px 8px;
+}
+.nav-drawer-close:hover { background: rgba(250, 247, 240, 0.1); }
+
+.nav-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(27, 35, 51, 0.5);
+}
+
+.main-column {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -120,16 +206,12 @@ label {
   color: var(--paper);
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 24px;
+  padding: 12px 24px;
   border-bottom: 3px solid var(--gold);
-}
-
-.topbar-left {
-  display: flex;
-  align-items: center;
   gap: 12px;
 }
+
+.topbar-spacer { flex: 1; }
 
 .menu-toggle {
   display: none;
@@ -148,117 +230,37 @@ label {
   background: var(--paper);
 }
 
-.brand {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.brand .school-name {
-  font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  color: rgba(250, 247, 240, 0.65);
-}
-
-.topbar-right {
+.topbar-icons {
   display: flex;
   align-items: center;
-  gap: 16px;
-  font-size: 13px;
+  gap: 6px;
 }
 
-nav.tabs {
-  display: flex;
-  gap: 2px;
-  background: var(--paper-2);
-  border-bottom: 1px solid var(--rule);
-  padding: 0 24px;
-}
-nav.tabs button {
+.icon-button {
   background: transparent;
-  border: none;
-  border-bottom: 3px solid transparent;
-  color: var(--navy-2);
-  border-radius: 0;
-  padding: 12px 16px;
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
+  border: 1px solid transparent;
+  color: var(--paper);
+  padding: 8px;
+  line-height: 0;
+  border-radius: 999px;
 }
-nav.tabs button:hover { background: rgba(30, 47, 82, 0.05); }
-nav.tabs button.active {
-  color: var(--navy);
-  border-bottom-color: var(--gold);
-}
+.icon-button:hover { background: rgba(250, 247, 240, 0.1); }
 
-/* Off-canvas mobile nav — hidden entirely above the breakpoint, where
-   nav.tabs (the existing horizontal bar) is used instead. */
-.nav-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  background: rgba(27, 35, 51, 0.5);
-}
+.icon-menu-wrap { position: relative; }
 
-.nav-drawer {
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  z-index: 21;
-  width: min(78vw, 280px);
-  background: var(--navy);
-  border-right: 3px solid var(--gold);
-  padding: 8px 0 20px;
-  transform: translateX(-100%);
-  visibility: hidden;
-  transition: transform 0.2s ease;
-  overflow-y: auto;
+.icon-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 22;
+  min-width: 200px;
+  background: var(--paper);
+  color: var(--ink);
+  border-top: 3px solid var(--gold);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.25);
+  padding: 14px;
 }
-.nav-drawer.open {
-  transform: translateX(0);
-  visibility: visible;
-}
-.nav-drawer-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 16px 14px;
-  margin-bottom: 6px;
-  border-bottom: 1px solid rgba(250, 247, 240, 0.15);
-  color: var(--paper);
-  font-family: var(--font-display);
-  font-weight: 600;
-}
-.nav-drawer-close {
-  background: transparent;
-  border: none;
-  color: var(--paper);
-  padding: 2px 8px;
-}
-.nav-drawer-close:hover { background: rgba(250, 247, 240, 0.1); }
-.nav-drawer button:not(.nav-drawer-close) {
-  background: transparent;
-  border: none;
-  border-left: 3px solid transparent;
-  border-radius: 0;
-  color: rgba(250, 247, 240, 0.75);
-  text-align: left;
-  padding: 13px 20px;
-  font-size: 14px;
-}
-.nav-drawer button:not(.nav-drawer-close):hover { background: rgba(250, 247, 240, 0.06); }
-.nav-drawer button.active {
-  color: var(--paper);
-  background: rgba(250, 247, 240, 0.08);
-  border-left-color: var(--gold);
-}
+.profile-popover { min-width: 220px; }
 
 main.content {
   flex: 1;
@@ -517,27 +519,43 @@ button.danger-solid:hover { background: #7f2929; }
 .back-to-list { display: none; }
 
 @media (max-width: 620px) {
-  .topbar { padding: 12px 16px; align-items: flex-start; gap: 10px; }
-  .topbar-right { gap: 8px; align-items: flex-end; flex-direction: column; }
+  .topbar { padding: 12px 16px; gap: 8px; }
   main.content { padding: 20px 16px 44px; }
   .announcement-detail h2 { font-size: 24px; }
   .announcement-card { padding: 16px; }
 }
 
-/* Below this width, swap the horizontal tab bar for a hamburger + off-canvas
-   drawer — a row of tabs stops being a usable nav pattern once it has to
-   scroll horizontally on a phone. */
+/* Below this width, the persistent sidebar becomes an off-canvas drawer
+   toggled by the hamburger — a fixed 240px column permanently eating into
+   the viewport doesn't work on a phone. */
 @media (max-width: 768px) {
-  nav.tabs { display: none; }
   .menu-toggle { display: flex; }
+  .sidebar-mobile-header { display: flex; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 21;
+    width: min(78vw, 280px);
+    padding-bottom: 20px;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.2s ease;
+    overflow-y: auto;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    visibility: visible;
+  }
 }
 
-/* Above the breakpoint, the drawer/backdrop/hamburger must never appear or
-   take up layout space, regardless of open state — nav.tabs is already the
-   default, always-visible nav there. */
+/* Above the breakpoint, the drawer/backdrop/hamburger machinery must never
+   appear or take up layout space — the sidebar is already permanently
+   visible there via the default (non-media-queried) .sidebar rules. */
 @media (min-width: 769px) {
   .menu-toggle,
-  .nav-drawer,
   .nav-backdrop {
     display: none !important;
   }
