@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, needsApproval } from '../api.js'
+import StudentProfile from './StudentProfile.jsx'
 
 const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', school_class: '' }
 
@@ -9,6 +10,8 @@ const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', s
 export default function Students({ me }) {
   const isAdmin = me?.role === 'admin'
   const [notice, setNotice] = useState('')
+  // The student whose profile is open, if any.
+  const [openStudentId, setOpenStudentId] = useState(null)
   const [students, setStudents] = useState([])
   const [allClasses, setAllClasses] = useState([])
   const [error, setError] = useState('')
@@ -110,6 +113,20 @@ export default function Students({ me }) {
   const className = (id) => {
     if (!id) return '—'
     return allClasses.find((c) => c.id === id)?.name || `#${id}`
+  }
+
+  if (openStudentId) {
+    return (
+      <StudentProfile
+        studentId={openStudentId}
+        me={me}
+        onBack={(message) => {
+          setOpenStudentId(null)
+          setNotice(message || '')
+          load()
+        }}
+      />
+    )
   }
 
   return (
@@ -226,7 +243,16 @@ export default function Students({ me }) {
           <tbody>
             {students.map((s) => (
               <tr key={s.id}>
-                <td>{s.first_name} {s.last_name}</td>
+                <td>
+                  <button
+                    type="button"
+                    className="link-button"
+                    style={{ display: 'inline', width: 'auto', padding: 0, textAlign: 'left' }}
+                    onClick={() => setOpenStudentId(s.id)}
+                  >
+                    {s.first_name} {s.last_name}
+                  </button>
+                </td>
                 <td>{className(s.school_class)}</td>
                 <td>{s.house || '—'}</td>
                 <td className="mono">{s.external_id || '—'}</td>
@@ -236,6 +262,7 @@ export default function Students({ me }) {
                   </span>
                 </td>
                 <td style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={() => setOpenStudentId(s.id)}>View</button>
                   <button className="secondary" onClick={() => startEdit(s)}>
                     Edit
                   </button>

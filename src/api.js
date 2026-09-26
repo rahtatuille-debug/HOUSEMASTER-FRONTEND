@@ -227,6 +227,40 @@ async function request(path, { method = 'GET', body, params } = {}) {
   return data
 }
 
+// For requests that aren't JSON (photo download and upload). Same login
+// handling as request(): retries once after refreshing an expired token.
+async function authedFetch(path, options = {}) {
+  const send = (access) =>
+    fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: { ...(options.headers || {}), ...(access ? { Authorization: `Bearer ${access}` } : {}) },
+    })
+  let res = await send(getTokens()?.access)
+  if (res.status === 401 && getTokens()?.refresh) {
+    const access = await refreshAccessToken()
+    if (access) res = await send(access)
+  }
+  return res
+}
+
+async function studentPhotoUrl(id) {
+  const res = await authedFetch(`/api/students/${id}/photo/`)
+  if (!res.ok) return null
+  return URL.createObjectURL(await res.blob())
+}
+
+async function uploadStudentPhoto(id, file) {
+  const form = new FormData()
+  form.append('photo', file)
+  const res = await authedFetch(`/api/students/${id}/photo/`, { method: 'POST', body: form })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    const message = (data && (data.detail || Object.values(data).flat().join(' '))) || `Upload failed (${res.status})`
+    throw new Error(message)
+  }
+  return data
+}
+
 export const api = {
   login,
   logout,
@@ -290,6 +324,12 @@ export const api = {
     update: (id, body) => request(`/api/students/${id}/`, { method: 'PATCH', body }),
     // Permanent. For a teacher this only sends a request for an admin to approve.
     remove: (id, reason) => request(`/api/students/${id}/`, { method: 'DELETE', body: reason ? { reason } : undefined }),
+    // Everything the student profile page shows.
+    profile: (id) => request(`/api/students/${id}/profile/`),
+    // Returns an object URL for an <img>, or null if there's no photo.
+    photoUrl: studentPhotoUrl,
+    uploadPhoto: uploadStudentPhoto,
+    removePhoto: (id) => request(`/api/students/${id}/photo/`, { method: 'DELETE' }),
   },
   schoolClasses: {
     list: () => request('/api/school-classes/'),
