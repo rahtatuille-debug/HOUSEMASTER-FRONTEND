@@ -22,6 +22,7 @@ export default function Alerts({ me }) {
     audience: isAdmin ? 'everyone' : 'school_class',
     year_group: '',
     school_class: '',
+    send_email: false,
   })
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -62,9 +63,16 @@ export default function Alerts({ me }) {
         audience: form.audience,
         year_group: form.audience === 'year_group' ? Number(form.year_group) : null,
         school_class: form.audience === 'school_class' ? Number(form.school_class) : null,
+        send_email: form.send_email,
       })
-      setNotice(`Urgent alert sent to ${alert.recipient_count} ${alert.recipient_count === 1 ? 'person' : 'people'}.`)
-      setForm({ ...form, title: '', body: '' })
+      const people = (n) => `${n} ${n === 1 ? 'person' : 'people'}`
+      let message = `Urgent alert sent to ${people(alert.recipient_count)}.`
+      if (form.send_email) {
+        message += ` Emailed ${people(alert.emailed_count)}.`
+        if (alert.email_failed_count) message += ` ${alert.email_failed_count} email(s) couldn't be sent; they'll still see the banner in the app.`
+      }
+      setNotice(message)
+      setForm({ ...form, title: '', body: '', send_email: false })
       load()
     } catch (err) {
       setError(err.message)
@@ -176,6 +184,17 @@ export default function Alerts({ me }) {
               required
             />
           </div>
+          <label className="checkbox-list" style={{ display: 'flex', maxHeight: 'none', marginBottom: 12 }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
+              <input
+                type="checkbox"
+                style={{ width: 'auto' }}
+                checked={form.send_email}
+                onChange={(e) => setForm({ ...form, send_email: e.target.checked })}
+              />
+              Also email everyone it goes to, for people who don't have the app open
+            </span>
+          </label>
           <button type="submit" className="danger-solid" disabled={sending}>
             {sending ? 'Sending…' : 'Send urgent alert'}
           </button>
@@ -196,6 +215,7 @@ export default function Alerts({ me }) {
             <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
               {a.created_by_name} · {a.audience_label} · {new Date(a.created_at).toLocaleString()}
               {a.recipient_count !== null && ` · seen by ${a.acknowledged_count} of ${a.recipient_count}`}
+              {a.emailed_at && ` · emailed ${a.emailed_count}${a.email_failed_count ? ` (${a.email_failed_count} failed)` : ''}`}
             </p>
             {canManage(a) && (
               <div className="form-actions" style={{ marginTop: 10 }}>
