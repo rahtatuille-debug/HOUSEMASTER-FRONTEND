@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, needsApproval } from '../api.js'
+import ImportCard from './ImportCard.jsx'
 
 const TONES = [
   { key: 'formal', label: 'Formal' },
@@ -161,6 +162,8 @@ export default function Setup({ me }) {
           Changes you make here are sent to an admin for approval before they take effect.
         </p>
       )}
+
+      {isAdmin && <ImportCard onImported={loadAll} />}
 
       <div className="card">
         <h3 style={{ marginBottom: 14 }}>School settings</h3>

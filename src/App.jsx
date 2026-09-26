@@ -19,6 +19,7 @@ import Approvals from './panels/Approvals.jsx'
 import Activity from './panels/Activity.jsx'
 import Alerts from './panels/Alerts.jsx'
 import Home from './panels/Home.jsx'
+import Exports from './panels/Exports.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
@@ -32,6 +33,7 @@ const TABS = [
   { key: 'announcements', label: 'Communications', component: Announcements },
   { key: 'messages', label: 'Messages', component: Messages },
   { key: 'alerts', label: 'Urgent alerts', component: Alerts },
+  { key: 'exports', label: 'Exports', component: Exports },
   { key: 'approvals', label: 'Approvals', teacherLabel: 'My requests', component: Approvals },
   { key: 'setup', label: 'Setup', component: Setup },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },

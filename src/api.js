@@ -261,6 +261,37 @@ async function uploadStudentPhoto(id, file) {
   return data
 }
 
+// Download a file (spreadsheet, PDF...) from the API and save it.
+async function downloadFile(path, params) {
+  const qs = params
+    ? '?' + new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== '' && v !== null))
+    : ''
+  const res = await authedFetch(`${path}${qs}`)
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Download failed (${res.status})`)
+  }
+  const match = /filename="([^"]+)"/.exec(res.headers.get('Content-Disposition') || '')
+  const url = URL.createObjectURL(await res.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = match ? match[1] : 'download'
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
+}
+
+// POST a multipart form (file uploads) and return the JSON answer.
+async function postForm(path, form) {
+  const res = await authedFetch(path, { method: 'POST', body: form })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Upload failed (${res.status})`)
+  }
+  return data
+}
+
 export const api = {
   login,
   logout,
@@ -268,6 +299,15 @@ export const api = {
   me: () => request('/api/me/'),
   // Admin home page.
   dashboard: () => request('/api/dashboard/'),
+  // Excel import (admins). commit=false is a preview: nothing is saved.
+  importWorkbook: (file, commit) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('commit', commit ? 'true' : 'false')
+    return postForm('/api/import/', form)
+  },
+  downloadImportTemplate: () => downloadFile('/api/import/template/'),
+  download: downloadFile,
   updateMe: (body) => request('/api/me/', { method: 'PATCH', body }),
   previewInvite,
   acceptInvite,
