@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, needsApproval } from '../api.js'
 import PerformanceChart from './PerformanceChart.jsx'
+import { BarChart, COMPARE } from './charts.jsx'
 
 const SECTIONS = [
   { key: 'details', label: 'Student details' },
@@ -35,6 +36,32 @@ function editableFields(student) {
     enrolled_on: student.enrolled_on || '',
     medical_notes: student.medical_notes || '',
   }
+}
+
+// Each subject in the chosen term against the class average.
+function SubjectBreakdown({ studentId, name }) {
+  const [data, setData] = useState(null)
+  const [term, setTerm] = useState('')
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api.performance({ scope: 'student', id: studentId, term }).then(setData).catch((err) => setError(err.message))
+  }, [studentId, term])
+  if (error) return <div className="error-banner">{error}</div>
+  if (!data || !data.terms.length) return null
+  const bars = [{ key: 'student', label: name, color: COMPARE[0] }, { key: 'class', label: 'Class average', color: COMPARE[1] }]
+  const rows = data.subjects.filter((x) => x.student != null).map((x) => ({ label: x.subject, student: x.student, class: x.class }))
+  return (
+    <div className="card">
+      <div className="panel-header" style={{ marginBottom: 4 }}>
+        <h3 style={{ fontSize: 15 }}>Subjects</h3>
+        <select aria-label="Term" value={term || data.term} onChange={(e) => setTerm(e.target.value)} style={{ width: 'auto' }}>
+          {data.terms.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+      </div>
+      <p className="hint" style={{ marginTop: 0 }}>Each subject against the class average.</p>
+      <BarChart rows={rows} bars={bars} label={`${name} by subject`} />
+    </div>
+  )
 }
 
 // Everything about one student, opened from the Students list.
@@ -354,6 +381,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
               <PerformanceChart data={profile.performance} />
             </div>
           )}
+          {section === 'performance' && <SubjectBreakdown studentId={s.id} name={name} />}
 
           {section === 'academics' && (
             profile.grades_by_term.length === 0 ? (

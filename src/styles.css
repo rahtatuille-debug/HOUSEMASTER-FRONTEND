@@ -727,3 +727,12 @@ button.danger-solid:hover { background: #7f2929; }
 @media (max-width: 860px) { .home-grid { grid-template-columns: 1fr; } }
 
 .export-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+.chart-value { font-size: 12px; fill: var(--ink); font-family: var(--font-body); font-weight: 600; }
+.perf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 18px; }
+.perf-grid > * { min-width: 0; }
+.table-scroll { overflow-x: auto; }
+.perf-grid .card { margin-bottom: 0; }
+.scope-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.change-up { color: var(--stamp-green); font-weight: 600; }
+.change-down { color: var(--stamp-red); font-weight: 600; }
+@media (max-width: 520px) { .perf-grid { grid-template-columns: 1fr; } }

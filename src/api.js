@@ -299,6 +299,8 @@ export const api = {
   me: () => request('/api/me/'),
   // Admin home page.
   dashboard: () => request('/api/dashboard/'),
+  // Graphs data. scope: 'student' | 'class' | 'year_group' | 'school'.
+  performance: (params) => request('/api/analytics/performance/', { params }),
   // Excel import (admins). commit=false is a preview: nothing is saved.
   importWorkbook: (file, commit) => {
     const form = new FormData()
