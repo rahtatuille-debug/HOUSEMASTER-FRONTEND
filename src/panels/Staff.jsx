@@ -104,6 +104,15 @@ export default function Staff({ me }) {
     }
   }
 
+  function sendReset(member) {
+    if (!window.confirm(`Email ${member.name} a link to choose a new password?`)) return
+    run(() => api.staff.sendPasswordReset(member.id), `A password reset link was emailed to ${member.name}.`)
+  }
+
+  async function renewInvite(invite) {
+    await run(() => api.invites.renew(invite.id), `New link ready for ${invite.name}. Copy it and send it to them — the old link no longer works.`)
+  }
+
   function addAssignment(e, member) {
     e.preventDefault()
     if (!newClass || !newSubject) return
@@ -111,7 +120,8 @@ export default function Staff({ me }) {
       await api.teachingAssignments.create({
         teacher: member.id,
         school_class: Number(newClass),
-        subject: Number(newSubject),
+        // No subject means every subject in the class.
+        subject: newSubject === 'all' ? null : Number(newSubject),
       })
       setNewSubject('')
     })
@@ -157,6 +167,7 @@ export default function Staff({ me }) {
                 <th>Role</th>
                 <th>Teaches</th>
                 <th>Status</th>
+                <th>Joined</th>
                 <th>Last login</th>
                 <th></th>
               </tr>
@@ -201,6 +212,7 @@ export default function Staff({ me }) {
                           {m.is_active ? 'Active' : 'Deactivated'}
                         </span>
                       </td>
+                      <td className="text-muted">{formatDate(m.date_joined)}</td>
                       <td className="text-muted">{formatDate(m.last_login)}</td>
                       <td style={{ display: 'flex', gap: 8 }}>
                         <button
@@ -213,6 +225,11 @@ export default function Staff({ me }) {
                         >
                           {open ? 'Done' : 'Classes'}
                         </button>
+                        {!isMe && m.is_active && (
+                          <button className="secondary" onClick={() => sendReset(m)}>
+                            Reset password
+                          </button>
+                        )}
                         {!isMe && (
                           <button className={m.is_active ? 'danger' : 'secondary'} onClick={() => toggleActive(m)}>
                             {m.is_active ? 'Deactivate' : 'Reactivate'}
@@ -222,7 +239,7 @@ export default function Staff({ me }) {
                     </tr>
                     {open && (
                       <tr>
-                        <td colSpan={7} style={{ background: 'var(--paper)' }}>
+                        <td colSpan={8} style={{ background: 'var(--paper)' }}>
                           <div className="chip-list" style={{ marginBottom: 10 }}>
                             {own.length === 0 && <span className="text-muted">Not assigned to any classes yet.</span>}
                             {own.map((a) => (
@@ -256,6 +273,7 @@ export default function Staff({ me }) {
                                 <label htmlFor={`as-subject-${m.id}`}>Subject</label>
                                 <select id={`as-subject-${m.id}`} value={newSubject} onChange={(e) => setNewSubject(e.target.value)} required>
                                   <option value="">Select…</option>
+                                  <option value="all">All subjects (class teacher)</option>
                                   {subjects.map((s) => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                   ))}
@@ -359,14 +377,19 @@ export default function Staff({ me }) {
                 <td className="text-muted">{new Date(inv.created_at).toLocaleDateString()}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
                   {inv.status === 'pending' && (
-                    <>
-                      <button className="secondary" onClick={() => copyLink(inv)}>
-                        {copiedId === inv.id ? 'Copied!' : 'Copy link'}
-                      </button>
-                      <button className="danger" onClick={() => revoke(inv.id)}>
-                        Revoke
-                      </button>
-                    </>
+                    <button className="secondary" onClick={() => copyLink(inv)}>
+                      {copiedId === inv.id ? 'Copied!' : 'Copy link'}
+                    </button>
+                  )}
+                  {inv.status !== 'accepted' && (
+                    <button className="secondary" onClick={() => renewInvite(inv)}>
+                      {inv.status === 'expired' ? 'Renew link' : 'New link'}
+                    </button>
+                  )}
+                  {inv.status === 'pending' && (
+                    <button className="danger" onClick={() => revoke(inv.id)}>
+                      Revoke
+                    </button>
                   )}
                 </td>
               </tr>

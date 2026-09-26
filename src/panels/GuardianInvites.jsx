@@ -109,6 +109,15 @@ export default function GuardianInvites() {
     }, `${parent.name}'s children were updated.`)
   }
 
+  function sendReset(parent) {
+    if (!window.confirm(`Email ${parent.name} a link to choose a new password?`)) return
+    run(() => api.parents.sendPasswordReset(parent.id), `A password reset link was emailed to ${parent.name}.`)
+  }
+
+  function renewInvite(invite) {
+    run(() => api.guardianInvites.renew(invite.id), `New link ready for ${invite.name}. Copy it and send it to them — the old link no longer works.`)
+  }
+
   function toggleActive(parent) {
     if (parent.is_active) {
       if (!window.confirm(`Deactivate ${parent.name}? They will be signed out and unable to log in until reactivated.`)) return
@@ -178,6 +187,11 @@ export default function GuardianInvites() {
                         <button className="secondary" onClick={() => (editing ? setEditingParentId(null) : startEditingChildren(p))}>
                           {editing ? 'Cancel' : 'Children'}
                         </button>
+                        {p.is_active && (
+                          <button className="secondary" onClick={() => sendReset(p)}>
+                            Reset password
+                          </button>
+                        )}
                         <button className={p.is_active ? 'danger' : 'secondary'} onClick={() => toggleActive(p)}>
                           {p.is_active ? 'Deactivate' : 'Reactivate'}
                         </button>
@@ -328,14 +342,19 @@ export default function GuardianInvites() {
                 <td className="text-muted">{new Date(inv.created_at).toLocaleDateString()}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
                   {inv.status === 'pending' && (
-                    <>
-                      <button className="secondary" onClick={() => copyLink(inv)}>
-                        {copiedId === inv.id ? 'Copied!' : 'Copy link'}
-                      </button>
-                      <button className="danger" onClick={() => revoke(inv.id)}>
-                        Revoke
-                      </button>
-                    </>
+                    <button className="secondary" onClick={() => copyLink(inv)}>
+                      {copiedId === inv.id ? 'Copied!' : 'Copy link'}
+                    </button>
+                  )}
+                  {inv.status !== 'accepted' && (
+                    <button className="secondary" onClick={() => renewInvite(inv)}>
+                      {inv.status === 'expired' ? 'Renew link' : 'New link'}
+                    </button>
+                  )}
+                  {inv.status === 'pending' && (
+                    <button className="danger" onClick={() => revoke(inv.id)}>
+                      Revoke
+                    </button>
                   )}
                 </td>
               </tr>

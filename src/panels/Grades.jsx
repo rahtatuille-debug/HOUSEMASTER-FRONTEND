@@ -115,7 +115,8 @@ export default function Grades({ me }) {
     const student = students.find((s) => s.id === Number(studentId))
     if (!student) return false
     return (me?.assignments || []).some(
-      (a) => a.school_class === student.school_class && a.subject === Number(subjectId)
+      // An assignment with no subject covers every subject in that class.
+      (a) => a.school_class === student.school_class && (a.subject === null || a.subject === Number(subjectId))
     )
   }
 

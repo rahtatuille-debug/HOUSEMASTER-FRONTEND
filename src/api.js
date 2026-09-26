@@ -246,12 +246,15 @@ export const api = {
     list: () => request('/api/invites/'),
     create: (body) => request('/api/invites/', { method: 'POST', body }),
     remove: (id) => request(`/api/invites/${id}/`, { method: 'DELETE' }),
+    // New link and a fresh 7 days; the old link stops working.
+    renew: (id) => request(`/api/invites/${id}/renew/`, { method: 'POST' }),
   },
 
   guardianInvites: {
     list: () => request('/api/guardian-invites/'),
     create: (body) => request('/api/guardian-invites/', { method: 'POST', body }),
     remove: (id) => request(`/api/guardian-invites/${id}/`, { method: 'DELETE' }),
+    renew: (id) => request(`/api/guardian-invites/${id}/renew/`, { method: 'POST' }),
   },
 
   guardianStudents: {
@@ -341,6 +344,7 @@ export const api = {
     setRole: (id, role) => request(`/api/staff/${id}/`, { method: 'PATCH', body: { role } }),
     deactivate: (id) => request(`/api/staff/${id}/deactivate/`, { method: 'POST' }),
     reactivate: (id) => request(`/api/staff/${id}/reactivate/`, { method: 'POST' }),
+    sendPasswordReset: (id) => request(`/api/staff/${id}/send-password-reset/`, { method: 'POST' }),
   },
   teachingAssignments: {
     list: (params) => request('/api/teaching-assignments/', { params }),
@@ -352,6 +356,7 @@ export const api = {
     setStudents: (id, students) => request(`/api/parents/${id}/`, { method: 'PATCH', body: { students } }),
     deactivate: (id) => request(`/api/parents/${id}/deactivate/`, { method: 'POST' }),
     reactivate: (id) => request(`/api/parents/${id}/reactivate/`, { method: 'POST' }),
+    sendPasswordReset: (id) => request(`/api/parents/${id}/send-password-reset/`, { method: 'POST' }),
   },
   activity: {
     list: (params) => request('/api/activity/', { params }),
