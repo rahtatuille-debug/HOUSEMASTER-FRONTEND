@@ -1,8 +1,20 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { displayRole, personIdentity } from '../user.js'
 
-export default function Staff() {
+function formatDate(value) {
+  return value ? new Date(value).toLocaleDateString() : 'Never'
+}
+
+export default function Staff({ me }) {
+  const [members, setMembers] = useState([])
+  const [assignments, setAssignments] = useState([])
+  const [classes, setClasses] = useState([])
+  const [subjects, setSubjects] = useState([])
+  const [openMemberId, setOpenMemberId] = useState(null)
+  const [newClass, setNewClass] = useState('')
+  const [newSubject, setNewSubject] = useState('')
+  const [notice, setNotice] = useState('')
   const [invites, setInvites] = useState([])
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -16,8 +28,18 @@ export default function Staff() {
     setLoading(true)
     setError('')
     try {
-      const data = await api.invites.list()
-      setInvites(data)
+      const [inv, staff, assigned, cls, subj] = await Promise.all([
+        api.invites.list(),
+        api.staff.list(),
+        api.teachingAssignments.list(),
+        api.schoolClasses.list(),
+        api.subjects.list(),
+      ])
+      setInvites(inv)
+      setMembers(staff)
+      setAssignments(assigned)
+      setClasses(cls)
+      setSubjects(subj)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -54,6 +76,57 @@ export default function Staff() {
     }
   }
 
+  async function run(action, successMessage) {
+    setError('')
+    setNotice('')
+    try {
+      await action()
+      if (successMessage) setNotice(successMessage)
+      load()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  function changeRole(member, role) {
+    if (role === member.role) return
+    const what = role === 'admin' ? 'give admin rights to' : 'remove admin rights from'
+    if (!window.confirm(`Are you sure you want to ${what} ${member.name}?`)) return
+    run(() => api.staff.setRole(member.id, role), `${member.name} is now ${displayRole(role).toLowerCase()}.`)
+  }
+
+  function toggleActive(member) {
+    if (member.is_active) {
+      if (!window.confirm(`Deactivate ${member.name}? They will be signed out and unable to log in until reactivated. Nothing they did is deleted.`)) return
+      run(() => api.staff.deactivate(member.id), `${member.name}'s account is deactivated.`)
+    } else {
+      run(() => api.staff.reactivate(member.id), `${member.name}'s account is active again.`)
+    }
+  }
+
+  function sendReset(member) {
+    if (!window.confirm(`Email ${member.name} a link to choose a new password?`)) return
+    run(() => api.staff.sendPasswordReset(member.id), `A password reset link was emailed to ${member.name}.`)
+  }
+
+  async function renewInvite(invite) {
+    await run(() => api.invites.renew(invite.id), `New link ready for ${invite.name}. Copy it and send it to them — the old link no longer works.`)
+  }
+
+  function addAssignment(e, member) {
+    e.preventDefault()
+    if (!newClass || !newSubject) return
+    run(async () => {
+      await api.teachingAssignments.create({
+        teacher: member.id,
+        school_class: Number(newClass),
+        // No subject means every subject in the class.
+        subject: newSubject === 'all' ? null : Number(newSubject),
+      })
+      setNewSubject('')
+    })
+  }
+
   function inviteLink(token) {
     return `${window.location.origin}/invite/${token}`
   }
@@ -75,6 +148,150 @@ export default function Staff() {
       </div>
 
       {error && <div className="error-banner">{error}</div>}
+      {notice && <div className="success-banner">{notice}</div>}
+
+      <div className="card">
+        <h3 style={{ marginBottom: 6, fontSize: 15 }}>Staff members</h3>
+        <p className="hint" style={{ marginTop: 0, marginBottom: 14 }}>
+          Teachers only see the students in the classes they're assigned to, and can only enter
+          grades for the subjects they teach there. Admins see everything.
+        </p>
+        {loading ? (
+          <p className="text-muted">Loading…</p>
+        ) : (
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Teaches</th>
+                <th>Status</th>
+                <th>Joined</th>
+                <th>Last login</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => {
+                const isMe = m.user_id === me?.id
+                const own = assignments.filter((a) => a.teacher === m.id)
+                const open = openMemberId === m.id
+                return (
+                  <Fragment key={m.id}>
+                    <tr>
+                      <td>
+                        {m.name}
+                        {isMe && <span className="text-muted"> (you)</span>}
+                      </td>
+                      <td>{m.email || '—'}</td>
+                      <td>
+                        {isMe ? (
+                          displayRole(m.role)
+                        ) : (
+                          <select
+                            value={m.role}
+                            aria-label={`Role for ${m.name}`}
+                            onChange={(e) => changeRole(m, e.target.value)}
+                            disabled={!m.is_active}
+                          >
+                            <option value="teacher">Teacher</option>
+                            <option value="admin">Admin</option>
+                          </select>
+                        )}
+                      </td>
+                      <td>
+                        {own.length === 0 ? (
+                          <span className="text-muted">{m.role === 'admin' ? 'All classes' : 'Nothing yet'}</span>
+                        ) : (
+                          own.map((a) => `${a.class_name} ${a.subject_name}`).join(', ')
+                        )}
+                      </td>
+                      <td>
+                        <span className={`badge ${m.is_active ? 'active' : 'inactive'}`}>
+                          {m.is_active ? 'Active' : 'Deactivated'}
+                        </span>
+                      </td>
+                      <td className="text-muted">{formatDate(m.date_joined)}</td>
+                      <td className="text-muted">{formatDate(m.last_login)}</td>
+                      <td style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          className="secondary"
+                          onClick={() => {
+                            setOpenMemberId(open ? null : m.id)
+                            setNewClass('')
+                            setNewSubject('')
+                          }}
+                        >
+                          {open ? 'Done' : 'Classes'}
+                        </button>
+                        {!isMe && m.is_active && (
+                          <button className="secondary" onClick={() => sendReset(m)}>
+                            Reset password
+                          </button>
+                        )}
+                        {!isMe && (
+                          <button className={m.is_active ? 'danger' : 'secondary'} onClick={() => toggleActive(m)}>
+                            {m.is_active ? 'Deactivate' : 'Reactivate'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                    {open && (
+                      <tr>
+                        <td colSpan={8} style={{ background: 'var(--paper)' }}>
+                          <div className="chip-list" style={{ marginBottom: 10 }}>
+                            {own.length === 0 && <span className="text-muted">Not assigned to any classes yet.</span>}
+                            {own.map((a) => (
+                              <span className="chip" key={a.id}>
+                                {a.class_name} · {a.subject_name}
+                                <button
+                                  type="button"
+                                  className="secondary"
+                                  aria-label={`Remove ${a.class_name} ${a.subject_name}`}
+                                  onClick={() => run(() => api.teachingAssignments.remove(a.id))}
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            ))}
+                          </div>
+                          {classes.length === 0 || subjects.length === 0 ? (
+                            <p className="hint" style={{ margin: 0 }}>Add classes and subjects in Setup first.</p>
+                          ) : (
+                            <form onSubmit={(e) => addAssignment(e, m)} className="form-row">
+                              <div className="field" style={{ marginBottom: 0 }}>
+                                <label htmlFor={`as-class-${m.id}`}>Class</label>
+                                <select id={`as-class-${m.id}`} value={newClass} onChange={(e) => setNewClass(e.target.value)} required>
+                                  <option value="">Select…</option>
+                                  {classes.map((c) => (
+                                    <option key={c.id} value={c.id}>{c.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div className="field" style={{ marginBottom: 0 }}>
+                                <label htmlFor={`as-subject-${m.id}`}>Subject</label>
+                                <select id={`as-subject-${m.id}`} value={newSubject} onChange={(e) => setNewSubject(e.target.value)} required>
+                                  <option value="">Select…</option>
+                                  <option value="all">All subjects (class teacher)</option>
+                                  {subjects.map((s) => (
+                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <button type="submit">Assign</button>
+                            </form>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                )
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       <div className="card">
         <h3 style={{ marginBottom: 14, fontSize: 15 }}>Invite a new staff member</h3>
@@ -120,6 +337,7 @@ export default function Staff() {
         </p>
       </div>
 
+      <h3 style={{ margin: '24px 0 12px', fontSize: 15 }}>Invites</h3>
       {loading ? (
         <p className="text-muted">Loading…</p>
       ) : invites.length === 0 ? (
@@ -149,7 +367,7 @@ export default function Staff() {
                 <td>
                   <span
                     className={`badge ${
-                      inv.status === 'accepted' ? 'finalized' : inv.status === 'expired' ? 'draft' : 'reviewed'
+                      inv.status === 'accepted' ? 'finalized' : inv.status === 'expired' ? 'draft' : 'pending'
                     }`}
                   >
                     {inv.status}
@@ -159,14 +377,19 @@ export default function Staff() {
                 <td className="text-muted">{new Date(inv.created_at).toLocaleDateString()}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
                   {inv.status === 'pending' && (
-                    <>
-                      <button className="secondary" onClick={() => copyLink(inv)}>
-                        {copiedId === inv.id ? 'Copied!' : 'Copy link'}
-                      </button>
-                      <button className="danger" onClick={() => revoke(inv.id)}>
-                        Revoke
-                      </button>
-                    </>
+                    <button className="secondary" onClick={() => copyLink(inv)}>
+                      {copiedId === inv.id ? 'Copied!' : 'Copy link'}
+                    </button>
+                  )}
+                  {inv.status !== 'accepted' && (
+                    <button className="secondary" onClick={() => renewInvite(inv)}>
+                      {inv.status === 'expired' ? 'Renew link' : 'New link'}
+                    </button>
+                  )}
+                  {inv.status === 'pending' && (
+                    <button className="danger" onClick={() => revoke(inv.id)}>
+                      Revoke
+                    </button>
                   )}
                 </td>
               </tr>

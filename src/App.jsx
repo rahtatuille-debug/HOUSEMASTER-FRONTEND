@@ -14,19 +14,27 @@ import GuardianInvites from './panels/GuardianInvites.jsx'
 import Announcements from './panels/Announcements.jsx'
 import Messages from './panels/Messages.jsx'
 import Profile from './panels/Profile.jsx'
+import Attendance from './panels/Attendance.jsx'
+import Approvals from './panels/Approvals.jsx'
+import Activity from './panels/Activity.jsx'
+import Alerts from './panels/Alerts.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
 
 const TABS = [
   { key: 'students', label: 'Students', component: Students },
+  { key: 'attendance', label: 'Attendance', component: Attendance },
   { key: 'grades', label: 'Grades', component: Grades },
   { key: 'reports', label: 'Reports', component: Reports },
   { key: 'announcements', label: 'Communications', component: Announcements },
   { key: 'messages', label: 'Messages', component: Messages },
+  { key: 'alerts', label: 'Urgent alerts', component: Alerts },
+  { key: 'approvals', label: 'Approvals', teacherLabel: 'My requests', component: Approvals },
   { key: 'setup', label: 'Setup', component: Setup },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
   { key: 'parents', label: 'Parents', component: GuardianInvites, adminOnly: true },
+  { key: 'activity', label: 'Activity log', component: Activity, adminOnly: true },
   { key: 'profile', label: 'Profile', component: Profile },
 ]
 
@@ -114,6 +122,11 @@ export default function App() {
   const [authView, setAuthView] = useState('login') // 'login' | 'forgot'
   const [authMessage, setAuthMessage] = useState('')
 
+  // Admins: teachers' requests plus reports waiting to be finalized.
+  const [waitingCount, setWaitingCount] = useState(0)
+  // Urgent alerts this person hasn't confirmed seeing yet (the red banner).
+  const [urgentAlerts, setUrgentAlerts] = useState([])
+
   const notifRef = useRef(null)
   const profileRef = useRef(null)
 
@@ -143,6 +156,48 @@ export default function App() {
         }
       })
   }, [loggedIn])
+
+  function refreshWaitingCount() {
+    if (identityKind !== 'staff' || me?.role !== 'admin') {
+      setWaitingCount(0)
+      return
+    }
+    Promise.all([api.changeRequests.list({ status: 'pending' }), api.reports.list({ status: 'submitted' })])
+      .then(([requests, reports]) => setWaitingCount(requests.length + reports.length))
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    refreshWaitingCount()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [identityKind, me?.role, activeTab])
+
+  // Check for urgent alerts on load and every minute after, for staff and parents.
+  useEffect(() => {
+    if (!identityKind) return
+    let cancelled = false
+    function check() {
+      api.alerts
+        .active()
+        .then((list) => !cancelled && setUrgentAlerts(list))
+        .catch(() => {})
+    }
+    check()
+    const timer = setInterval(check, 60000)
+    return () => {
+      cancelled = true
+      clearInterval(timer)
+    }
+  }, [identityKind])
+
+  async function acknowledgeAlert(id) {
+    try {
+      await api.alerts.acknowledge(id)
+      setUrgentAlerts((list) => list.filter((a) => a.id !== id))
+    } catch {
+      // Leave the banner up if it didn't save; they can tap again.
+    }
+  }
 
   // Shared close-on-Escape / close-on-outside-click handling for the three
   // overlay affordances (mobile sidebar, notifications popover, profile menu).
@@ -250,7 +305,12 @@ export default function App() {
       <nav className="sidebar-nav" aria-label="Main navigation">
         {visibleTabs.map((t) => (
           <button key={t.key} className={activeKey === t.key ? 'active' : ''} onClick={() => selectTab(t.key)}>
-            {t.label}
+            {me?.role !== 'admin' && t.teacherLabel ? t.teacherLabel : t.label}
+            {t.key === 'approvals' && waitingCount > 0 && (
+              <span className="nav-count" aria-label={`${waitingCount} waiting`}>
+                {waitingCount}
+              </span>
+            )}
           </button>
         ))}
       </nav>
@@ -308,9 +368,23 @@ export default function App() {
               </button>
               {notifOpen && (
                 <div className="icon-popover">
-                  <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
-                    No new notifications yet.
-                  </p>
+                  {waitingCount > 0 ? (
+                    <button
+                      type="button"
+                      className="link-button"
+                      style={{ padding: 0, textAlign: 'left' }}
+                      onClick={() => {
+                        selectTab('approvals')
+                        setNotifOpen(false)
+                      }}
+                    >
+                      {waitingCount} item{waitingCount === 1 ? '' : 's'} waiting for your approval
+                    </button>
+                  ) : (
+                    <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+                      No new notifications yet.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -362,8 +436,31 @@ export default function App() {
           </div>
         </header>
 
+        {urgentAlerts.map((a) => (
+          <div className="urgent-banner" role="alert" key={a.id}>
+            <div>
+              <span className="urgent-label">Urgent</span>
+              <strong>{a.title}</strong>
+              <p>{a.body}</p>
+              <span className="urgent-meta">
+                {a.created_by_name} · {new Date(a.created_at).toLocaleString()}
+              </span>
+            </div>
+            <button type="button" onClick={() => acknowledgeAlert(a.id)}>
+              I've seen this
+            </button>
+          </div>
+        ))}
+
         <main className="content">
-          {ActivePanel && <ActivePanel me={me} identityKind={identityKind} onUserUpdated={setMe} />}
+          {ActivePanel && (
+            <ActivePanel
+              me={me}
+              identityKind={identityKind}
+              onUserUpdated={setMe}
+              onCountsChanged={refreshWaitingCount}
+            />
+          )}
         </main>
       </div>
     </div>

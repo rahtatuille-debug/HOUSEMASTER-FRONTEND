@@ -1,7 +1,18 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 
+const CLASS_KINDS = {
+  class_notice: 'Notice',
+  class_group: 'Discussion',
+}
+
 export default function Messages({ me, identityKind }) {
+  const isStaff = identityKind === 'staff'
+  // 'direct' | 'class'
+  const [composeMode, setComposeMode] = useState('direct')
+  const [classes, setClasses] = useState([])
+  const [classId, setClassId] = useState('')
+  const [classKind, setClassKind] = useState('class_notice')
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -68,7 +79,48 @@ export default function Messages({ me, identityKind }) {
     }
   }
 
+  async function startClassMessage() {
+    setComposeMode('class')
+    setComposing(true)
+    setThread(null)
+    setActiveId(null)
+    setError('')
+    try {
+      const all = await api.schoolClasses.list()
+      // Teachers can only message classes they teach.
+      const mine =
+        me?.role === 'admin' ? all : all.filter((c) => (me?.assignments || []).some((a) => a.school_class === c.id))
+      setClasses(mine)
+      if (mine.length === 1) setClassId(String(mine[0].id))
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function handleClassSend(e) {
+    e.preventDefault()
+    if (!classId || !newBody.trim()) return
+    setCreating(true)
+    setError('')
+    try {
+      const conv = await api.conversations.messageClass({
+        school_class: Number(classId),
+        kind: classKind,
+        body: newBody,
+      })
+      setNewBody('')
+      setComposing(false)
+      await loadConversations()
+      openConversation(conv)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setCreating(false)
+    }
+  }
+
   async function startComposing() {
+    setComposeMode('direct')
     setComposing(true)
     setThread(null)
     setActiveId(null)
@@ -119,11 +171,25 @@ export default function Messages({ me, identityKind }) {
     return conv.participants.filter((p) => p.id !== me?.id).map((p) => p.name)
   }
 
+  function title(conv) {
+    if (CLASS_KINDS[conv.kind]) {
+      return `${conv.class_name || 'Class'} parents · ${CLASS_KINDS[conv.kind]}`
+    }
+    return otherParticipants(conv).join(', ') || 'Conversation'
+  }
+
   return (
     <div>
       <div className="panel-header">
         <h2>Messages</h2>
-        <button onClick={startComposing}>New message</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isStaff && (
+            <button className="secondary" onClick={startClassMessage}>
+              Message a class
+            </button>
+          )}
+          <button onClick={startComposing}>New message</button>
+        </div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
@@ -151,7 +217,7 @@ export default function Messages({ me, identityKind }) {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
-                    <strong style={{ fontSize: 14 }}>{otherParticipants(conv).join(', ') || 'Conversation'}</strong>
+                    <strong style={{ fontSize: 14 }}>{title(conv)}</strong>
                     {conv.unread_count > 0 && (
                       <span className="badge finalized" style={{ fontSize: 11 }}>{conv.unread_count}</span>
                     )}
@@ -179,7 +245,55 @@ export default function Messages({ me, identityKind }) {
               ← Back to conversations
             </button>
           )}
-          {composing && (
+          {composing && composeMode === 'class' && (
+            <>
+              <h3 style={{ marginBottom: 6, fontSize: 15 }}>Message a class</h3>
+              <p className="hint" style={{ marginTop: 0 }}>
+                Goes to every parent with a child in the class who has a HouseMaster account.
+              </p>
+              <form onSubmit={handleClassSend}>
+                <div className="field">
+                  <label htmlFor="class-msg-class">Class</label>
+                  <select id="class-msg-class" value={classId} onChange={(e) => setClassId(e.target.value)} required>
+                    <option value="">Choose a class…</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  {me?.role !== 'admin' && classes.length === 0 && (
+                    <p className="hint">You aren't assigned to any classes yet.</p>
+                  )}
+                </div>
+                <div className="field">
+                  <label>Type</label>
+                  <div className="checkbox-list" style={{ maxHeight: 'none' }}>
+                    <label>
+                      <input type="radio" name="class-kind" checked={classKind === 'class_notice'} onChange={() => setClassKind('class_notice')} />
+                      Notice — parents can read it but not reply
+                    </label>
+                    <label>
+                      <input type="radio" name="class-kind" checked={classKind === 'class_group'} onChange={() => setClassKind('class_group')} />
+                      Discussion — everyone can reply and see each other
+                    </label>
+                  </div>
+                </div>
+                <div className="field">
+                  <label htmlFor="class-msg-body">Message</label>
+                  <textarea id="class-msg-body" rows={4} value={newBody} onChange={(e) => setNewBody(e.target.value)} required />
+                </div>
+                <div className="form-actions">
+                  <button type="submit" disabled={creating}>
+                    {creating ? 'Sending…' : 'Send to class'}
+                  </button>
+                  <button type="button" className="secondary" onClick={() => setComposing(false)}>
+                    Cancel
+                  </button>
+                </div>
+              </form>
+            </>
+          )}
+
+          {composing && composeMode === 'direct' && (
             <>
               <h3 style={{ marginBottom: 14, fontSize: 15 }}>New message</h3>
               <form onSubmit={handleCreate}>
@@ -247,7 +361,13 @@ export default function Messages({ me, identityKind }) {
             <>
               <div className="announcement-detail-heading" style={{ marginBottom: 14 }}>
                 <div>
-                  <h3 style={{ fontSize: 17 }}>{otherParticipants(thread).join(', ') || 'Conversation'}</h3>
+                  <h3 style={{ fontSize: 17 }}>{title(thread)}</h3>
+                  {CLASS_KINDS[thread.kind] && isStaff && (
+                    <p className="text-muted" style={{ margin: '2px 0 0', fontSize: 13 }}>
+                      {thread.member_count - 1} parent{thread.member_count - 1 === 1 ? '' : 's'}
+                      {thread.kind === 'class_notice' ? ' · parents can’t reply' : ''}
+                    </p>
+                  )}
                   {thread.student_name && (
                     <p className="text-muted" style={{ margin: '2px 0 0', fontSize: 13 }}>
                       About: {thread.student_name}
@@ -279,6 +399,12 @@ export default function Messages({ me, identityKind }) {
                 })}
               </div>
 
+              {thread.can_reply === false ? (
+                <p className="hint" style={{ margin: 0 }}>
+                  This is a one-way class notice, so replies are turned off. To ask the teacher something, start a
+                  new message to them.
+                </p>
+              ) : (
               <form onSubmit={handleSend} className="form-row">
                 <input
                   type="text"
@@ -292,6 +418,7 @@ export default function Messages({ me, identityKind }) {
                   {sending ? 'Sending…' : 'Send'}
                 </button>
               </form>
+              )}
             </>
           )}
         </div>

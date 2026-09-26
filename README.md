@@ -62,3 +62,20 @@ When deploying:
    `django-cors-headers` is configured on the backend to allow
    `http://localhost:5173` by default — but the production frontend origin
    needs to be added explicitly once it has a real URL.
+
+## Error monitoring (Sentry)
+
+Optional, and off unless `VITE_SENTRY_DSN` is set (same no-op-if-unset
+pattern as the backend's `SENTRY_DSN`). To turn it on, create a React
+project in Sentry, then set `VITE_SENTRY_DSN` (and optionally
+`VITE_SENTRY_ENVIRONMENT`) in Vercel's environment variables and redeploy.
+Vite reads it at build time, so an existing deployment won't pick it up.
+
+What gets reported:
+- Render crashes. The whole app sits inside a Sentry error boundary
+  (`src/main.jsx`), so a crash shows a "Something went wrong / Reload" card
+  instead of a blank page.
+- Unhandled errors and promise rejections, through Sentry's global handlers.
+- Failed API calls from the `request()` wrapper in `src/api.js`, but only
+  network failures and 5xx responses. 4xx responses are validation or
+  permission errors that the UI already shows the user.

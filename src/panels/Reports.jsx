@@ -1,7 +1,28 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 
-export default function Reports() {
+const STATUS_LABELS = {
+  draft: 'Draft',
+  submitted: 'Waiting for approval',
+  finalized: 'Finalized',
+}
+
+const FILTERS = [
+  { key: '', label: 'All' },
+  { key: 'draft', label: 'Drafts' },
+  { key: 'submitted', label: 'Waiting for approval' },
+  { key: 'finalized', label: 'Finalized' },
+]
+
+// Reports go draft -> submitted for approval (teacher) -> finalized (admin
+// only). Parents only ever see finalized reports. An admin can send a
+// report back to draft with a note.
+export default function Reports({ me, onCountsChanged }) {
+  const isAdmin = me?.role === 'admin'
+  const [filter, setFilter] = useState('')
+  const [notice, setNotice] = useState('')
+  const [sendingBack, setSendingBack] = useState(false)
+  const [backNote, setBackNote] = useState('')
   const [students, setStudents] = useState([])
   const [terms, setTerms] = useState([])
   const [reports, setReports] = useState([])
@@ -19,7 +40,7 @@ export default function Reports() {
 
   async function loadOptions() {
     try {
-      const [s, t] = await Promise.all([api.students.list({ is_active: true }), api.terms.list()])
+      const [s, t] = await Promise.all([api.students.list(), api.terms.list()])
       setStudents(s)
       setTerms(t)
     } catch (err) {
@@ -31,7 +52,7 @@ export default function Reports() {
     setLoading(true)
     setError('')
     try {
-      const data = await api.reports.list()
+      const data = await api.reports.list(filter ? { status: filter } : {})
       setReports(data)
     } catch (err) {
       setError(err.message)
@@ -42,8 +63,12 @@ export default function Reports() {
 
   useEffect(() => {
     loadOptions()
-    loadReports()
   }, [])
+
+  useEffect(() => {
+    loadReports()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter])
 
   async function handleGenerate(e) {
     e.preventDefault()
@@ -65,20 +90,33 @@ export default function Reports() {
     setOpenReport(report)
     setEditSummary(report.progress_summary)
     setEditComment(report.report_comment)
+    setSendingBack(false)
+    setBackNote('')
+    setNotice('')
   }
 
-  async function saveStatus(status) {
+  const hasUnsavedEdits =
+    openReport && (editSummary !== openReport.progress_summary || editComment !== openReport.report_comment)
+
+  // Saves any edits first, then runs the approval step (if any).
+  async function act(step, message) {
     if (!openReport) return
     setSaving(true)
     setError('')
+    setNotice('')
     try {
-      const updated = await api.reports.update(openReport.id, {
-        progress_summary: editSummary,
-        report_comment: editComment,
-        status,
-      })
-      setOpenReport(updated)
+      let report = openReport
+      if (hasUnsavedEdits && report.status !== 'finalized') {
+        report = await api.reports.update(report.id, {
+          progress_summary: editSummary,
+          report_comment: editComment,
+        })
+      }
+      if (step) report = await step(report)
+      openForReview(report)
+      setNotice(message)
       loadReports()
+      onCountsChanged?.()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -99,6 +137,7 @@ export default function Reports() {
       </div>
 
       {error && <div className="error-banner">{error}</div>}
+      {notice && <div className="success-banner">{notice}</div>}
 
       <div className="card">
         <h3 style={{ marginBottom: 14, fontSize: 15 }}>Generate a report</h3>
@@ -107,7 +146,7 @@ export default function Reports() {
             <label htmlFor="r-student">Student</label>
             <select id="r-student" value={genStudent} onChange={(e) => setGenStudent(e.target.value)} required>
               <option value="">Select…</option>
-              {students.map((s) => (
+              {students.filter((s) => s.is_active).map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.first_name} {s.last_name}
                 </option>
@@ -130,7 +169,9 @@ export default function Reports() {
           </button>
         </form>
         <p className="hint">
-          Regenerating a report for the same student and term overwrites the existing draft.
+          Regenerating a report for the same student and term overwrites the existing draft. Reports
+          that are waiting for approval or finalized can't be regenerated
+          {isAdmin ? ' until you send them back.' : ' unless an admin sends them back.'}
         </p>
       </div>
 
@@ -140,8 +181,27 @@ export default function Reports() {
             <h3 style={{ fontSize: 16 }}>
               {studentName(openReport.student)} — {termName(openReport.term)}
             </h3>
-            <span className={`badge ${openReport.status}`}>{openReport.status}</span>
+            <span className={`badge ${openReport.status}`}>{STATUS_LABELS[openReport.status] || openReport.status}</span>
           </div>
+
+          {openReport.status === 'draft' && openReport.review_note && (
+            <div className="note-box">
+              <strong>Sent back by an admin</strong>
+              {openReport.review_note}
+            </div>
+          )}
+          {openReport.status === 'submitted' && !isAdmin && (
+            <p className="hint" style={{ marginTop: 0 }}>
+              Submitted for approval. An admin will finalize it or send it back with a note.
+            </p>
+          )}
+          {openReport.status === 'finalized' && (
+            <p className="hint" style={{ marginTop: 0 }}>
+              Finalized{openReport.finalized_by_name ? ` by ${openReport.finalized_by_name}` : ''} — parents can see
+              this report. It can't be edited
+              {isAdmin ? ' unless you send it back.' : ' unless an admin sends it back.'}
+            </p>
+          )}
 
           <div className="field">
             <label htmlFor="edit-summary">Progress summary</label>
@@ -149,6 +209,7 @@ export default function Reports() {
               id="edit-summary"
               rows={4}
               value={editSummary}
+              readOnly={openReport.status === 'finalized'}
               onChange={(e) => setEditSummary(e.target.value)}
             />
           </div>
@@ -158,43 +219,82 @@ export default function Reports() {
               id="edit-comment"
               rows={4}
               value={editComment}
+              readOnly={openReport.status === 'finalized'}
               onChange={(e) => setEditComment(e.target.value)}
             />
           </div>
 
-          <div className="form-actions">
-            {openReport.status === 'draft' && (
-              <button onClick={() => saveStatus('reviewed')} disabled={saving}>
-                Mark as reviewed
+          {sendingBack ? (
+            <div className="field">
+              <label htmlFor="send-back-note">What needs changing?</label>
+              <textarea id="send-back-note" rows={2} value={backNote} onChange={(e) => setBackNote(e.target.value)} />
+              <div className="form-actions" style={{ marginTop: 8 }}>
+                <button
+                  className="danger"
+                  disabled={saving || !backNote.trim()}
+                  onClick={() =>
+                    act((r) => api.reports.sendBack(r.id, backNote.trim()), 'Sent back to draft with your note.')
+                  }
+                >
+                  {openReport.status === 'finalized' ? 'Take back from parents and send back' : 'Send back'}
+                </button>
+                <button className="secondary" onClick={() => setSendingBack(false)}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="form-actions">
+              {openReport.status === 'draft' && (
+                <button onClick={() => act((r) => api.reports.submit(r.id), 'Submitted for approval.')} disabled={saving}>
+                  Submit for approval
+                </button>
+              )}
+              {isAdmin && openReport.status !== 'finalized' && (
+                <button
+                  onClick={() => act((r) => api.reports.finalize(r.id), 'Finalized. Parents can now see this report.')}
+                  disabled={saving}
+                >
+                  Finalize and release to parents
+                </button>
+              )}
+              {isAdmin && openReport.status !== 'draft' && (
+                <button className="secondary" onClick={() => setSendingBack(true)} disabled={saving}>
+                  Send back with a note
+                </button>
+              )}
+              {openReport.status !== 'finalized' && (
+                <button className="secondary" onClick={() => act(null, 'Edits saved.')} disabled={saving || !hasUnsavedEdits}>
+                  Save edits
+                </button>
+              )}
+              <button className="secondary" onClick={() => setOpenReport(null)}>
+                Close
               </button>
-            )}
-            {openReport.status === 'reviewed' && (
-              <button onClick={() => saveStatus('finalized')} disabled={saving}>
-                Finalize
-              </button>
-            )}
-            {openReport.status !== 'draft' && (
-              <button className="secondary" onClick={() => saveStatus('draft')} disabled={saving}>
-                Revert to draft
-              </button>
-            )}
-            <button className="secondary" onClick={() => saveStatus(openReport.status)} disabled={saving}>
-              Save edits
-            </button>
-            <button className="secondary" onClick={() => setOpenReport(null)}>
-              Close
-            </button>
-          </div>
+            </div>
+          )}
         </div>
       )}
 
-      <h3 style={{ margin: '24px 0 12px', fontSize: 15 }}>All reports</h3>
+      <h3 style={{ margin: '24px 0 12px', fontSize: 15 }}>Reports</h3>
+      <div className="filter-row">
+        {FILTERS.map((f) => (
+          <button
+            key={f.key || 'all'}
+            type="button"
+            className={`secondary${filter === f.key ? ' active' : ''}`}
+            onClick={() => setFilter(f.key)}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
       {loading ? (
         <p className="text-muted">Loading…</p>
       ) : reports.length === 0 ? (
         <div className="empty-state">
-          <h3>No reports yet</h3>
-          <p>Generate one above to get started.</p>
+          <h3>No reports here</h3>
+          <p>{filter ? 'Try a different filter.' : 'Generate one above to get started.'}</p>
         </div>
       ) : (
         <table>
@@ -213,7 +313,7 @@ export default function Reports() {
                 <td>{studentName(r.student)}</td>
                 <td>{termName(r.term)}</td>
                 <td>
-                  <span className={`badge ${r.status}`}>{r.status}</span>
+                  <span className={`badge ${r.status}`}>{STATUS_LABELS[r.status] || r.status}</span>
                 </td>
                 <td className="text-muted">{new Date(r.generated_at).toLocaleDateString()}</td>
                 <td>

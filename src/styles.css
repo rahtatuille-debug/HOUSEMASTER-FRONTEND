@@ -327,6 +327,71 @@ tbody tr:hover { background: var(--paper); }
 .badge.draft { background: rgba(184, 134, 46, 0.15); color: var(--gold-2); }
 .badge.reviewed { background: rgba(30, 47, 82, 0.1); color: var(--navy); }
 .badge.finalized { background: rgba(63, 107, 69, 0.15); color: var(--stamp-green); }
+/* Report status, approval requests and account status reuse the same three
+   inks: gold = waiting on someone, navy = neutral, green = done/active,
+   red = refused or switched off. */
+.badge.submitted,
+.badge.pending { background: rgba(30, 47, 82, 0.1); color: var(--navy); }
+.badge.approved,
+.badge.active { background: rgba(63, 107, 69, 0.15); color: var(--stamp-green); }
+.badge.rejected,
+.badge.inactive { background: rgba(156, 59, 59, 0.1); color: var(--stamp-red); }
+.badge.cancelled { background: rgba(27, 35, 51, 0.08); color: var(--navy-2); }
+.badge.present { background: rgba(63, 107, 69, 0.15); color: var(--stamp-green); }
+.badge.absent { background: rgba(156, 59, 59, 0.1); color: var(--stamp-red); }
+.badge.late { background: rgba(184, 134, 46, 0.15); color: var(--gold-2); }
+.badge.excused { background: rgba(30, 47, 82, 0.1); color: var(--navy); }
+
+.note-box {
+  border-left: 3px solid var(--stamp-red);
+  background: rgba(156, 59, 59, 0.05);
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 14px;
+}
+.note-box strong { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--stamp-red); margin-bottom: 4px; }
+
+.nav-count {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--paper);
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Attendance register: one row per student, four status buttons. */
+.register-status { display: flex; flex-wrap: wrap; gap: 6px; }
+.register-status button { padding: 5px 10px; font-size: 12px; }
+.register-status button.secondary.selected-present,
+.register-status button.secondary.selected-present:hover { background: var(--stamp-green); border-color: var(--stamp-green); color: var(--paper); }
+.register-status button.secondary.selected-absent,
+.register-status button.secondary.selected-absent:hover { background: var(--stamp-red); border-color: var(--stamp-red); color: var(--paper); }
+.register-status button.secondary.selected-late,
+.register-status button.secondary.selected-late:hover { background: var(--gold); border-color: var(--gold); color: var(--paper); }
+.register-status button.secondary.selected-excused,
+.register-status button.secondary.selected-excused:hover { background: var(--navy); border-color: var(--navy); color: var(--paper); }
+.register-summary { display: flex; flex-wrap: wrap; gap: 16px; margin: 0 0 12px; font-size: 13px; color: var(--navy-2); }
+
+.chip-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 4px 3px 10px; border: 1px solid var(--rule); border-radius: 999px;
+  background: var(--paper); font-size: 13px;
+}
+.chip button { padding: 0 7px; font-size: 12px; line-height: 18px; border-radius: 999px; }
+
+.checkbox-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 14px; max-height: 240px; overflow-y: auto; padding: 4px 0; }
+.checkbox-list label { display: flex; align-items: center; gap: 6px; text-transform: none; font-weight: 400; font-size: 14px; letter-spacing: 0; color: var(--ink); }
+.checkbox-list input { width: auto; }
+
+.filter-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.filter-row button.secondary.active,
+.filter-row button.secondary.active:hover { background: var(--navy); border-color: var(--navy); color: var(--paper); }
 
 .form-row {
   display: grid;
@@ -584,3 +649,41 @@ button.danger-solid:hover { background: #7f2929; }
   .messages-layout.showing-detail .messages-detail-pane { display: block; }
   .back-to-list { display: inline-block; margin-bottom: 14px; }
 }
+
+/* Urgent alerts: the only full-red surface in the app, so it can't be
+   mistaken for an ordinary notice. */
+.urgent-banner {
+  background: var(--stamp-red);
+  color: var(--paper);
+  padding: 12px 20px;
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  border-bottom: 3px solid #6e2222;
+}
+.urgent-banner .urgent-label {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  background: var(--paper);
+  color: var(--stamp-red);
+  padding: 2px 8px;
+  border-radius: 999px;
+  margin-right: 8px;
+}
+.urgent-banner strong { font-family: var(--font-display); font-size: 17px; }
+.urgent-banner p { margin: 4px 0 0; font-size: 14px; }
+.urgent-banner .urgent-meta { font-size: 12px; opacity: .85; }
+.urgent-banner button {
+  background: var(--paper);
+  color: var(--stamp-red);
+  border-color: var(--paper);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.urgent-banner button:hover { background: #fff; }
+.urgent-card { border-top: 3px solid var(--stamp-red); }

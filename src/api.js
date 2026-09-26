@@ -1,3 +1,5 @@
+import { reportApiError } from './sentry.js'
+
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 
 const TOKEN_KEY = 'housemaster_tokens'
@@ -178,7 +180,15 @@ async function request(path, { method = 'GET', body, params } = {}) {
       body: body !== undefined ? JSON.stringify(body) : undefined,
     })
 
-  let res = await doFetch(tokens?.access)
+  let res
+  try {
+    res = await doFetch(tokens?.access)
+  } catch (networkErr) {
+    // fetch() only rejects when the request never got a response (backend
+    // down, Render cold start timing out, user offline).
+    reportApiError(networkErr, { method, path })
+    throw new Error('Could not reach the server. Please try again.')
+  }
 
   if (res.status === 401 && tokens?.refresh) {
     const newAccess = await refreshAccessToken()
@@ -210,6 +220,7 @@ async function request(path, { method = 'GET', body, params } = {}) {
     const err = new Error(message)
     err.status = res.status
     err.data = data
+    reportApiError(err, { method, path })
     throw err
   }
 
@@ -235,12 +246,15 @@ export const api = {
     list: () => request('/api/invites/'),
     create: (body) => request('/api/invites/', { method: 'POST', body }),
     remove: (id) => request(`/api/invites/${id}/`, { method: 'DELETE' }),
+    // New link and a fresh 7 days; the old link stops working.
+    renew: (id) => request(`/api/invites/${id}/renew/`, { method: 'POST' }),
   },
 
   guardianInvites: {
     list: () => request('/api/guardian-invites/'),
     create: (body) => request('/api/guardian-invites/', { method: 'POST', body }),
     remove: (id) => request(`/api/guardian-invites/${id}/`, { method: 'DELETE' }),
+    renew: (id) => request(`/api/guardian-invites/${id}/renew/`, { method: 'POST' }),
   },
 
   guardianStudents: {
@@ -257,12 +271,25 @@ export const api = {
     sendMessage: (id, body) => request(`/api/conversations/${id}/messages/`, { method: 'POST', body }),
     markRead: (id) => request(`/api/conversations/${id}/read/`, { method: 'POST' }),
     contacts: () => request('/api/conversations/contacts/'),
+    // Every parent of one class. kind: 'class_notice' (one-way) or 'class_group' (discussion).
+    messageClass: (body) => request('/api/conversations/class/', { method: 'POST', body }),
+  },
+
+  alerts: {
+    list: () => request('/api/alerts/'),
+    active: () => request('/api/alerts/active/'),
+    create: (body) => request('/api/alerts/', { method: 'POST', body }),
+    acknowledge: (id) => request(`/api/alerts/${id}/acknowledge/`, { method: 'POST' }),
+    recipients: (id) => request(`/api/alerts/${id}/recipients/`),
+    end: (id) => request(`/api/alerts/${id}/end/`, { method: 'POST' }),
   },
 
   students: {
     list: (params) => request('/api/students/', { params }),
     create: (body) => request('/api/students/', { method: 'POST', body }),
     update: (id, body) => request(`/api/students/${id}/`, { method: 'PATCH', body }),
+    // Permanent. For a teacher this only sends a request for an admin to approve.
+    remove: (id, reason) => request(`/api/students/${id}/`, { method: 'DELETE', body: reason ? { reason } : undefined }),
   },
   schoolClasses: {
     list: () => request('/api/school-classes/'),
@@ -273,15 +300,25 @@ export const api = {
   yearGroups: {
     list: () => request('/api/year-groups/'),
     create: (body) => request('/api/year-groups/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/year-groups/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/year-groups/${id}/`, { method: 'DELETE' }),
   },
   subjects: {
     list: () => request('/api/subjects/'),
     create: (body) => request('/api/subjects/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/subjects/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/subjects/${id}/`, { method: 'DELETE' }),
   },
   terms: {
     list: () => request('/api/terms/'),
     create: (body) => request('/api/terms/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/terms/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/terms/${id}/`, { method: 'DELETE' }),
+  },
+  attendance: {
+    list: (params) => request('/api/attendance/', { params }),
+    create: (body) => request('/api/attendance/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/attendance/${id}/`, { method: 'PATCH', body }),
   },
   grades: {
     list: (params) => request('/api/grades/', { params }),
@@ -294,6 +331,9 @@ export const api = {
     generate: (student, term) =>
       request('/api/reports/generate/', { method: 'POST', body: { student, term } }),
     update: (id, body) => request(`/api/reports/${id}/`, { method: 'PATCH', body }),
+    submit: (id) => request(`/api/reports/${id}/submit/`, { method: 'POST' }),
+    finalize: (id) => request(`/api/reports/${id}/finalize/`, { method: 'POST' }),
+    sendBack: (id, note) => request(`/api/reports/${id}/send-back/`, { method: 'POST', body: { note } }),
   },
   announcements: {
     list: (params) => request('/api/announcements/', { params }),
@@ -306,5 +346,44 @@ export const api = {
   },
   schools: {
     mine: () => request('/api/schools/'),
+    update: (id, body) => request(`/api/schools/${id}/`, { method: 'PATCH', body }),
   },
+
+  // Admin only.
+  staff: {
+    list: () => request('/api/staff/'),
+    setRole: (id, role) => request(`/api/staff/${id}/`, { method: 'PATCH', body: { role } }),
+    deactivate: (id) => request(`/api/staff/${id}/deactivate/`, { method: 'POST' }),
+    reactivate: (id) => request(`/api/staff/${id}/reactivate/`, { method: 'POST' }),
+    sendPasswordReset: (id) => request(`/api/staff/${id}/send-password-reset/`, { method: 'POST' }),
+  },
+  teachingAssignments: {
+    list: (params) => request('/api/teaching-assignments/', { params }),
+    create: (body) => request('/api/teaching-assignments/', { method: 'POST', body }),
+    remove: (id) => request(`/api/teaching-assignments/${id}/`, { method: 'DELETE' }),
+  },
+  parents: {
+    list: () => request('/api/parents/'),
+    setStudents: (id, students) => request(`/api/parents/${id}/`, { method: 'PATCH', body: { students } }),
+    deactivate: (id) => request(`/api/parents/${id}/deactivate/`, { method: 'POST' }),
+    reactivate: (id) => request(`/api/parents/${id}/reactivate/`, { method: 'POST' }),
+    sendPasswordReset: (id) => request(`/api/parents/${id}/send-password-reset/`, { method: 'POST' }),
+  },
+  activity: {
+    list: (params) => request('/api/activity/', { params }),
+  },
+
+  // Admins see and decide every request; teachers see and cancel their own.
+  changeRequests: {
+    list: (params) => request('/api/change-requests/', { params }),
+    approve: (id, note) => request(`/api/change-requests/${id}/approve/`, { method: 'POST', body: { note } }),
+    reject: (id, note) => request(`/api/change-requests/${id}/reject/`, { method: 'POST', body: { note } }),
+    cancel: (id) => request(`/api/change-requests/${id}/cancel/`, { method: 'POST' }),
+  },
+}
+
+// When a teacher makes a change that needs an admin's approval, the API
+// answers 202 with { detail, change_request } instead of the saved object.
+export function needsApproval(result) {
+  return Boolean(result && result.change_request)
 }
