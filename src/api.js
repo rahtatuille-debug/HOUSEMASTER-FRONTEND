@@ -43,11 +43,11 @@ async function previewGuardianInvite(token) {
   return res.json()
 }
 
-async function acceptGuardianInvite(token, password) {
+async function acceptGuardianInvite(token, password, acceptPrivacy = false) {
   const res = await fetch(`${API_BASE}/api/guardian-invites/accept/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, password }),
+    body: JSON.stringify({ token, password, accept_privacy: acceptPrivacy }),
   })
   let data = null
   try {
@@ -75,11 +75,11 @@ async function previewInvite(token) {
   return res.json()
 }
 
-async function acceptInvite(token, password) {
+async function acceptInvite(token, password, acceptPrivacy = false) {
   const res = await fetch(`${API_BASE}/api/invites/accept/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, password }),
+    body: JSON.stringify({ token, password, accept_privacy: acceptPrivacy }),
   })
   let data = null
   try {
@@ -380,6 +380,10 @@ export const api = {
     photoUrl: studentPhotoUrl,
     uploadPhoto: uploadStudentPhoto,
     removePhoto: (id) => request(`/api/students/${id}/photo/`, { method: 'DELETE' }),
+    // Data protection requests (admins).
+    dataExport: (id) => downloadFile(`/api/students/${id}/data-export/`),
+    removePersonalData: (id, confirmName) =>
+      request(`/api/students/${id}/remove-personal-data/`, { method: 'POST', body: { confirm_name: confirmName } }),
   },
   schoolClasses: {
     list: () => request('/api/school-classes/'),

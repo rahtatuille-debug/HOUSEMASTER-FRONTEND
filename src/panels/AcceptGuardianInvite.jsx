@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
+import PrivacyNotice, { PrivacyConsent } from './PrivacyNotice.jsx'
 import { api } from '../api.js'
 
 export default function AcceptGuardianInvite({ token, onAccepted }) {
   const [preview, setPreview] = useState(null)
   const [previewError, setPreviewError] = useState('')
   const [password, setPassword] = useState('')
+  const [agreed, setAgreed] = useState(false)
   const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -27,7 +29,7 @@ export default function AcceptGuardianInvite({ token, onAccepted }) {
     try {
       // Only a password is set here — the account's email and linked
       // student(s) were already fixed by the school when the invite was made.
-      await api.acceptGuardianInvite(token, password)
+      await api.acceptGuardianInvite(token, password, agreed)
       onAccepted()
     } catch (err) {
       setError(err.message)
@@ -81,7 +83,9 @@ export default function AcceptGuardianInvite({ token, onAccepted }) {
                   required
                 />
               </div>
-              <button type="submit" disabled={submitting} style={{ width: '100%' }}>
+              <PrivacyNotice schoolName={preview.school_name} contact={preview.privacy_contact} audience="parent" />
+              <PrivacyConsent checked={agreed} onChange={setAgreed} />
+              <button type="submit" disabled={submitting || !agreed} style={{ width: '100%' }}>
                 {submitting ? 'Creating account…' : 'Create account & sign in'}
               </button>
             </form>

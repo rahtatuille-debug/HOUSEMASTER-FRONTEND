@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import DataProtection from './DataProtection.jsx'
 import { useWithLevel } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import { ContactDetails, RELATIONSHIPS } from './ParentContact.jsx'
@@ -14,6 +15,7 @@ const SECTIONS = [
   { key: 'parents', label: 'Parents' },
   { key: 'reports', label: 'Reports' },
   { key: 'history', label: 'History', adminOnly: true },
+  { key: 'privacy', label: 'Data protection', adminOnly: true },
 ]
 
 const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
@@ -525,6 +527,8 @@ export default function StudentProfile({ studentId, me, onBack }) {
               ))
             )
           )}
+
+          {section === 'privacy' && isAdmin && <DataProtection student={s} onRemoved={() => onBack()} />}
 
           {section === 'history' && isAdmin && (
             <div className="card">

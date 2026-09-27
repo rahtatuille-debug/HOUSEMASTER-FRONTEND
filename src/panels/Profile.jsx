@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { getRoleLabel } from '../user.js'
 import { ContactForm } from './ParentContact.jsx'
+import PrivacyNotice from './PrivacyNotice.jsx'
 
 export default function Profile({ me, identityKind, onUserUpdated }) {
   const [name, setName] = useState(me?.name || '')
@@ -60,6 +61,10 @@ export default function Profile({ me, identityKind, onUserUpdated }) {
         <div className="form-actions"><button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
       </form>
       {isGuardian && me?.contact && <GuardianContactCard me={me} onUserUpdated={onUserUpdated} />}
+      <details className="card profile-card">
+        <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Privacy notice</summary>
+        <PrivacyNotice schoolName={me?.school?.name} contact={me?.school?.privacy_contact} audience={isGuardian ? 'parent' : 'staff'} />
+      </details>
     </section>
   )
 }

@@ -22,6 +22,7 @@ export default function Setup({ me, onUserUpdated }) {
   const [schoolName, setSchoolName] = useState('')
   const [tone, setTone] = useState('formal')
   const [scale, setScale] = useState('cbc4')
+  const [privacyContact, setPrivacyContact] = useState('')
   const [notice, setNotice] = useState('')
   const [subjects, setSubjects] = useState([])
   const [terms, setTerms] = useState([])
@@ -55,6 +56,7 @@ export default function Setup({ me, onUserUpdated }) {
         setSchoolName(schools[0].name)
         setTone(schools[0].report_tone)
         setScale(schools[0].grading_scale)
+        setPrivacyContact(schools[0].privacy_contact || '')
       }
       setSubjects(s)
       setTerms(t)
@@ -106,6 +108,7 @@ export default function Setup({ me, onUserUpdated }) {
     if (schoolName.trim() && schoolName.trim() !== school.name) body.name = schoolName.trim()
     if (tone !== school.report_tone) body.report_tone = tone
     if (scale !== school.grading_scale) body.grading_scale = scale
+    if (privacyContact.trim() !== (school.privacy_contact || '')) body.privacy_contact = privacyContact.trim()
     if (Object.keys(body).length === 0) return
     const ok = await change(() => api.schools.update(school.id, body), 'School settings saved.')
     // Levels are shown everywhere from the signed-in user's school, so refresh it.
@@ -203,14 +206,21 @@ export default function Setup({ me, onUserUpdated }) {
               ))}
             </select>
           </div>
-          <button type="submit" disabled={!school || (schoolName.trim() === school.name && tone === school.report_tone && scale === school.grading_scale)}>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor="school-privacy">Privacy contact</label>
+            <input id="school-privacy" value={privacyContact} maxLength={255} placeholder="e.g. privacy@yourschool.ac.ke"
+              onChange={(e) => setPrivacyContact(e.target.value)} />
+          </div>
+          <button type="submit" disabled={!school || (schoolName.trim() === school.name && tone === school.report_tone && scale === school.grading_scale && privacyContact.trim() === (school.privacy_contact || ''))}>
             {isAdmin ? 'Save settings' : 'Ask for approval'}
           </button>
         </form>
         <p className="hint">
           The report tone is how AI-written report comments are phrased. Performance levels are shown next to percentages
           on grades, reports, report cards and charts: the CBC 4-level scale is EE 80–100%, ME 50–79%, AE 30–49% and
-          BE 0–29%; the junior school 8-level scale runs from EE1 (90–100%) to BE2 (0–10%).
+          BE 0–29%; the junior school 8-level scale runs from EE1 (90–100%) to BE2 (0–10%). The privacy contact is
+          who parents and staff are told to contact about their personal data, in the privacy notice they accept when
+          they create their account.
         </p>
       </div>
 

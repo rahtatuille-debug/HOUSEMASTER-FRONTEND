@@ -801,3 +801,21 @@ button.danger-solid:hover { background: #7f2929; }
   font-weight: normal;
 }
 .checkbox-label input { width: auto; }
+
+/* Privacy notice on sign-up and the Profile page */
+.privacy-notice {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  padding: 12px 14px;
+  margin: 8px 0 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.privacy-notice h3 { font-size: 14px; margin: 0 0 6px; }
+.privacy-notice h4 { font-size: 12px; margin: 10px 0 2px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--navy-2); }
+.privacy-notice p { margin: 0; }
+.privacy-consent { margin-bottom: 14px; align-items: flex-start; }
+.privacy-consent input { margin-top: 3px; }
+.privacy-notice-full { max-height: none; }
