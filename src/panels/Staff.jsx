@@ -61,6 +61,7 @@ export default function Staff({ me }) {
     setError('')
     try {
       await api.invites.create({ role, name: name.trim(), email: email.trim() })
+      setNotice(`Emailed ${name.trim()} an invite to ${email.trim()}.`)
       setName('')
       setEmail('')
       load()
@@ -114,7 +115,7 @@ export default function Staff({ me }) {
   }
 
   async function renewInvite(invite) {
-    await run(() => api.invites.renew(invite.id), `New link ready for ${invite.name}. Copy it and send it to them — the old link no longer works.`)
+    await run(() => api.invites.renew(invite.id), `Emailed ${invite.name} a new link. The old link no longer works.`)
   }
 
   function addAssignment(e, member) {
@@ -336,12 +337,12 @@ export default function Staff({ me }) {
             />
           </div>
           <button type="submit" disabled={creating}>
-            {creating ? 'Creating…' : 'Generate invite link'}
+            {creating ? 'Inviting…' : 'Send invite'}
           </button>
         </form>
         <p className="hint">
-          The link is single-use and expires in 7 days. This is the email they'll sign in with —
-          share the link directly with them; HouseMaster doesn't send it for you yet.
+          HouseMaster emails them a link to create their account. It works once and expires in 7 days, and
+          this is the email they'll sign in with. You can also copy the link below to send it another way.
         </p>
       </div>
 

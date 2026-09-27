@@ -24,7 +24,7 @@ function QuickStaffInvite({ onDone }) {
     setNotice('')
     try {
       await api.invites.create({ name: form.name.trim(), email: form.email.trim(), role: form.role })
-      setNotice(`Invited ${form.name.trim()}. Give them their classes on the Staff page once they've joined.`)
+      setNotice(`Emailed ${form.name.trim()} an invite to ${form.email.trim()}. Give them their classes on the Staff page once they've joined.`)
       setForm({ name: '', email: '', role: form.role })
       onDone()
     } catch (err) {
