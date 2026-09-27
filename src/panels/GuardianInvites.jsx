@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { api } from '../api.js'
+import { ContactDetails, ContactForm } from './ParentContact.jsx'
 
 function formatDate(value) {
   return value ? new Date(value).toLocaleDateString() : 'Never'
@@ -7,7 +8,9 @@ function formatDate(value) {
 
 export default function GuardianInvites() {
   const [parents, setParents] = useState([])
-  const [editingParentId, setEditingParentId] = useState(null)
+  // The parent whose row is open, and what's showing: details, edit or children.
+  const [openParent, setOpenParent] = useState({ id: null, mode: null })
+  const [savingContact, setSavingContact] = useState(false)
   const [editChildren, setEditChildren] = useState([])
   const [notice, setNotice] = useState('')
   const [invites, setInvites] = useState([])
@@ -97,16 +100,29 @@ export default function GuardianInvites() {
     }
   }
 
-  function startEditingChildren(parent) {
-    setEditingParentId(parent.id)
-    setEditChildren(parent.students)
+  function toggleOpen(parent, mode) {
+    if (openParent.id === parent.id && openParent.mode === mode) {
+      setOpenParent({ id: null, mode: null })
+      return
+    }
+    if (mode === 'children') setEditChildren(parent.students)
+    setOpenParent({ id: parent.id, mode })
   }
 
   function saveChildren(parent) {
     run(async () => {
       await api.parents.setStudents(parent.id, editChildren)
-      setEditingParentId(null)
+      setOpenParent({ id: parent.id, mode: 'details' })
     }, `${parent.name}'s children were updated.`)
+  }
+
+  async function saveContact(parent, form) {
+    setSavingContact(true)
+    await run(async () => {
+      await api.parents.updateContact(parent.id, form)
+      setOpenParent({ id: parent.id, mode: 'details' })
+    }, `${parent.name}'s contact details were saved.`)
+    setSavingContact(false)
   }
 
   function sendReset(parent) {
@@ -157,11 +173,12 @@ export default function GuardianInvites() {
         ) : parents.length === 0 ? (
           <p className="text-muted" style={{ margin: 0 }}>No parent has accepted an invite yet.</p>
         ) : (
+          <div className="table-scroll">
           <table>
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Email</th>
+                <th>Phone</th>
                 <th>Children</th>
                 <th>Status</th>
                 <th>Last login</th>
@@ -170,12 +187,17 @@ export default function GuardianInvites() {
             </thead>
             <tbody>
               {parents.map((p) => {
-                const editing = editingParentId === p.id
+                const mode = openParent.id === p.id ? openParent.mode : null
                 return (
                   <Fragment key={p.id}>
                     <tr>
-                      <td>{p.name}</td>
-                      <td>{p.email || '—'}</td>
+                      <td>
+                        <button type="button" className="link-button" aria-expanded={mode !== null}
+                          onClick={() => toggleOpen(p, 'details')}>
+                          {p.name}
+                        </button>
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{p.phone || <span className="text-muted">—</span>}</td>
                       <td>{p.student_names.length ? p.student_names.join(', ') : <span className="text-muted">None</span>}</td>
                       <td>
                         <span className={`badge ${p.is_active ? 'active' : 'inactive'}`}>
@@ -184,8 +206,8 @@ export default function GuardianInvites() {
                       </td>
                       <td className="text-muted">{formatDate(p.last_login)}</td>
                       <td style={{ display: 'flex', gap: 8 }}>
-                        <button className="secondary" onClick={() => (editing ? setEditingParentId(null) : startEditingChildren(p))}>
-                          {editing ? 'Cancel' : 'Children'}
+                        <button className="secondary" onClick={() => toggleOpen(p, 'details')}>
+                          {mode ? 'Close' : 'Details'}
                         </button>
                         {p.is_active && (
                           <button className="secondary" onClick={() => sendReset(p)}>
@@ -197,7 +219,28 @@ export default function GuardianInvites() {
                         </button>
                       </td>
                     </tr>
-                    {editing && (
+                    {mode && mode !== 'children' && (
+                      <tr>
+                        <td colSpan={6} style={{ background: 'var(--paper)' }}>
+                          {mode === 'edit' ? (
+                            <ContactForm parent={p} withNote idPrefix={`parent-${p.id}`} saving={savingContact}
+                              onSave={(form) => saveContact(p, form)}
+                              onCancel={() => setOpenParent({ id: p.id, mode: 'details' })} />
+                          ) : (
+                            <>
+                              <ContactDetails parent={p} />
+                              <div className="form-actions" style={{ marginTop: 10 }}>
+                                <button type="button" onClick={() => toggleOpen(p, 'edit')}>Edit contact details</button>
+                                <button type="button" className="secondary" onClick={() => toggleOpen(p, 'children')}>
+                                  Change children
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    {mode === 'children' && (
                       <tr>
                         <td colSpan={6} style={{ background: 'var(--paper)' }}>
                           <p className="hint" style={{ marginTop: 0 }}>
@@ -222,6 +265,9 @@ export default function GuardianInvites() {
                           </div>
                           <div className="form-actions" style={{ marginTop: 10 }}>
                             <button onClick={() => saveChildren(p)}>Save children</button>
+                            <button className="secondary" onClick={() => setOpenParent({ id: p.id, mode: 'details' })}>
+                              Cancel
+                            </button>
                           </div>
                         </td>
                       </tr>
@@ -231,6 +277,7 @@ export default function GuardianInvites() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

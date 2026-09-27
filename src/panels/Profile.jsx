@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { getRoleLabel } from '../user.js'
+import { ContactForm } from './ParentContact.jsx'
 
 export default function Profile({ me, identityKind, onUserUpdated }) {
   const [name, setName] = useState(me?.name || '')
@@ -58,6 +59,41 @@ export default function Profile({ me, identityKind, onUserUpdated }) {
         )}
         <div className="form-actions"><button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save changes'}</button></div>
       </form>
+      {isGuardian && me?.contact && <GuardianContactCard me={me} onUserUpdated={onUserUpdated} />}
     </section>
+  )
+}
+
+// Parents keep their own phone numbers and address up to date for the school.
+function GuardianContactCard({ me, onUserUpdated }) {
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  async function save(form) {
+    setSaving(true)
+    setError('')
+    setSuccess('')
+    try {
+      const updated = await api.updateGuardianMe(form)
+      onUserUpdated({ ...me, ...updated })
+      setSuccess('Your contact details have been saved.')
+    } catch (err) {
+      setError(err.message || 'Could not save your contact details.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="card profile-card">
+      <h3 style={{ fontSize: 15, marginBottom: 6 }}>Your contact details</h3>
+      <p className="hint" style={{ marginTop: 0 }}>
+        The school uses these to reach you about your children. Your children's teachers can see your phone numbers.
+      </p>
+      {error && <div className="error-banner">{error}</div>}
+      {success && <div className="success-banner" role="status">{success}</div>}
+      <ContactForm parent={me.contact} saving={saving} onSave={save} idPrefix="my-contact" />
+    </div>
   )
 }

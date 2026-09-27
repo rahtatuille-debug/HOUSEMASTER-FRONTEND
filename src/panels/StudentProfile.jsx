@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, needsApproval } from '../api.js'
+import { ContactDetails, RELATIONSHIPS } from './ParentContact.jsx'
 import PerformanceChart from './PerformanceChart.jsx'
 import { BarChart, COMPARE } from './charts.jsx'
 
@@ -278,7 +279,10 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     ) : (
                       profile.parents.map((p) => (
                         <div key={p.user_id} style={{ fontSize: 14, marginBottom: 4 }}>
-                          {p.name} <span className="text-muted">· {p.email}</span>
+                          {p.name}
+                          {p.relationship && <span className="text-muted"> ({RELATIONSHIPS[p.relationship]})</span>}
+                          {' · '}
+                          {p.phone ? <a href={`tel:${p.phone.replace(/[^+\d]/g, '')}`}>{p.phone}</a> : <span className="text-muted">{p.email}</span>}
                         </div>
                       ))
                     )}
@@ -478,19 +482,18 @@ export default function StudentProfile({ studentId, me, onBack }) {
               {profile.parents.length === 0 ? (
                 <p className="text-muted">None yet.{isAdmin && ' Invite one from the Parents screen.'}</p>
               ) : (
-                <table>
-                  <thead><tr><th>Name</th><th>Email</th><th>Status</th><th>Last login</th></tr></thead>
-                  <tbody>
-                    {profile.parents.map((p) => (
-                      <tr key={p.user_id}>
-                        <td>{p.name}</td>
-                        <td>{p.email}</td>
-                        <td><span className={`badge ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Deactivated'}</span></td>
-                        <td className="text-muted">{p.last_login ? new Date(p.last_login).toLocaleDateString() : 'Never'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                profile.parents.map((p) => (
+                  <div key={p.user_id} className="parent-contact">
+                    <div className="parent-contact-head">
+                      <strong>{p.name}</strong>
+                      <span className={`badge ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Deactivated'}</span>
+                      <span className="text-muted" style={{ fontSize: 13 }}>
+                        Last login {p.last_login ? new Date(p.last_login).toLocaleDateString() : 'never'}
+                      </span>
+                    </div>
+                    <ContactDetails parent={p} />
+                  </div>
+                ))
               )}
               {profile.pending_parent_invites.length > 0 && (
                 <>

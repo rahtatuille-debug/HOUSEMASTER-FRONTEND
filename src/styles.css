@@ -752,3 +752,35 @@ button.danger-solid:hover { background: #7f2929; }
   height: 10px;
   accent-color: var(--gold);
 }
+
+/* A parent's contact details */
+.contact-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr));
+  gap: 10px 20px;
+  margin: 0;
+}
+.contact-list dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--navy-2);
+}
+.contact-list dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+.parent-contact + .parent-contact {
+  border-top: 1px solid var(--rule);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+.parent-contact-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}

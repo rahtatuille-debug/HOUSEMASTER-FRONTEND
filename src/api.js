@@ -468,6 +468,7 @@ export const api = {
   parents: {
     list: () => request('/api/parents/'),
     setStudents: (id, students) => request(`/api/parents/${id}/`, { method: 'PATCH', body: { students } }),
+    updateContact: (id, body) => request(`/api/parents/${id}/`, { method: 'PATCH', body }),
     deactivate: (id) => request(`/api/parents/${id}/deactivate/`, { method: 'POST' }),
     reactivate: (id) => request(`/api/parents/${id}/reactivate/`, { method: 'POST' }),
     sendPasswordReset: (id) => request(`/api/parents/${id}/send-password-reset/`, { method: 'POST' }),
