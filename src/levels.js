@@ -9,6 +9,14 @@ export function levelFor(percent, school) {
   return (school?.levels || []).find((band) => percent >= band.min) || null
 }
 
+// The middle of a level's band, e.g. ME (50-79%) -> 65, for recording a level as a mark out of 100.
+export function levelMidpoint(levels, code) {
+  const i = levels.findIndex((l) => l.code === code)
+  if (i < 0) return ''
+  const top = i === 0 ? 100 : levels[i - 1].min
+  return Math.round((levels[i].min + top) / 2)
+}
+
 // "72% · ME", or "72%" when the school has no levels.
 export function withLevel(percent, school, digits = 0) {
   if (percent == null) return '—'

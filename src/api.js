@@ -381,6 +381,7 @@ export const api = {
     grades: (id, params) => request(`/api/guardian-students/${id}/grades/`, { params }),
     reports: (id) => request(`/api/guardian-students/${id}/reports/`),
     reportCard: (id, term) => downloadFile(`/api/guardian-students/${id}/report-card/`, { term }),
+    termSummary: (id, term) => request(`/api/guardian-students/${id}/term-summary/`, { params: { term } }),
     profile: (id) => request(`/api/guardian-students/${id}/profile/`),
     photoUrl: async (id) => {
       const res = await authedFetch(`/api/guardian-students/${id}/photo/`)
@@ -422,6 +423,7 @@ export const api = {
     removePhoto: (id) => request(`/api/students/${id}/photo/`, { method: 'DELETE' }),
     // Data protection requests (admins).
     dataExport: (id) => downloadFile(`/api/students/${id}/data-export/`),
+    termSummary: (id, term) => request(`/api/students/${id}/term-summary/`, { params: { term } }),
     removePersonalData: (id, confirmName) =>
       request(`/api/students/${id}/remove-personal-data/`, { method: 'POST', body: { confirm_name: confirmName } }),
   },
@@ -464,6 +466,10 @@ export const api = {
     create: (body) => request('/api/grades/', { method: 'POST', body }),
     update: (id, body) => request(`/api/grades/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/grades/${id}/`, { method: 'DELETE' }),
+  },
+  subjectReports: {
+    list: (params) => request('/api/subject-reports/', { params }),
+    save: (body) => request('/api/subject-reports/', { method: 'POST', body }),
   },
   reports: {
     list: (params) => request('/api/reports/', { params }),

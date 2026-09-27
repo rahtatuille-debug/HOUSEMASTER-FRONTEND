@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSchoolLevels, useWithLevel, useVocab } from '../levels.js'
+import { useSchool, useSchoolLevels, useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, ColumnChart, LineChart } from './charts.jsx'
 
@@ -68,8 +68,11 @@ function BandsTable({ bands }) {
   )
 }
 
-function StudentTable({ students, showClass, onOpenStudent }) {
+function StudentTable({ students: given, showClass, onOpenStudent }) {
   const words = useVocab()
+  // CBC doesn't rank learners, so CBC schools see an alphabetical list without positions.
+  const noRanking = useSchool()?.education_system === 'cbc'
+  const students = noRanking && given ? [...given].sort((a, b) => a.name.localeCompare(b.name)) : given
   const fmt = useWithLevel()
   const [showAll, setShowAll] = useState(false)
   if (!students?.length) return null
@@ -77,16 +80,16 @@ function StudentTable({ students, showClass, onOpenStudent }) {
   const shown = showAll ? students : students.slice(0, LIMIT)
   return (
     <div className="card">
-      <h3 style={{ fontSize: 15, marginBottom: 10 }}>Students, highest average first</h3>
+      <h3 style={{ fontSize: 15, marginBottom: 10 }}>{noRanking ? 'Students' : 'Students, highest average first'}</h3>
       <div className="table-scroll">
       <table>
         <thead>
-          <tr><th>#</th><th>Student</th>{showClass && <th>{words.class}</th>}<th>Average</th><th>Previous {words.term.toLowerCase()}</th><th>Change</th></tr>
+          <tr>{!noRanking && <th>#</th>}<th>Student</th>{showClass && <th>{words.class}</th>}<th>Average</th><th>Previous {words.term.toLowerCase()}</th><th>Change</th></tr>
         </thead>
         <tbody>
           {shown.map((s, i) => (
             <tr key={s.id}>
-              <td className="text-muted">{s.average == null ? '—' : i + 1}</td>
+              {!noRanking && <td className="text-muted">{s.average == null ? '—' : i + 1}</td>}
               <td>
                 <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: 0 }} onClick={() => onOpenStudent(s.id)}>
                   {s.name}
@@ -103,7 +106,7 @@ function StudentTable({ students, showClass, onOpenStudent }) {
       </div>
       {students.length > LIMIT && (
         <button type="button" className="secondary" style={{ marginTop: 12 }} onClick={() => setShowAll(!showAll)}>
-          {showAll ? `Show top ${LIMIT} only` : `Show all ${students.length} students`}
+          {showAll ? `Show ${noRanking ? 'first' : 'top'} ${LIMIT} only` : `Show all ${students.length} students`}
         </button>
       )}
     </div>

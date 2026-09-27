@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useVocab } from '../levels.js'
+import { levelFor, levelMidpoint, useSchool, useVocab } from '../levels.js'
 import { api } from '../api.js'
 
 // Teachers can see every subject's grades for students in their classes,
 // but only add or change grades for the subjects they teach there.
 export default function Grades({ me }) {
+  const school = useSchool()
+  // CBC schools can record a level instead of marks (pre-primary is assessed
+  // on the rubric only). It's stored as the middle of that level's band.
+  const canRecordLevel = school?.education_system === 'cbc' && school.levels?.length > 0
+  const [byLevel, setByLevel] = useState(false)
   const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [students, setStudents] = useState([])
@@ -198,6 +203,26 @@ export default function Grades({ me }) {
                   ))}
                 </select>
               </div>
+              {canRecordLevel && (
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label htmlFor="g-mode">Record as</label>
+                  <select id="g-mode" value={byLevel ? 'level' : 'marks'} onChange={(e) => setByLevel(e.target.value === 'level')}>
+                    <option value="marks">Marks</option>
+                    <option value="level">Level (e.g. pre-primary)</option>
+                  </select>
+                </div>
+              )}
+              {byLevel ? (
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label htmlFor="g-level">Level</label>
+                  <select id="g-level" required value={levelFor(Number(form.score), school)?.code || ''}
+                    onChange={(e) => setForm({ ...form, score: String(levelMidpoint(school.levels, e.target.value)), max_score: '100' })}>
+                    <option value="">Select…</option>
+                    {school.levels.map((l) => <option key={l.code} value={l.code}>{l.code} · {l.name}</option>)}
+                  </select>
+                </div>
+              ) : (
+              <>
               <div className="field" style={{ marginBottom: 0 }}>
                 <label htmlFor="g-score">Score</label>
                 <input
@@ -219,6 +244,8 @@ export default function Grades({ me }) {
                   onChange={(e) => setForm({ ...form, max_score: e.target.value })}
                 />
               </div>
+              </>
+              )}
             </div>
             <div className="form-actions">
               <button type="submit">{editingId ? 'Save changes' : 'Record grade'}</button>

@@ -3,6 +3,7 @@ import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
 import { api } from '../api.js'
 import ClassReports from './ClassReports.jsx'
+import SubjectReportsCard from './SubjectReportsCard.jsx'
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -40,6 +41,10 @@ export default function Reports({ me, onCountsChanged }) {
   const [openReport, setOpenReport] = useState(null) // full report object being reviewed
   const [editSummary, setEditSummary] = useState('')
   const [editComment, setEditComment] = useState('')
+  const [editPrincipal, setEditPrincipal] = useState('')
+  const [editExtra, setEditExtra] = useState({})
+  // CBC competencies and values, or IB approaches to learning, rated on the report.
+  const extraGroups = me?.school?.report_extras || []
   const [saving, setSaving] = useState(false)
 
   async function loadOptions() {
@@ -94,13 +99,16 @@ export default function Reports({ me, onCountsChanged }) {
     setOpenReport(report)
     setEditSummary(report.progress_summary)
     setEditComment(report.report_comment)
+    setEditPrincipal(report.principal_comment || '')
+    setEditExtra(report.extra || {})
     setSendingBack(false)
     setBackNote('')
     setNotice('')
   }
 
   const hasUnsavedEdits =
-    openReport && (editSummary !== openReport.progress_summary || editComment !== openReport.report_comment)
+    openReport && (editSummary !== openReport.progress_summary || editComment !== openReport.report_comment ||
+      editPrincipal !== (openReport.principal_comment || '') || JSON.stringify(editExtra) !== JSON.stringify(openReport.extra || {}))
 
   // Saves any edits first, then runs the approval step (if any).
   async function act(step, message) {
@@ -114,6 +122,8 @@ export default function Reports({ me, onCountsChanged }) {
         report = await api.reports.update(report.id, {
           progress_summary: editSummary,
           report_comment: editComment,
+          extra: editExtra,
+          ...(isAdmin ? { principal_comment: editPrincipal } : {}),
         })
       }
       if (step) report = await step(report)
@@ -144,6 +154,8 @@ export default function Reports({ me, onCountsChanged }) {
       {notice && <div className="success-banner">{notice}</div>}
 
       <ClassReports me={me} terms={terms} onChanged={() => { loadReports(); onCountsChanged?.() }} />
+
+      <SubjectReportsCard me={me} terms={terms} />
 
       <div className="card">
         <h3 style={{ marginBottom: 14, fontSize: 15 }}>One student</h3>
@@ -229,6 +241,32 @@ export default function Reports({ me, onCountsChanged }) {
               onChange={(e) => setEditComment(e.target.value)}
             />
           </div>
+
+          {extraGroups.map((group) => (
+            <div className="field" key={group.key}>
+              <label>{group.title}</label>
+              <div className="rating-grid">
+                {group.items.map((item) => (
+                  <label key={item} className="rating-row">
+                    <span>{item}</span>
+                    <select value={editExtra[group.key]?.[item] || ''} disabled={openReport.status === 'finalized'}
+                      onChange={(e) => setEditExtra({ ...editExtra, [group.key]: { ...(editExtra[group.key] || {}), [item]: e.target.value } })}>
+                      <option value="">—</option>
+                      {group.ratings.map((r) => <option key={r} value={r}>{group.rating_names?.[r] ? `${r} · ${group.rating_names[r]}` : r}</option>)}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          {(isAdmin || editPrincipal) && (
+            <div className="field">
+              <label htmlFor="edit-principal">Principal's remarks {isAdmin ? '(optional, admins only)' : ''}</label>
+              <textarea id="edit-principal" rows={2} value={editPrincipal}
+                readOnly={!isAdmin || openReport.status === 'finalized'} onChange={(e) => setEditPrincipal(e.target.value)} />
+            </div>
+          )}
 
           {sendingBack ? (
             <div className="field">

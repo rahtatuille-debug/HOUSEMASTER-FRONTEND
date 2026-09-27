@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import TermSummary from './TermSummary.jsx'
 import { formatDate as localDate, formatDateTime } from '../format.js'
 import DataProtection from './DataProtection.jsx'
 import { useWithLevel, useVocab } from '../levels.js'
@@ -66,6 +67,31 @@ function SubjectBreakdown({ studentId, name }) {
       </div>
       <p className="hint" style={{ marginTop: 0 }}>Each subject against the class average.</p>
       <BarChart rows={rows} bars={bars} label={`${name} by subject`} />
+    </div>
+  )
+}
+
+// One term's results in the school's system (levels, KCSE points and
+// positions, GPA or IB grades), with the subject teachers' comments.
+function TermResults({ studentId, terms }) {
+  const words = useVocab()
+  const [term, setTerm] = useState(terms[0]?.term_id || '')
+  const [summary, setSummary] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => {
+    if (!term) return
+    setError('')
+    api.students.termSummary(studentId, term).then(setSummary).catch((err) => setError(err.message))
+  }, [studentId, term])
+  return (
+    <div className="card">
+      <div className="panel-header" style={{ marginBottom: 10 }}>
+        <h3 style={{ fontSize: 15 }}>{words.term} results</h3>
+        <select aria-label={words.term} value={term} onChange={(e) => setTerm(e.target.value)} style={{ width: 'auto' }}>
+          {terms.map((t) => <option key={t.term_id} value={t.term_id}>{t.term}</option>)}
+        </select>
+      </div>
+      {error ? <div className="error-banner">{error}</div> : <TermSummary summary={summary} />}
     </div>
   )
 }
@@ -398,7 +424,8 @@ export default function StudentProfile({ studentId, me, onBack }) {
             profile.grades_by_term.length === 0 ? (
               <div className="card"><p className="text-muted" style={{ margin: 0 }}>No grades recorded yet.</p></div>
             ) : (
-              [...profile.grades_by_term].reverse().map((t) => (
+              [<TermResults key="summary" studentId={s.id} terms={[...profile.grades_by_term].reverse()} />,
+              ...[...profile.grades_by_term].reverse().map((t) => (
                 <div className="card" key={t.term_id}>
                   <div className="panel-header" style={{ marginBottom: 10 }}>
                     <h3 style={{ fontSize: 15 }}>{t.term}</h3>
@@ -417,7 +444,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     </tbody>
                   </table>
                 </div>
-              ))
+              ))]
             )
           )}
 
