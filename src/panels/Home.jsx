@@ -22,7 +22,7 @@ function StatTile({ label, value, sub, onClick, alert }) {
 }
 
 // Admin home page: today's attendance and everything waiting on an admin.
-export default function Home({ me, onNavigate }) {
+export default function Home({ me, onNavigate, onStartTour }) {
   const words = useVocab()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
@@ -48,6 +48,7 @@ export default function Home({ me, onNavigate }) {
           <h2>Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}{me?.name ? `, ${me.name.split(' ')[0]}` : ''}</h2>
           <p className="text-muted" style={{ margin: '4px 0 0' }}>{me?.school?.name} · {today}</p>
         </div>
+        <button type="button" className="secondary" style={{ width: 'auto' }} onClick={onStartTour}>Take the tour</button>
       </div>
 
       {data.active_alerts.length > 0 && (

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { levelFor, levelMidpoint, useSchool, useVocab } from '../levels.js'
+import { levelFor, levelMidpoint, levelsForScale, useSchool, useVocab } from '../levels.js'
 import { api } from '../api.js'
 
 // Teachers can see every subject's grades for students in their classes,
@@ -119,7 +119,7 @@ export default function Grades({ me }) {
     const s = students.find((s) => s.id === id)
     return s ? `${s.first_name} ${s.last_name}` : `#${id}`
   }
-  const subjectName = (id) => subjects.find((s) => s.id === id)?.name || `#${id}`
+  const subjectName = (id) => { const s = subjects.find((x) => x.id === id); return s ? (s.label || s.name) : `#${id}` }
   const termName = (id) => terms.find((t) => t.id === id)?.name || `#${id}`
 
   function canGrade(studentId, subjectId) {
@@ -132,9 +132,14 @@ export default function Grades({ me }) {
     )
   }
 
-  // Only subjects the chosen student takes: every core subject plus their electives.
-  const takes = (studentId, subject) => !subject.is_elective ||
-    (students.find((st) => st.id === Number(studentId))?.subject_choices || []).some((c) => c.subject === subject.id)
+  // Only subjects the chosen student takes: their curriculum's core subjects plus their electives.
+  const takes = (studentId, subject) => {
+    const student = students.find((st) => st.id === Number(studentId))
+    if (student?.section && subject.section && student.section !== subject.section) return false
+    return !subject.is_elective || (student?.subject_choices || []).some((c) => c.subject === subject.id)
+  }
+  // The chosen student's grading scale (their section's, in a school running two curricula).
+  const formLevels = levelsForScale(school, students.find((st) => st.id === Number(form.student))?.scale)
   const formSubjects = form.student ? subjects.filter((s) => canGrade(form.student, s.id) && takes(form.student, s)) : subjects
 
   const noPrereqs = subjects.length === 0 || terms.length === 0
@@ -190,7 +195,7 @@ export default function Grades({ me }) {
                   <option value="">Select…</option>
                   {formSubjects.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.name}
+                      {s.label || s.name}
                     </option>
                   ))}
                 </select>
@@ -232,10 +237,10 @@ export default function Grades({ me }) {
               {byLevel ? (
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="g-level">Level</label>
-                  <select id="g-level" required value={levelFor(Number(form.score), school)?.code || ''}
-                    onChange={(e) => setForm({ ...form, score: String(levelMidpoint(school.levels, e.target.value)), max_score: '100' })}>
+                  <select id="g-level" required value={levelFor(Number(form.score), { levels: formLevels })?.code || ''}
+                    onChange={(e) => setForm({ ...form, score: String(levelMidpoint(formLevels, e.target.value)), max_score: '100' })}>
                     <option value="">Select…</option>
-                    {school.levels.map((l) => <option key={l.code} value={l.code}>{l.code} · {l.name}</option>)}
+                    {formLevels.map((l) => <option key={l.code} value={l.code}>{l.code} · {l.name}</option>)}
                   </select>
                 </div>
               ) : (

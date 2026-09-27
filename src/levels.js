@@ -28,14 +28,30 @@ export function withLevel(percent, school, digits = 0) {
 // The signed-in user's school, provided once in App so any table can show levels.
 export const SchoolContext = createContext(null)
 
-// Returns a formatter: fmt(72.4) -> "72% · ME".
-export function useWithLevel() {
-  const school = useContext(SchoolContext)
-  return (percent, digits = 0) => withLevel(percent, school, digits)
+// In a school running two curricula, a page about one section (a student, a
+// class, a chart) sets that section's grading scale here, so every level shown
+// inside it uses the right bands. Outside it, the school's own scale is used.
+export const ScaleContext = createContext(null)
+
+// The level bands for a grading scale at this school (or its own scale).
+export function levelsForScale(school, scale) {
+  return (scale && school?.scale_levels?.[scale]) || school?.levels || []
 }
 
-export function useSchoolLevels() {
-  return useContext(SchoolContext)?.levels || []
+function useLevels(scale) {
+  const school = useContext(SchoolContext)
+  const inherited = useContext(ScaleContext)
+  return levelsForScale(school, scale || inherited)
+}
+
+// Returns a formatter: fmt(72.4) -> "72% · ME". Pass a scale to use that section's levels.
+export function useWithLevel(scale) {
+  const levels = useLevels(scale)
+  return (percent, digits = 0) => withLevel(percent, { levels }, digits)
+}
+
+export function useSchoolLevels(scale) {
+  return useLevels(scale)
 }
 
 // The school's own words for things ("Stream", "Learning area", "Semester"…).

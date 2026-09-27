@@ -3,7 +3,11 @@ import { formatDateTime, setDateLocale } from './format.js'
 import RegisterSchool from './panels/RegisterSchool.jsx'
 import SetupWizard from './panels/SetupWizard.jsx'
 import PeopleSetup from './panels/PeopleSetup.jsx'
-import { SchoolContext } from './levels.js'
+import { SchoolContext, vocabFor } from './levels.js'
+import { guideSections } from './guide.js'
+import Guide from './panels/Guide.jsx'
+import TeacherHome from './panels/TeacherHome.jsx'
+import Tour from './panels/Tour.jsx'
 import { api } from './api.js'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
@@ -32,7 +36,7 @@ import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
 
 const TABS = [
-  { key: 'home', label: 'Home', component: Home, adminOnly: true },
+  { key: 'home', label: 'Home', component: StaffHome },
   { key: 'students', label: 'Students', component: Students },
   { key: 'attendance', label: 'Attendance', component: Attendance },
   { key: 'grades', label: 'Grades', component: Grades },
@@ -47,8 +51,32 @@ const TABS = [
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
   { key: 'parents', label: 'Parents', component: GuardianInvites, adminOnly: true },
   { key: 'activity', label: 'Activity log', component: Activity, adminOnly: true },
+  { key: 'guide', label: 'Guide', component: Guide },
   { key: 'profile', label: 'Profile', component: Profile },
 ]
+
+// Admins get the school's dashboard; teachers get their classes and a getting-started checklist.
+function StaffHome(props) {
+  return props.me?.role === 'admin' ? <Home {...props} /> : <TeacherHome {...props} />
+}
+
+// The guided tour: a welcome, one stop per menu item, and where to find help afterwards.
+function tourSteps(me, tabKeys) {
+  const role = me?.role === 'admin' ? 'admin' : 'teacher'
+  const sections = guideSections(vocabFor(me?.school), role).filter((s) => tabKeys.includes(s.key))
+  const first = me?.name?.split(' ')[0]
+  return [
+    { key: 'welcome', title: `Welcome to HouseMaster${first ? `, ${first}` : ''}`,
+      text: `A quick tour of everything you can do here, one menu item at a time. It takes about two minutes, and you can leave it whenever you like.` },
+    ...sections.map((s) => ({ key: s.key, title: s.title, text: s.tour, menu: true })),
+    { key: 'guide', title: 'Guide', menu: true,
+      text: 'Step-by-step instructions for every page. Come back here any time you are unsure how to do something, or to take this tour again.' },
+    { key: 'end', title: "You're ready",
+      text: role === 'admin'
+        ? 'Your Home page shows what needs you today and your school\'s first-week checklist.'
+        : 'Your Home page has your classes and a getting-started checklist that ticks itself as you go. A good first step is today\'s register.' },
+  ]
+}
 
 const GUARDIAN_TABS = [
   { key: 'students', label: 'Students', component: GuardianStudents },
@@ -134,6 +162,10 @@ export default function App() {
   const [identityKind, setIdentityKind] = useState(null)
   const [activeTab, setActiveTab] = useState('home')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [tourOpen, setTourOpen] = useState(false)
+  // A teacher's first visit starts with the guided tour (once; it can be replayed from Home or the Guide).
+  const autoTour = identityKind === 'staff' && me && me.role !== 'admin' && me.tour_seen === false && me.school?.setup_completed
+  useEffect(() => { if (autoTour) setTourOpen(true) }, [autoTour])
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   // Which screen to show when logged out and not on a token route.
@@ -379,7 +411,7 @@ export default function App() {
       </div>
       <nav className="sidebar-nav" aria-label="Main navigation">
         {visibleTabs.map((t) => (
-          <button key={t.key} className={activeKey === t.key ? 'active' : ''} onClick={() => selectTab(t.key)}>
+          <button key={t.key} data-tab={t.key} className={activeKey === t.key ? 'active' : ''} onClick={() => selectTab(t.key)}>
             {me?.role !== 'admin' && t.teacherLabel ? t.teacherLabel : t.label}
             {t.key === 'approvals' && waitingCount > 0 && (
               <span className="nav-count" aria-label={`${waitingCount} waiting`}>
@@ -392,8 +424,21 @@ export default function App() {
     </>
   )
 
+  function closeTour() {
+    setTourOpen(false)
+    setMenuOpen(false)
+    if (!me?.tour_seen) {
+      // Saved first, so the home page's checklist ticks the tour off when it reloads.
+      api.tourSeen().then(() => setMe((m) => (m ? { ...m, tour_seen: true } : m))).catch(() => {})
+    }
+  }
+
   return (
     <div className="app-shell">
+      {tourOpen && identityKind === 'staff' && (
+        <Tour steps={tourSteps(me, visibleTabs.map((t) => t.key))} onClose={closeTour}
+          onShowMenu={(show) => { if (window.innerWidth <= 768) setMenuOpen(show) }} />
+      )}
       {menuOpen && <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
       <aside className={`sidebar${menuOpen ? ' open' : ''}`}>
@@ -536,6 +581,7 @@ export default function App() {
                 onUserUpdated={setMe}
                 onCountsChanged={refreshWaitingCount}
                 onNavigate={selectTab}
+                onStartTour={() => setTourOpen(true)}
               />
             )}
           </SchoolContext.Provider>

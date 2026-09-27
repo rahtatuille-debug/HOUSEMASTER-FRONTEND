@@ -28,8 +28,10 @@ export default function SubjectReportsCard({ me, terms }) {
     }).catch((err) => setError(err.message))
   }, [isAdmin, me])
 
-  // Teachers only see the subjects they teach in the chosen class.
-  const classSubjects = isAdmin || !pick.school_class ? subjects : subjects.filter((s) =>
+  // Only the chosen class's curriculum, and for teachers only the subjects they teach there.
+  const chosenClass = classes.find((c) => c.id === Number(pick.school_class))
+  const sectionSubjects = chosenClass ? subjects.filter((s) => !s.section || s.section === chosenClass.section) : subjects
+  const classSubjects = isAdmin || !pick.school_class ? sectionSubjects : sectionSubjects.filter((s) =>
     (me?.assignments || []).some((a) => a.school_class === Number(pick.school_class) && (a.subject == null || a.subject === s.id)))
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function SubjectReportsCard({ me, terms }) {
       <label htmlFor={`sr-${key}`}>{label}</label>
       <select id={`sr-${key}`} value={pick[key]} onChange={(e) => setPick({ ...pick, [key]: e.target.value, ...(key === 'school_class' ? { subject: '' } : {}) })}>
         <option value="">Select…</option>
-        {options.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+        {options.map((o) => <option key={o.id} value={o.id}>{o.label || o.name}</option>)}
       </select>
     </div>
   )

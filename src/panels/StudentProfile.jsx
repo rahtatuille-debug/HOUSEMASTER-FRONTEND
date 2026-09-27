@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import TermSummary from './TermSummary.jsx'
 import { formatDate as localDate, formatDateTime } from '../format.js'
 import DataProtection from './DataProtection.jsx'
-import { useWithLevel, useVocab } from '../levels.js'
+import { ScaleContext, useWithLevel, useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import { ContactDetails, RELATIONSHIPS } from './ParentContact.jsx'
 import PerformanceChart from './PerformanceChart.jsx'
@@ -100,9 +100,10 @@ function TermResults({ studentId, terms }) {
 export default function StudentProfile({ studentId, me, onBack }) {
   const words = useVocab()
   const isAdmin = me?.role === 'admin'
-  const fmt = useWithLevel()
   const [section, setSection] = useState('details')
   const [profile, setProfile] = useState(null)
+  // Levels on the student's own grading (their section's, in a school running two curricula).
+  const fmt = useWithLevel(profile?.student?.scale)
   const [classes, setClasses] = useState([])
   const [photoUrl, setPhotoUrl] = useState(null)
   const [editing, setEditing] = useState(false)
@@ -229,6 +230,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
   const sections = SECTIONS.filter((x) => !x.adminOnly || isAdmin)
 
   return (
+    <ScaleContext.Provider value={s.scale || null}>
     <div>
       <div className="panel-header">
         <button type="button" className="secondary" onClick={() => onBack()}>← Back to students</button>
@@ -586,5 +588,6 @@ export default function StudentProfile({ studentId, me, onBack }) {
         </div>
       </div>
     </div>
+    </ScaleContext.Provider>
   )
 }

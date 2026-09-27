@@ -43,6 +43,7 @@ export default function Setup({ me, onUserUpdated }) {
   const [loading, setLoading] = useState(true)
 
   const [subjectName, setSubjectName] = useState('')
+  const [subjectSection, setSubjectSection] = useState('')
   const [termName, setTermName] = useState('')
   const [termStart, setTermStart] = useState('')
   const [termEnd, setTermEnd] = useState('')
@@ -119,6 +120,7 @@ export default function Setup({ me, onUserUpdated }) {
   const orderedYearGroups = [...yearGroups].sort((a, b) => (a.order - b.order) || (a.id - b.id))
   // A school running two systems sets a different curriculum on some year groups.
   const mixed = yearGroups.some((yg) => yg.education_system)
+  const sectionSystems = [...new Set(yearGroups.map((yg) => yg.education_system).filter((k) => k && k !== school?.education_system))]
   const showCurriculum = isAdmin || mixed
 
   function setCurriculum(yg, education_system) {
@@ -148,7 +150,8 @@ export default function Setup({ me, onUserUpdated }) {
   async function addSubject(e) {
     e.preventDefault()
     if (!subjectName.trim()) return
-    if (await change(() => api.subjects.create({ name: subjectName.trim() }), `${words.subject} added.`)) setSubjectName('')
+    if (await change(() => api.subjects.create({ name: subjectName.trim(), education_system: subjectSection }),
+      `${words.subject} added.`)) setSubjectName('')
   }
 
   async function addTerm(e) {
@@ -280,6 +283,16 @@ export default function Setup({ me, onUserUpdated }) {
               placeholder="e.g. Mathematics"
             />
           </div>
+          {sectionSystems.length > 0 && (
+            // A school running two curricula keeps a separate subject list for each.
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label htmlFor="subject-section">Curriculum</label>
+              <select id="subject-section" value={subjectSection} onChange={(e) => setSubjectSection(e.target.value)}>
+                <option value="">{SYSTEMS[school?.education_system] || "School's own"}</option>
+                {sectionSystems.map((key) => <option key={key} value={key}>{SYSTEMS[key]}</option>)}
+              </select>
+            </div>
+          )}
           <button type="submit">{isAdmin ? 'Add subject' : 'Ask to add subject'}</button>
         </form>
         {!loading && subjects.length === 0 && (
@@ -289,7 +302,7 @@ export default function Setup({ me, onUserUpdated }) {
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {subjects.map((s) => (
               <li key={s.id} style={{ marginBottom: 4 }}>
-                {s.name}{s.is_elective && <span className="badge pending" style={{ marginLeft: 6 }}>Elective</span>}{' '}
+                {s.label || s.name}{s.is_elective && <span className="badge pending" style={{ marginLeft: 6 }}>Elective</span>}{' '}
                 <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: '0 6px' }}
                   onClick={() => change(() => api.subjects.update(s.id, { is_elective: !s.is_elective }),
                     `${s.name} is now ${s.is_elective ? 'a core' : 'an elective'} ${words.subject.toLowerCase()}.`)}>

@@ -30,9 +30,10 @@ function ReportResults({ studentId, term }) {
 
 export default function GuardianStudents() {
   const words = useVocab()
-  const fmt = useWithLevel()
   const [students, setStudents] = useState([])
   const [selected, setSelected] = useState(null)
+  // Levels on the child's own grading (their section's, in a school running two curricula).
+  const fmt = useWithLevel(selected?.scale)
   const [tab, setTab] = useState('overview')
   const [grades, setGrades] = useState([])
   const [reports, setReports] = useState([])

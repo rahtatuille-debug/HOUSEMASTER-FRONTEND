@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import { renderPdfPages } from '../pdfPages.js'
 
 // A sample report card for a made-up student, in the style chosen so far in
-// the setup wizard. It's the real PDF, built from the answers and not saved.
+// the setup wizard. It's the real PDF, built from the answers and not saved,
+// shown as page images so it works on phones too.
 export default function ReportPreview({ body, title = 'See a sample report card' }) {
   const [url, setUrl] = useState('')
+  const [pages, setPages] = useState([])
   const [shownFor, setShownFor] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -16,10 +19,12 @@ export default function ReportPreview({ body, title = 'See a sample report card'
     setBusy(true)
     setError('')
     try {
-      setUrl(await api.setup.previewReport(body))
+      const blob = await api.setup.previewReport(body)
+      setPages(await renderPdfPages(blob, 800))
+      setUrl(URL.createObjectURL(blob))
       setShownFor(key)
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'The sample could not be shown.')
     } finally {
       setBusy(false)
     }
@@ -40,10 +45,16 @@ export default function ReportPreview({ body, title = 'See a sample report card'
         </button>
       </div>
       {error && <div className="error-banner">{error}</div>}
-      {url && (
+      {pages.length > 0 && (
         <>
-          <iframe className="report-preview-frame" title="Sample report card" src={url} />
-          <a href={url} target="_blank" rel="noreferrer" className="hint">Open the sample in a new tab</a>
+          <div className="report-preview-pages">
+            {pages.map((src, i) => (
+              <img key={i} src={src} alt={`Sample report card, page ${i + 1} of ${pages.length}`} />
+            ))}
+          </div>
+          <a href={url} target="_blank" rel="noreferrer" className="hint" download="sample-report-card.pdf">
+            Download the sample PDF
+          </a>
         </>
       )}
     </div>

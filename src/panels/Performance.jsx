@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSchool, useSchoolLevels, useWithLevel, useVocab } from '../levels.js'
+import { ScaleContext, useSchool, useSchoolLevels, useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, ColumnChart, LineChart } from './charts.jsx'
 
@@ -68,10 +68,11 @@ function BandsTable({ bands }) {
   )
 }
 
-function StudentTable({ students: given, showClass, onOpenStudent }) {
+function StudentTable({ students: given, showClass, onOpenStudent, system }) {
   const words = useVocab()
-  // CBC doesn't rank learners, so CBC schools see an alphabetical list without positions.
-  const noRanking = useSchool()?.education_system === 'cbc'
+  // CBC doesn't rank learners, so CBC classes see an alphabetical list without positions.
+  const school = useSchool()
+  const noRanking = (system || school?.education_system) === 'cbc'
   const students = noRanking && given ? [...given].sort((a, b) => a.name.localeCompare(b.name)) : given
   const fmt = useWithLevel()
   const [showAll, setShowAll] = useState(false)
@@ -224,7 +225,12 @@ export default function Performance({ me }) {
         <div className="empty-state"><h3>No grades yet</h3><p>Charts appear once grades are recorded.</p></div>
       )}
 
-      {data && data.terms.length > 0 && <Charts data={data} termName={termName} onOpenStudent={openStudent} />}
+      {data && data.terms.length > 0 && (
+        // Levels follow the grading of the section this view is about (e.g. IGCSE 9–1 for a Year 10 class).
+        <ScaleContext.Provider value={data.grading?.scale || null}>
+          <Charts data={data} termName={termName} onOpenStudent={openStudent} />
+        </ScaleContext.Provider>
+      )}
     </div>
   )
 }
@@ -307,14 +313,27 @@ function Charts({ data, termName, onOpenStudent }) {
           <BarChart rows={subjectRows} bars={subjectBars} label={`Subjects, ${termName}`} />
         </ChartCard>
 
-        <ChartCard title={`${byLevel ? 'Students at each level' : 'Spread of averages'}, ${termName}`}
-          hint={byLevel ? "How many students' averages are at each CBC level." : "How many students' averages fall in each band."}
-          table={<BandsTable bands={data.distribution} />}>
-          <ColumnChart bands={data.distribution} label={`Spread of student averages, ${termName}`} />
-        </ChartCard>
+        {isSchool && data.distributions?.length > 1 ? (
+          // A school running two curricula: each one's spread on its own grading.
+          data.distributions.map((d) => (
+            <ScaleContext.Provider key={d.system} value={d.scale}>
+              <ChartCard title={`${d.name}: ${d.levels.length ? 'students at each level' : 'spread of averages'}, ${termName}`}
+                hint={d.levels_key ? `Graded ${d.levels_key}.` : "How many students' averages fall in each band."}
+                table={<BandsTable bands={d.distribution} />}>
+                <ColumnChart bands={d.distribution} label={`${d.name} spread of student averages, ${termName}`} />
+              </ChartCard>
+            </ScaleContext.Provider>
+          ))
+        ) : (
+          <ChartCard title={`${byLevel ? 'Students at each level' : 'Spread of averages'}, ${termName}`}
+            hint={byLevel ? "How many students' averages are at each level." : "How many students' averages fall in each band."}
+            table={<BandsTable bands={data.distribution} />}>
+            <ColumnChart bands={data.distribution} label={`Spread of student averages, ${termName}`} />
+          </ChartCard>
+        )}
       </div>
       <div style={{ marginTop: 18 }}>
-        <StudentTable students={data.students} showClass={isYear} onOpenStudent={onOpenStudent} />
+        <StudentTable students={data.students} showClass={isYear} onOpenStudent={onOpenStudent} system={data.grading?.system} />
       </div>
     </>
   )

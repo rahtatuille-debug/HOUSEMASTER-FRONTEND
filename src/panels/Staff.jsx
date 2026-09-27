@@ -278,8 +278,12 @@ export default function Staff({ me }) {
                                 <select id={`as-subject-${m.id}`} value={newSubject} onChange={(e) => setNewSubject(e.target.value)} required>
                                   <option value="">Select…</option>
                                   <option value="all">All {words.subjects.toLowerCase()} ({words.class.toLowerCase()} teacher)</option>
-                                  {subjects.map((s) => (
-                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                  {subjects.filter((s) => {
+                                    // Only the chosen class's curriculum.
+                                    const klass = classes.find((c) => c.id === Number(newClass))
+                                    return !klass || !s.section || s.section === klass.section
+                                  }).map((s) => (
+                                    <option key={s.id} value={s.id}>{s.label || s.name}</option>
                                   ))}
                                 </select>
                               </div>

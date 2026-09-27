@@ -306,7 +306,7 @@ async function uploadStudentPhoto(id, file) {
   return data
 }
 
-// The setup wizard's sample report card: a PDF made from the answers so far, as an object URL.
+// The setup wizard's sample report card: a PDF made from the answers so far, as a Blob.
 async function previewReportCard(body) {
   const res = await authedFetch('/api/setup/preview-report/', {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -315,7 +315,7 @@ async function previewReportCard(body) {
     const data = await res.json().catch(() => null)
     throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Preview failed (${res.status})`)
   }
-  return URL.createObjectURL(await res.blob())
+  return res.blob()
 }
 
 // Download a file (spreadsheet, PDF...) from the API and save it.
@@ -377,6 +377,11 @@ export const api = {
   download: downloadFile,
   updateMe: (body) => request('/api/me/', { method: 'PATCH', body }),
   registerSchool,
+  teacherHome: {
+    get: () => request('/api/teacher-home/'),
+    setHidden: (hidden) => request('/api/teacher-home/', { method: 'PATCH', body: { hidden } }),
+  },
+  tourSeen: () => request('/api/tour-seen/', { method: 'POST' }),
   checklist: {
     get: () => request('/api/checklist/'),
     setHidden: (hidden) => request('/api/checklist/', { method: 'PATCH', body: { hidden } }),
