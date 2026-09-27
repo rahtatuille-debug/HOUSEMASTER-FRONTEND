@@ -819,3 +819,33 @@ button.danger-solid:hover { background: #7f2929; }
 .privacy-consent { margin-bottom: 14px; align-items: flex-start; }
 .privacy-consent input { margin-top: 3px; }
 .privacy-notice-full { max-height: none; }
+
+/* School setup wizard */
+.setup-wrap { max-width: 860px; margin: 0 auto; padding: 28px 16px 48px; }
+.setup-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 14px; }
+.setup-header h2 { margin: 2px 0 0; }
+.setup-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 6px 14px; padding: 0; margin: 0 0 16px; font-size: 13px; color: var(--navy-2); }
+.setup-steps li { display: flex; align-items: center; gap: 6px; }
+.setup-steps span { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--rule); font-size: 12px; }
+.setup-steps .done span { background: var(--stamp-green); border-color: var(--stamp-green); color: #fff; }
+.setup-steps .current { color: var(--ink); font-weight: 600; }
+.setup-steps .current span { background: var(--navy); border-color: var(--navy); color: #fff; }
+.setup-card h2 { margin-top: 4px; }
+.setup-row { display: flex; gap: 8px; margin-bottom: 8px; }
+.setup-row input { flex: 1; min-width: 0; }
+.setup-row button { flex: none; }
+.setup-actions { margin-top: 20px; justify-content: flex-end; }
+.setup-foot { font-size: 12px; text-align: center; margin-top: 12px; }
+.system-options { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(240px, 100%), 1fr)); gap: 12px; }
+.system-option { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 14px; background: var(--paper); color: var(--ink); border: 1px solid var(--rule); font-weight: normal; height: auto; }
+.system-option strong { font-size: 15px; }
+.system-option span:last-child { font-size: 13px; color: var(--navy-2); }
+.system-option.selected { border: 2px solid var(--gold); background: #fff; }
+.setup-stages { grid-template-columns: 1fr; max-height: none; gap: 8px; }
+.setup-subjects { grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); max-height: none; }
+.setup-scale { margin-bottom: 8px; align-items: flex-start; }
+.setup-scale input { margin-top: 3px; }
+.setup-review { display: grid; gap: 12px; margin: 0; }
+.setup-review dt { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--navy-2); }
+.setup-review dd { margin: 2px 0 0; font-size: 14px; }
+.setup-next { margin: 0; padding-left: 20px; display: grid; gap: 6px; font-size: 14px; }

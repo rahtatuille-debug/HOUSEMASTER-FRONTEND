@@ -3,11 +3,20 @@ import { api, needsApproval } from '../api.js'
 import ImportCard from './ImportCard.jsx'
 import YearEndCard from './YearEndCard.jsx'
 
+// Same list as the backend's gradebook.levels.SCALE_LABELS.
 const SCALES = [
   { key: 'cbc4', label: 'CBC: 4 levels (EE, ME, AE, BE)' },
-  { key: 'cbc8', label: 'CBC junior school: 8 levels (EE1 to BE2)' },
+  { key: 'cbc8', label: 'CBC junior/senior school: 8 levels (EE1 to BE2)' },
+  { key: 'kcse', label: 'KCSE letter grades (A to E)' },
+  { key: 'igcse', label: 'IGCSE letter grades (A* to G)' },
+  { key: 'igcse9', label: 'GCSE/IGCSE numbers (9 to 1)' },
+  { key: 'ib', label: 'IB grades (7 to 1)' },
+  { key: 'american', label: 'American letter grades (A to F)' },
   { key: 'percent', label: 'Percentages only' },
 ]
+const SYSTEMS = { cbc: 'CBC', 844: '8-4-4', british: 'British / Cambridge', ib: 'International Baccalaureate', american: 'American' }
+// The school settings form, and what each field is called in the API.
+const SCHOOL_FIELDS = ['name', 'motto', 'phone', 'email', 'address', 'report_tone', 'grading_scale', 'privacy_contact']
 const TONES = [
   { key: 'formal', label: 'Formal' },
   { key: 'warm', label: 'Warm / encouraging' },
@@ -19,10 +28,7 @@ const TONES = [
 export default function Setup({ me, onUserUpdated }) {
   const isAdmin = me?.role === 'admin'
   const [school, setSchool] = useState(null)
-  const [schoolName, setSchoolName] = useState('')
-  const [tone, setTone] = useState('formal')
-  const [scale, setScale] = useState('cbc4')
-  const [privacyContact, setPrivacyContact] = useState('')
+  const [details, setDetails] = useState(null)
   const [notice, setNotice] = useState('')
   const [subjects, setSubjects] = useState([])
   const [terms, setTerms] = useState([])
@@ -53,10 +59,7 @@ export default function Setup({ me, onUserUpdated }) {
       ])
       if (schools[0]) {
         setSchool(schools[0])
-        setSchoolName(schools[0].name)
-        setTone(schools[0].report_tone)
-        setScale(schools[0].grading_scale)
-        setPrivacyContact(schools[0].privacy_contact || '')
+        setDetails(Object.fromEntries(SCHOOL_FIELDS.map((f) => [f, schools[0][f] || ''])))
       }
       setSubjects(s)
       setTerms(t)
@@ -101,14 +104,17 @@ export default function Setup({ me, onUserUpdated }) {
     change(() => apiGroup.remove(item.id), `Deleted ${what} "${item.name}".`)
   }
 
+  function schoolChanges() {
+    if (!school || !details) return {}
+    return Object.fromEntries(SCHOOL_FIELDS
+      .map((f) => [f, typeof details[f] === 'string' ? details[f].trim() : details[f]])
+      .filter(([f, v]) => v !== (school[f] || '') && !(f === 'name' && !v)))
+  }
+
   async function saveSchool(e) {
     e.preventDefault()
     if (!school) return
-    const body = {}
-    if (schoolName.trim() && schoolName.trim() !== school.name) body.name = schoolName.trim()
-    if (tone !== school.report_tone) body.report_tone = tone
-    if (scale !== school.grading_scale) body.grading_scale = scale
-    if (privacyContact.trim() !== (school.privacy_contact || '')) body.privacy_contact = privacyContact.trim()
+    const body = schoolChanges()
     if (Object.keys(body).length === 0) return
     const ok = await change(() => api.schools.update(school.id, body), 'School settings saved.')
     // Levels are shown everywhere from the signed-in user's school, so refresh it.
@@ -181,44 +187,52 @@ export default function Setup({ me, onUserUpdated }) {
 
       <div className="card">
         <h3 style={{ marginBottom: 14 }}>School settings</h3>
-        <form onSubmit={saveSchool} className="form-row">
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="school-name">School name</label>
-            <input id="school-name" value={schoolName} onChange={(e) => setSchoolName(e.target.value)} />
-          </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="school-tone">Report tone</label>
-            <select id="school-tone" value={tone} onChange={(e) => setTone(e.target.value)}>
-              {TONES.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.label}
-                </option>
+        {school?.education_system && (
+          <p className="text-muted" style={{ marginTop: -6 }}>Education system: <strong>{SYSTEMS[school.education_system]}</strong></p>
+        )}
+        {details && (
+          <form onSubmit={saveSchool}>
+            <div className="form-row">
+              {[['name', 'School name'], ['motto', 'Motto'], ['phone', 'Phone'], ['email', 'School email']].map(([key, label]) => (
+                <div className="field" key={key}>
+                  <label htmlFor={`school-${key}`}>{label}</label>
+                  <input id={`school-${key}`} type={key === 'email' ? 'email' : 'text'} value={details[key]}
+                    onChange={(e) => setDetails({ ...details, [key]: e.target.value })} />
+                </div>
               ))}
-            </select>
-          </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="school-scale">Performance levels</label>
-            <select id="school-scale" value={scale} onChange={(e) => setScale(e.target.value)}>
-              {SCALES.map((t) => (
-                <option key={t.key} value={t.key}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="school-privacy">Privacy contact</label>
-            <input id="school-privacy" value={privacyContact} maxLength={255} placeholder="e.g. privacy@yourschool.ac.ke"
-              onChange={(e) => setPrivacyContact(e.target.value)} />
-          </div>
-          <button type="submit" disabled={!school || (schoolName.trim() === school.name && tone === school.report_tone && scale === school.grading_scale && privacyContact.trim() === (school.privacy_contact || ''))}>
-            {isAdmin ? 'Save settings' : 'Ask for approval'}
-          </button>
-        </form>
+            </div>
+            <div className="field">
+              <label htmlFor="school-address">Address</label>
+              <textarea id="school-address" rows={2} value={details.address} onChange={(e) => setDetails({ ...details, address: e.target.value })} />
+            </div>
+            <div className="form-row">
+              <div className="field">
+                <label htmlFor="school-tone">Report tone</label>
+                <select id="school-tone" value={details.report_tone} onChange={(e) => setDetails({ ...details, report_tone: e.target.value })}>
+                  {TONES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="school-scale">Grades and levels</label>
+                <select id="school-scale" value={details.grading_scale} onChange={(e) => setDetails({ ...details, grading_scale: e.target.value })}>
+                  {SCALES.map((t) => <option key={t.key} value={t.key}>{t.label}</option>)}
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="school-privacy">Privacy contact</label>
+                <input id="school-privacy" value={details.privacy_contact} maxLength={255} placeholder="e.g. privacy@yourschool.ac.ke"
+                  onChange={(e) => setDetails({ ...details, privacy_contact: e.target.value })} />
+              </div>
+            </div>
+            <button type="submit" disabled={Object.keys(schoolChanges()).length === 0}>
+              {isAdmin ? 'Save settings' : 'Ask for approval'}
+            </button>
+          </form>
+        )}
         <p className="hint">
-          The report tone is how AI-written report comments are phrased. Performance levels are shown next to percentages
-          on grades, reports, report cards and charts: the CBC 4-level scale is EE 80–100%, ME 50–79%, AE 30–49% and
-          BE 0–29%; the junior school 8-level scale runs from EE1 (90–100%) to BE2 (0–10%). The privacy contact is
+          The motto, address, phone and email appear on report cards. The report tone is how AI-written report comments
+          are phrased. The grade or level is shown next to percentages on grades, reports, report cards and charts (for
+          example the CBC 4-level scale is EE 80–100%, ME 50–79%, AE 30–49% and BE 0–29%). The privacy contact is
           who parents and staff are told to contact about their personal data, in the privacy notice they accept when
           they create their account.
         </p>

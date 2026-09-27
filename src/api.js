@@ -67,6 +67,32 @@ async function acceptGuardianInvite(token, password, acceptPrivacy = false) {
   return data
 }
 
+// Public: create a new school and its first admin, then sign them in.
+async function registerSchool(body) {
+  const res = await fetch(`${API_BASE}/api/schools/register/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  let data = null
+  try {
+    data = await res.json()
+  } catch {
+    // no body
+  }
+  if (!res.ok) {
+    const message = res.status === 429
+      ? 'Too many sign-ups from this network. Please try again in an hour.'
+      : (data && (data.detail || Object.values(data).flat().join(' '))) || 'Could not register the school.'
+    const err = new Error(message)
+    err.status = res.status
+    err.data = data
+    throw err
+  }
+  setTokens(data)
+  return data
+}
+
 async function previewInvite(token) {
   const res = await fetch(`${API_BASE}/api/invites/preview/${token}/`)
   if (!res.ok) {
@@ -319,6 +345,12 @@ export const api = {
   downloadStaffTemplate: () => downloadFile('/api/import/staff-template/'),
   download: downloadFile,
   updateMe: (body) => request('/api/me/', { method: 'PATCH', body }),
+  registerSchool,
+  setup: {
+    state: () => request('/api/setup/'),
+    saveProgress: (progress) => request('/api/setup/', { method: 'PATCH', body: { progress } }),
+    finish: (body) => request('/api/setup/finish/', { method: 'POST', body }),
+  },
   previewInvite,
   acceptInvite,
   previewGuardianInvite,

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import RegisterSchool from './panels/RegisterSchool.jsx'
+import SetupWizard from './panels/SetupWizard.jsx'
 import { SchoolContext } from './levels.js'
 import { api } from './api.js'
 import Login from './panels/Login.jsx'
@@ -126,7 +128,7 @@ export default function App() {
   const [notifOpen, setNotifOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
   // Which screen to show when logged out and not on a token route.
-  const [authView, setAuthView] = useState('login') // 'login' | 'forgot'
+  const [authView, setAuthView] = useState(window.location.pathname.replace(/\/$/, '') === '/register' ? 'register' : 'login') // 'login' | 'forgot' | 'register'
   const [authMessage, setAuthMessage] = useState('')
 
   // Admins: teachers' requests plus reports waiting to be finalized.
@@ -272,12 +274,31 @@ export default function App() {
     if (authView === 'forgot') {
       return <ForgotPassword onBack={() => setAuthView('login')} />
     }
+    if (authView === 'register') {
+      return (
+        <RegisterSchool
+          onRegistered={() => {
+            window.history.replaceState({}, '', '/')
+            setAuthView('login')
+            setLoggedIn(true)
+          }}
+          onBack={() => {
+            window.history.replaceState({}, '', '/')
+            setAuthView('login')
+          }}
+        />
+      )
+    }
     return (
       <Login
         onLoggedIn={() => setLoggedIn(true)}
         onForgotPassword={() => {
           setAuthMessage('')
           setAuthView('forgot')
+        }}
+        onRegister={() => {
+          setAuthMessage('')
+          setAuthView('register')
         }}
         successMessage={authMessage}
       />
@@ -287,6 +308,28 @@ export default function App() {
   // Still resolving which identity type this account is.
   if (!identityKind) {
     return null
+  }
+
+  // A new school has to finish setup before anyone can use it.
+  if (identityKind === 'staff' && me?.school && me.school.setup_completed === false) {
+    if (me.role === 'admin') {
+      return (
+        <SetupWizard
+          me={me}
+          onLogout={handleLogout}
+          onFinished={() => api.me().then(setMe).catch(() => setLoggedIn(false))}
+        />
+      )
+    }
+    return (
+      <div className="login-wrap">
+        <div className="login-card">
+          <h1>HouseMaster</h1>
+          <p>{me.school.name} is still being set up. An administrator needs to finish setup before you can start.</p>
+          <button type="button" className="secondary" onClick={handleLogout}>Sign out</button>
+        </div>
+      </div>
+    )
   }
 
   const tabSet = identityKind === 'guardian' ? GUARDIAN_TABS : TABS
