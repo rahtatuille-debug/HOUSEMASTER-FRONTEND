@@ -125,11 +125,14 @@ export default function Performance({ me }) {
         setClasses(myClasses)
         setYearGroups(myYears)
         setStudents(studs.sort((a, b) => `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`)))
-        setTarget({
-          student: studs[0] ? String(studs[0].id) : '',
-          class: myClasses[0] ? String(myClasses[0].id) : '',
-          year_group: myYears[0] ? String(myYears[0].id) : '',
-        })
+        // Keep what the user already picked if the lists are reloaded.
+        const pick = (current, list) =>
+          list.some((x) => String(x.id) === current) ? current : list[0] ? String(list[0].id) : ''
+        setTarget((t) => ({
+          student: pick(t.student, studs),
+          class: pick(t.class, myClasses),
+          year_group: pick(t.year_group, myYears),
+        }))
       })
       .catch((err) => setError(err.message))
   }, [isAdmin, me])

@@ -33,7 +33,9 @@ export default function Home({ me, onNavigate }) {
   const att = data.attendance_today
   const waiting = data.reports_waiting.count + data.requests_waiting
   const noParent = data.students_without_parent
-  const today = new Date(`${att.date}T00:00`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+  // At weekends the figures are for the last school day.
+  const registerDay = att.is_today ? 'today' : `on ${new Date(`${att.date}T00:00`).toLocaleDateString(undefined, { weekday: 'long' })}`
 
   return (
     <div>
@@ -61,13 +63,13 @@ export default function Home({ me, onNavigate }) {
 
       <div className="stat-row">
         <StatTile
-          label="Attendance today"
+          label={`Attendance ${registerDay}`}
           value={att.rate != null ? `${att.rate}%` : '—'}
           sub={att.marked ? `${att.marked} of ${att.students} students marked` : 'No registers taken yet'}
           onClick={() => onNavigate('attendance')}
         />
         <StatTile
-          label="Absent today"
+          label={`Absent ${registerDay}`}
           value={att.absent}
           sub={att.classes_not_taken.length ? `${att.classes_not_taken.length} class registers not taken` : 'All registers taken'}
           alert={att.classes_not_taken.length > 0}
@@ -90,7 +92,7 @@ export default function Home({ me, onNavigate }) {
 
       <div className="home-grid">
         <div className="card">
-          <h3 style={{ fontSize: 15, marginBottom: 10 }}>Today's registers</h3>
+          <h3 style={{ fontSize: 15, marginBottom: 10 }}>{att.is_today ? "Today's registers" : `Registers ${registerDay}`}</h3>
           {att.classes.length === 0 ? (
             <p className="text-muted" style={{ margin: 0 }}>No classes with students yet.</p>
           ) : (
