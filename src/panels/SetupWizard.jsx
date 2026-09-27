@@ -38,13 +38,16 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
     api.setup.state().then((data) => {
       setCatalogue(data)
       const saved = data.school.setup_progress || {}
-      setAnswers(saved.step != null ? saved : {
+      const fresh = {
         step: 0,
         school: { name: data.school.name, motto: data.school.motto, address: data.school.address,
-          phone: data.school.phone, email: data.school.email, privacy_contact: data.school.privacy_contact },
+          phone: data.school.phone, email: data.school.email, privacy_contact: data.school.privacy_contact,
+          country: data.school.country },
         education_system: '', stages: [], year_groups: [], subjects: [], subjectOptions: [], terms: [],
         grading_scale: data.school.grading_scale, report_tone: data.school.report_tone,
-      })
+      }
+      // Older saved answers may not have a country yet; keep the school's own.
+      setAnswers(saved.step != null ? { ...saved, school: { country: data.school.country, ...saved.school } } : fresh)
     }).catch((err) => setError(err.message))
   }, [])
 
@@ -167,6 +170,14 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
                   onChange={(e) => update({ school: { ...answers.school, [key]: e.target.value } })} />
               </div>
             ))}
+            <div className="field">
+              <label htmlFor="setup-country">Country</label>
+              <select id="setup-country" value={answers.school.country || 'ke'}
+                onChange={(e) => update({ school: { ...answers.school, country: e.target.value } })}>
+                {catalogue.countries.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+              </select>
+              <p className="hint" style={{ margin: '4px 0 0' }}>Decides which privacy law your privacy notice refers to, and how dates are shown.</p>
+            </div>
             <div className="field">
               <label htmlFor="setup-address">Address</label>
               <textarea id="setup-address" rows={2} value={answers.school.address || ''}

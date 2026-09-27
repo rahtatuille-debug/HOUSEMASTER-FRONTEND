@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
 import { announcementAuthor } from '../user.js'
 
@@ -9,7 +10,7 @@ const audienceLabels = {
 }
 
 function formatDate(value) {
-  return value ? new Date(value).toLocaleString() : '—'
+  return value ? formatDateTime(value) : '—'
 }
 
 export default function GuardianAnnouncements() {

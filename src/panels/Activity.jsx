@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
 
 // Each option matches one or more action prefixes in the activity log.
@@ -101,7 +102,7 @@ export default function Activity() {
             {entries.map((e) => (
               <tr key={e.id}>
                 <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>
-                  {new Date(e.created_at).toLocaleString()}
+                  {formatDateTime(e.created_at)}
                 </td>
                 <td>{e.actor_name}</td>
                 <td>{e.summary}</td>

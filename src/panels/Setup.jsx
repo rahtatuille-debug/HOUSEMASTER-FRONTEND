@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import ImportCard from './ImportCard.jsx'
 import YearEndCard from './YearEndCard.jsx'
+import { COUNTRIES } from '../countries.js'
 
 // Same list as the backend's gradebook.levels.SCALE_LABELS.
 const SCALES = [
@@ -16,7 +18,7 @@ const SCALES = [
 ]
 const SYSTEMS = { cbc: 'CBC', 844: '8-4-4', british: 'British / Cambridge', ib: 'International Baccalaureate', american: 'American' }
 // The school settings form, and what each field is called in the API.
-const SCHOOL_FIELDS = ['name', 'motto', 'phone', 'email', 'address', 'report_tone', 'grading_scale', 'privacy_contact']
+const SCHOOL_FIELDS = ['name', 'motto', 'phone', 'email', 'address', 'country', 'report_tone', 'grading_scale', 'privacy_contact']
 const TONES = [
   { key: 'formal', label: 'Formal' },
   { key: 'warm', label: 'Warm / encouraging' },
@@ -26,6 +28,7 @@ const TONES = [
 // Admins' changes apply straight away. A teacher's change is sent to an
 // admin for approval instead (the API answers 202), and this screen says so.
 export default function Setup({ me, onUserUpdated }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [school, setSchool] = useState(null)
   const [details, setDetails] = useState(null)
@@ -118,13 +121,13 @@ export default function Setup({ me, onUserUpdated }) {
     if (Object.keys(body).length === 0) return
     const ok = await change(() => api.schools.update(school.id, body), 'School settings saved.')
     // Levels are shown everywhere from the signed-in user's school, so refresh it.
-    if (ok && isAdmin && body.grading_scale) api.me().then((fresh) => onUserUpdated?.(fresh)).catch(() => {})
+    if (ok && isAdmin && (body.grading_scale || body.country)) api.me().then((fresh) => onUserUpdated?.(fresh)).catch(() => {})
   }
 
   async function addSubject(e) {
     e.preventDefault()
     if (!subjectName.trim()) return
-    if (await change(() => api.subjects.create({ name: subjectName.trim() }), 'Subject added.')) setSubjectName('')
+    if (await change(() => api.subjects.create({ name: subjectName.trim() }), `${words.subject} added.`)) setSubjectName('')
   }
 
   async function addTerm(e) {
@@ -144,7 +147,7 @@ export default function Setup({ me, onUserUpdated }) {
   async function addYearGroup(e) {
     e.preventDefault()
     if (!yearGroupName.trim()) return
-    if (await change(() => api.yearGroups.create({ name: yearGroupName.trim() }), 'Year group added.')) {
+    if (await change(() => api.yearGroups.create({ name: yearGroupName.trim() }), `${words.year_group} added.`)) {
       setYearGroupName('')
     }
   }
@@ -202,6 +205,12 @@ export default function Setup({ me, onUserUpdated }) {
               ))}
             </div>
             <div className="field">
+              <label htmlFor="school-country">Country</label>
+              <select id="school-country" value={details.country} onChange={(e) => setDetails({ ...details, country: e.target.value })}>
+                {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+              </select>
+            </div>
+            <div className="field">
               <label htmlFor="school-address">Address</label>
               <textarea id="school-address" rows={2} value={details.address} onChange={(e) => setDetails({ ...details, address: e.target.value })} />
             </div>
@@ -220,7 +229,7 @@ export default function Setup({ me, onUserUpdated }) {
               </div>
               <div className="field">
                 <label htmlFor="school-privacy">Privacy contact</label>
-                <input id="school-privacy" value={details.privacy_contact} maxLength={255} placeholder="e.g. privacy@yourschool.ac.ke"
+                <input id="school-privacy" value={details.privacy_contact} maxLength={255} placeholder="e.g. privacy@yourschool.org"
                   onChange={(e) => setDetails({ ...details, privacy_contact: e.target.value })} />
               </div>
             </div>
@@ -239,7 +248,7 @@ export default function Setup({ me, onUserUpdated }) {
       </div>
 
       <div className="card">
-        <h3 style={{ marginBottom: 14 }}>Subjects</h3>
+        <h3 style={{ marginBottom: 14 }}>{words.subjects}</h3>
         <form onSubmit={addSubject} className="form-row" style={{ marginBottom: 16 }}>
           <div className="field" style={{ marginBottom: 0 }}>
             <label htmlFor="subject-name">New subject</label>
@@ -270,10 +279,10 @@ export default function Setup({ me, onUserUpdated }) {
       </div>
 
       <div className="card">
-        <h3 style={{ marginBottom: 14 }}>Terms</h3>
+        <h3 style={{ marginBottom: 14 }}>{words.terms}</h3>
         <form onSubmit={addTerm} className="form-row" style={{ marginBottom: 16 }}>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="term-name">Term name</label>
+            <label htmlFor="term-name">{words.term} name</label>
             <input
               id="term-name"
               value={termName}
@@ -340,7 +349,7 @@ export default function Setup({ me, onUserUpdated }) {
       </div>
 
       <div className="card">
-        <h3 style={{ marginBottom: 14 }}>Year groups</h3>
+        <h3 style={{ marginBottom: 14 }}>{words.year_groups}</h3>
         <form onSubmit={addYearGroup} className="form-row" style={{ marginBottom: 16 }}>
           <div className="field" style={{ marginBottom: 0 }}>
             <label htmlFor="yg-name">New year group</label>
@@ -371,7 +380,7 @@ export default function Setup({ me, onUserUpdated }) {
       </div>
 
       <div className="card">
-        <h3 style={{ marginBottom: 14 }}>Classes</h3>
+        <h3 style={{ marginBottom: 14 }}>{words.classes}</h3>
         {yearGroups.length === 0 ? (
           <p className="hint" style={{ margin: 0 }}>
             Add a year group first, then classes can be created within it.
@@ -380,7 +389,7 @@ export default function Setup({ me, onUserUpdated }) {
           <>
             <form onSubmit={addClass} className="form-row" style={{ marginBottom: 16 }}>
               <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="class-year-group">Year group</label>
+                <label htmlFor="class-year-group">{words.year_group}</label>
                 <select
                   id="class-year-group"
                   value={classYearGroup}
@@ -420,8 +429,8 @@ export default function Setup({ me, onUserUpdated }) {
               <table>
                 <thead>
                   <tr>
-                    <th>Class</th>
-                    <th>Year group</th>
+                    <th>{words.class}</th>
+                    <th>{words.year_group}</th>
                     <th>House</th>
                     <th></th>
                   </tr>

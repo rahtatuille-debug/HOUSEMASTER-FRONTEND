@@ -84,7 +84,7 @@ export default function AcceptInvite({ token, onAccepted }) {
                   required
                 />
               </div>
-              <PrivacyNotice schoolName={preview.school_name} contact={preview.privacy_contact} audience="staff" />
+              <PrivacyNotice schoolName={preview.school_name} contact={preview.privacy_contact} country={preview.country} audience="staff" />
               <PrivacyConsent checked={agreed} onChange={setAgreed} />
               <button type="submit" disabled={submitting || !agreed} style={{ width: '100%' }}>
                 {submitting ? 'Creating account…' : 'Create account & sign in'}

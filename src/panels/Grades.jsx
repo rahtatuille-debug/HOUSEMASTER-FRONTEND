@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
 import { api } from '../api.js'
 
 // Teachers can see every subject's grades for students in their classes,
 // but only add or change grades for the subjects they teach there.
 export default function Grades({ me }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [students, setStudents] = useState([])
   const [subjects, setSubjects] = useState([])
@@ -135,7 +137,7 @@ export default function Grades({ me }) {
       {noPrereqs && (
         <div className="card" style={{ borderLeft: '3px solid var(--gold)' }}>
           <p className="hint" style={{ margin: 0 }}>
-            You need at least one Subject and one Term before recording grades — add those under
+            You need at least one {words.subject.toLowerCase()} and one {words.term.toLowerCase()} before recording grades — add those under
             the Setup tab first.
           </p>
         </div>
@@ -165,7 +167,7 @@ export default function Grades({ me }) {
                 </select>
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="g-subject">Subject</label>
+                <label htmlFor="g-subject">{words.subject}</label>
                 <select
                   id="g-subject"
                   value={form.subject}
@@ -181,7 +183,7 @@ export default function Grades({ me }) {
                 </select>
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="g-term">Term</label>
+                <label htmlFor="g-term">{words.term}</label>
                 <select
                   id="g-term"
                   value={form.term}
@@ -267,8 +269,8 @@ export default function Grades({ me }) {
           <thead>
             <tr>
               <th>Student</th>
-              <th>Subject</th>
-              <th>Term</th>
+              <th>{words.subject}</th>
+              <th>{words.term}</th>
               <th>Score</th>
               <th></th>
             </tr>

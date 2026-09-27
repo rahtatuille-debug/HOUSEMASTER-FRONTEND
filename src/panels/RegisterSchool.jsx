@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 import PrivacyNotice from './PrivacyNotice.jsx'
+import { COUNTRIES, countryFor } from '../countries.js'
 
 // Small line icons for the feature list (24px grid, drawn with currentColor).
 const ICONS = {
@@ -16,7 +17,7 @@ const FEATURES = [
   ['register', 'Daily registers', 'Attendance in a few taps, with the day\'s gaps on your home page.'],
   ['reports', 'Report cards', 'AI-assisted comments, approval by admins, and PDF report cards for parents.'],
   ['parents', 'Families kept informed', 'Announcements, messages, urgent alerts and emails to parents.'],
-  ['shield', 'Private by design', 'Each school\'s data is kept separate, in line with Kenya\'s Data Protection Act.'],
+  ['shield', 'Private by design', 'Each school\'s data is kept separate and handled in line with data protection law where you are.'],
 ]
 
 const SYSTEMS = ['CBC', '8-4-4', 'British / Cambridge', 'IB', 'American']
@@ -33,7 +34,7 @@ function Icon({ name }) {
 // Public sign-up for a new school. The person registering becomes its first
 // admin and goes straight into the setup wizard.
 export default function RegisterSchool({ onRegistered, onBack }) {
-  const [form, setForm] = useState({ school_name: '', name: '', email: '', password: '', confirm: '' })
+  const [form, setForm] = useState({ school_name: '', country: 'ke', name: '', email: '', password: '', confirm: '' })
   const [agreed, setAgreed] = useState(false)
   const [showNotice, setShowNotice] = useState(false)
   const [error, setError] = useState('')
@@ -51,7 +52,7 @@ export default function RegisterSchool({ onRegistered, onBack }) {
     setSubmitting(true)
     try {
       await api.registerSchool({
-        school_name: form.school_name.trim(), name: form.name.trim(), email: form.email.trim(),
+        school_name: form.school_name.trim(), country: form.country, name: form.name.trim(), email: form.email.trim(),
         password: form.password, accept_privacy: agreed,
       })
       onRegistered()
@@ -107,6 +108,13 @@ export default function RegisterSchool({ onRegistered, onBack }) {
               <input id="reg-school" value={form.school_name} onChange={set('school_name')} required minLength={2}
                 placeholder="e.g. Sunrise Academy" autoComplete="organization" autoFocus />
             </div>
+            <div className="field">
+              <label htmlFor="reg-country">Country</label>
+              <select id="reg-country" value={form.country} onChange={set('country')}>
+                {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+              </select>
+              <p className="field-help">Decides which privacy law applies. You'll choose your curriculum in the next step.</p>
+            </div>
           </fieldset>
 
           <fieldset>
@@ -147,7 +155,7 @@ export default function RegisterSchool({ onRegistered, onBack }) {
                 </button>.
               </span>
             </label>
-            {showNotice && <PrivacyNotice schoolName={form.school_name.trim()} audience="staff" />}
+            {showNotice && <PrivacyNotice schoolName={form.school_name.trim()} country={countryFor(form.country)} audience="staff" />}
           </div>
 
           <button type="submit" className="register-submit" disabled={submitting || !agreed || mismatch}>

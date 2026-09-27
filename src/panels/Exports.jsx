@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
 import { api } from '../api.js'
 
 function isoDate(d) {
@@ -9,6 +10,7 @@ function isoDate(d) {
 // Download a class's list, grades, attendance or finalized reports.
 // Teachers only see the classes they teach (the API enforces this too).
 export default function Exports({ me }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [classes, setClasses] = useState([])
   const [terms, setTerms] = useState([])
@@ -96,14 +98,14 @@ export default function Exports({ me }) {
       <div className="card">
         <div className="form-row">
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="ex-class">Class</label>
+            <label htmlFor="ex-class">{words.class}</label>
             <select id="ex-class" value={classId} onChange={(e) => setClassId(e.target.value)}>
               <option value="">Select…</option>
               {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="ex-term">Term (grades and reports)</label>
+            <label htmlFor="ex-term">{words.term} (grades and reports)</label>
             <select id="ex-term" value={termId} onChange={(e) => setTermId(e.target.value)}>
               <option value="">Select…</option>
               {terms.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}

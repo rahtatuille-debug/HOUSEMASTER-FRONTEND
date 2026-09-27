@@ -1,13 +1,16 @@
 import { Fragment, useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
+import { formatDate as localDate } from '../format.js'
 import StaffImportCard from './StaffImportCard.jsx'
 import { api } from '../api.js'
 import { displayRole, personIdentity } from '../user.js'
 
 function formatDate(value) {
-  return value ? new Date(value).toLocaleDateString() : 'Never'
+  return value ? localDate(value) : 'Never'
 }
 
 export default function Staff({ me }) {
+  const words = useVocab()
   const [members, setMembers] = useState([])
   const [assignments, setAssignments] = useState([])
   const [classes, setClasses] = useState([])
@@ -262,7 +265,7 @@ export default function Staff({ me }) {
                           ) : (
                             <form onSubmit={(e) => addAssignment(e, m)} className="form-row">
                               <div className="field" style={{ marginBottom: 0 }}>
-                                <label htmlFor={`as-class-${m.id}`}>Class</label>
+                                <label htmlFor={`as-class-${m.id}`}>{words.class}</label>
                                 <select id={`as-class-${m.id}`} value={newClass} onChange={(e) => setNewClass(e.target.value)} required>
                                   <option value="">Select…</option>
                                   {classes.map((c) => (
@@ -271,10 +274,10 @@ export default function Staff({ me }) {
                                 </select>
                               </div>
                               <div className="field" style={{ marginBottom: 0 }}>
-                                <label htmlFor={`as-subject-${m.id}`}>Subject</label>
+                                <label htmlFor={`as-subject-${m.id}`}>{words.subject}</label>
                                 <select id={`as-subject-${m.id}`} value={newSubject} onChange={(e) => setNewSubject(e.target.value)} required>
                                   <option value="">Select…</option>
-                                  <option value="all">All subjects (class teacher)</option>
+                                  <option value="all">All {words.subjects.toLowerCase()} ({words.class.toLowerCase()} teacher)</option>
                                   {subjects.map((s) => (
                                     <option key={s.id} value={s.id}>{s.name}</option>
                                   ))}
@@ -377,7 +380,7 @@ export default function Staff({ me }) {
                   </span>
                 </td>
                 <td>{inv.invited_by_name ? personIdentity({ name: inv.invited_by_name, role: inv.invited_by_role }) : 'School staff'}</td>
-                <td className="text-muted">{new Date(inv.created_at).toLocaleDateString()}</td>
+                <td className="text-muted">{formatDate(inv.created_at)}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
                   {inv.status === 'pending' && (
                     <button className="secondary" onClick={() => copyLink(inv)}>

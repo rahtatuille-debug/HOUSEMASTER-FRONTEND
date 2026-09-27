@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSchoolLevels, useWithLevel } from '../levels.js'
+import { useSchoolLevels, useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, ColumnChart, LineChart } from './charts.jsx'
 
@@ -37,10 +37,11 @@ function ChartCard({ title, hint, children, table }) {
 }
 
 function TrendTable({ data, series }) {
+  const words = useVocab()
   const fmt = useWithLevel()
   return (
     <table>
-      <thead><tr><th>Term</th>{series.map((s) => <th key={s.key}>{s.label}</th>)}</tr></thead>
+      <thead><tr><th>{words.term}</th>{series.map((s) => <th key={s.key}>{s.label}</th>)}</tr></thead>
       <tbody>{data.map((d) => <tr key={d.term}><td>{d.term}</td>{series.map((s) => <td key={s.key}>{fmt(d[s.key], 1)}</td>)}</tr>)}</tbody>
     </table>
   )
@@ -68,6 +69,7 @@ function BandsTable({ bands }) {
 }
 
 function StudentTable({ students, showClass, onOpenStudent }) {
+  const words = useVocab()
   const fmt = useWithLevel()
   const [showAll, setShowAll] = useState(false)
   if (!students?.length) return null
@@ -79,7 +81,7 @@ function StudentTable({ students, showClass, onOpenStudent }) {
       <div className="table-scroll">
       <table>
         <thead>
-          <tr><th>#</th><th>Student</th>{showClass && <th>Class</th>}<th>Average</th><th>Previous term</th><th>Change</th></tr>
+          <tr><th>#</th><th>Student</th>{showClass && <th>{words.class}</th>}<th>Average</th><th>Previous {words.term.toLowerCase()}</th><th>Change</th></tr>
         </thead>
         <tbody>
           {shown.map((s, i) => (
@@ -110,6 +112,7 @@ function StudentTable({ students, showClass, onOpenStudent }) {
 
 // Performance graphs for one student, a class, a year group, or the school.
 export default function Performance({ me }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [scope, setScope] = useState('class')
   const [classes, setClasses] = useState([])
@@ -168,8 +171,8 @@ export default function Performance({ me }) {
 
   const picker = {
     student: { label: 'Student', options: students.map((s) => ({ id: s.id, name: `${s.first_name} ${s.last_name}` })) },
-    class: { label: 'Class', options: classes },
-    year_group: { label: 'Year group', options: yearGroups },
+    class: { label: words.class, options: classes },
+    year_group: { label: words.year_group, options: yearGroups },
   }[scope]
   const termName = data?.terms?.find((t) => t.id === data.term)?.name
 
@@ -183,7 +186,7 @@ export default function Performance({ me }) {
         {SCOPES.filter((s) => !s.adminOnly || isAdmin).map((s) => (
           <button key={s.key} type="button" role="tab" aria-selected={scope === s.key}
             className={`secondary${scope === s.key ? ' active' : ''}`} onClick={() => { setScope(s.key); setTerm('') }}>
-            {s.label}
+            {words[s.key] || s.label}
           </button>
         ))}
       </div>
@@ -200,7 +203,7 @@ export default function Performance({ me }) {
             </div>
           )}
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="perf-term">Term (for subject and spread charts)</label>
+            <label htmlFor="perf-term">{words.term} (for {words.subject.toLowerCase()} and spread charts)</label>
             <select id="perf-term" value={term || data?.term || ''} onChange={(e) => setTerm(e.target.value)} disabled={!data?.terms?.length}>
               {(data?.terms || []).map((t) => <option key={t.id} value={t.id}>{t.name}{t.is_locked ? ' (locked)' : ''}</option>)}
             </select>
@@ -224,12 +227,13 @@ export default function Performance({ me }) {
 }
 
 function Charts({ data, termName, onOpenStudent }) {
+  const words = useVocab()
   const byLevel = useSchoolLevels().length > 0
   if (data.scope === 'student') {
     const series = [
       { key: 'student', label: data.name, color: COMPARE[0] },
-      { key: 'class', label: 'Class average', short: 'Class', color: COMPARE[1] },
-      { key: 'year_group', label: 'Year group average', short: 'Year group', color: COMPARE[2] },
+      { key: 'class', label: `${words.class} average`, short: words.class, color: COMPARE[1] },
+      { key: 'year_group', label: `${words.year_group} average`, short: words.year_group, color: COMPARE[2] },
     ]
     const bars = [{ key: 'student', label: data.name, color: COMPARE[0] }, { key: 'class', label: 'Class average', color: COMPARE[1] }]
     const rows = data.subjects.map((s) => ({ label: s.subject, student: s.student, class: s.class }))

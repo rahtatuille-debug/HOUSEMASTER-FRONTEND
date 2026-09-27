@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { formatDateTime, setDateLocale } from './format.js'
 import RegisterSchool from './panels/RegisterSchool.jsx'
 import SetupWizard from './panels/SetupWizard.jsx'
 import { SchoolContext } from './levels.js'
@@ -305,6 +306,9 @@ export default function App() {
     )
   }
 
+  // Dates follow the school's country (e.g. 27/09/2026 in Kenya, 9/27/2026 in the US).
+  setDateLocale(me?.school?.country?.locale)
+
   // Still resolving which identity type this account is.
   if (!identityKind) {
     return null
@@ -493,7 +497,7 @@ export default function App() {
               <strong>{a.title}</strong>
               <p>{a.body}</p>
               <span className="urgent-meta">
-                {a.created_by_name} · {new Date(a.created_at).toLocaleString()}
+                {a.created_by_name} · {formatDateTime(a.created_at)}
               </span>
             </div>
             <button type="button" onClick={() => acknowledgeAlert(a.id)}>

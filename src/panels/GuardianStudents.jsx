@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { useWithLevel } from '../levels.js'
+import { formatDate as localDate } from '../format.js'
+import { useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import PerformanceChart from './PerformanceChart.jsx'
 
@@ -8,7 +9,7 @@ const MODES = { day: 'Day', boarding: 'Boarding' }
 const TABS = ['overview', 'progress', 'grades', 'attendance', 'reports']
 
 function formatDate(value) {
-  return value ? new Date(value).toLocaleDateString() : '—'
+  return value ? localDate(value) : '—'
 }
 
 function percentage(grade) {
@@ -18,6 +19,7 @@ function percentage(grade) {
 }
 
 export default function GuardianStudents() {
+  const words = useVocab()
   const fmt = useWithLevel()
   const [students, setStudents] = useState([])
   const [selected, setSelected] = useState(null)
@@ -100,8 +102,8 @@ export default function GuardianStudents() {
                     <div className="profile-photo" aria-label="No photo">{`${selected.first_name[0] || ''}${selected.last_name[0] || ''}`}</div>
                   )}
                   <ul className="fact-list">
-                    <li><span>Class</span> {selected.school_class_name || '—'}</li>
-                    <li><span>Admission no.</span> {selected.external_id || '—'}</li>
+                    <li><span>{words.class}</span> {selected.school_class_name || '—'}</li>
+                    <li><span>{words.student_id}</span> {selected.external_id || '—'}</li>
                     <li><span>House</span> {selected.house || '—'}</li>
                     <li><span>Date of birth</span> {formatDate(selected.date_of_birth)}{profile.age != null && ` (age ${profile.age})`}</li>
                     <li><span>Gender</span> {GENDERS[selected.gender] || '—'}</li>
@@ -118,7 +120,7 @@ export default function GuardianStudents() {
               <div className="card">
                 <h3 style={{ fontSize: 15, marginBottom: 10 }}>Teachers</h3>
                 {profile.teachers.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>Not listed yet.</p> : (
-                  <table><thead><tr><th>Subject</th><th>Teacher</th></tr></thead>
+                  <table><thead><tr><th>{words.subject}</th><th>Teacher</th></tr></thead>
                     <tbody>{profile.teachers.map((t, i) => <tr key={i}><td>{t.subject}</td><td>{t.teacher}</td></tr>)}</tbody></table>
                 )}
               </div>
@@ -131,7 +133,7 @@ export default function GuardianStudents() {
               <PerformanceChart data={profile.performance} />
               {profile.performance.some((p) => p.student != null) && (
                 <table style={{ marginTop: 12 }}>
-                  <thead><tr><th>Term</th><th>Average</th></tr></thead>
+                  <thead><tr><th>{words.term}</th><th>Average</th></tr></thead>
                   <tbody>{profile.performance.map((p) => <tr key={p.term}><td>{p.term}</td><td>{fmt(p.student, 1)}</td></tr>)}</tbody>
                 </table>
               )}
@@ -154,7 +156,7 @@ export default function GuardianStudents() {
               )}
             </div>
           )}
-          {tab === 'grades' && (grades.length ? <div className="table-wrap"><table><thead><tr><th>Subject</th><th>Term</th><th>Score</th><th>Result</th><th>Recorded</th></tr></thead><tbody>{grades.map((grade) => <tr key={grade.id}><td>{grade.subject_name}</td><td>{grade.term_name}</td><td>{grade.score} / {grade.max_score}</td><td>{fmt(percentage(grade))}</td><td>{formatDate(grade.recorded_at)}</td></tr>)}</tbody></table></div> : <div className="empty-state"><h3>No grades have been recorded yet.</h3></div>)}
+          {tab === 'grades' && (grades.length ? <div className="table-wrap"><table><thead><tr><th>{words.subject}</th><th>{words.term}</th><th>Score</th><th>Result</th><th>Recorded</th></tr></thead><tbody>{grades.map((grade) => <tr key={grade.id}><td>{grade.subject_name}</td><td>{grade.term_name}</td><td>{grade.score} / {grade.max_score}</td><td>{fmt(percentage(grade))}</td><td>{formatDate(grade.recorded_at)}</td></tr>)}</tbody></table></div> : <div className="empty-state"><h3>No grades have been recorded yet.</h3></div>)}
           {tab === 'reports' && (reports.length ? <div className="guardian-reports">{reports.map((report) => <article className="report-doc" key={report.id}><p className="eyebrow">{report.term_name}</p><h3>Report</h3><h4>School comment</h4><p>{report.report_comment}</p><div className="report-card-footer"><p className="text-muted">Finalized {formatDate(report.finalized_at || report.edited_at || report.generated_at)}</p><button type="button" className="secondary" onClick={() => downloadCard(report)}>Download report card</button></div></article>)}</div> : <div className="empty-state"><h3>No finalized reports are available yet.</h3></div>)}
         </article>
       </section>

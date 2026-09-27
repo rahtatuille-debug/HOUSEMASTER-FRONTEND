@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
 
 const FILTERS = [
@@ -9,7 +10,7 @@ const FILTERS = [
 ]
 
 function formatWhen(value) {
-  return value ? new Date(value).toLocaleString() : ''
+  return value ? formatDateTime(value) : ''
 }
 
 // Admins: teachers' requests (student deletions, setup and school-setting

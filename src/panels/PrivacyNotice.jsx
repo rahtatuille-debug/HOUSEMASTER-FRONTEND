@@ -1,14 +1,18 @@
+import { countryFor } from '../countries.js'
+
 // The privacy notice shown before anyone creates an account, and on the
-// Profile page. Written for the Kenya Data Protection Act 2019: the school is
-// the data controller and HouseMaster processes data on its behalf.
-export default function PrivacyNotice({ schoolName, contact, audience = 'parent' }) {
+// Profile page. The school is the data controller and HouseMaster processes
+// data on its behalf; the law and regulator named depend on the school's
+// country (Kenya unless the school says otherwise).
+export default function PrivacyNotice({ schoolName, contact, country, audience = 'parent' }) {
   const school = schoolName || 'Your school'
+  const where = country?.law ? country : countryFor('ke')
   return (
     <div className="privacy-notice">
       <h3>How {schoolName || 'your school'} uses personal data</h3>
       <p>
         {school} uses HouseMaster to run the school and keep in touch with families. The school is responsible for
-        your personal data under Kenya's Data Protection Act, 2019. HouseMaster stores and processes it only on the
+        your personal data under {where.law}. HouseMaster stores and processes it only on the
         school's behalf.
       </p>
       <h4>What is held</h4>
@@ -31,8 +35,8 @@ export default function PrivacyNotice({ schoolName, contact, audience = 'parent'
       <h4>Your rights</h4>
       <p>
         You can ask the school for a copy of the data held about you or your child, to correct it, or to delete it.
-        {contact ? <> Contact <strong>{contact}</strong>.</> : ' Contact the school office.'} You can also complain to
-        the Office of the Data Protection Commissioner (ODPC).
+        {contact ? <> Contact <strong>{contact}</strong>.</> : ' Contact the school office.'} You can also complain to{' '}
+        {where.regulator}.
       </p>
     </div>
   )

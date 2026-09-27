@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import StudentProfile from './StudentProfile.jsx'
 
@@ -8,6 +9,7 @@ const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', s
 // student permanently (with all their grades, attendance and reports) is
 // admin-only; a teacher's delete becomes a request for an admin to approve.
 export default function Students({ me }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [notice, setNotice] = useState('')
   // The student whose profile is open, if any.
@@ -177,7 +179,7 @@ export default function Students({ me }) {
               />
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
-              <label htmlFor="student-class">Class</label>
+              <label htmlFor="student-class">{words.class}</label>
               <select
                 id="student-class"
                 value={form.school_class}
@@ -233,7 +235,7 @@ export default function Students({ me }) {
           <thead>
             <tr>
               <th>Name</th>
-              <th>Class</th>
+              <th>{words.class}</th>
               <th>House</th>
               <th>External ID</th>
               <th>Status</th>

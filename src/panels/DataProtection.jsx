@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { api } from '../api.js'
+import { useSchool } from '../levels.js'
 
-// Admin tools for a family's data protection requests (Kenya Data Protection
+// Admin tools for a family's data protection requests (under the privacy law
+// of the school's country, e.g. Kenya's Data Protection
 // Act): download everything held, or remove the family's personal details.
 export default function DataProtection({ student, onRemoved }) {
+  const school = useSchool()
   const name = `${student.first_name} ${student.last_name}`
   const [confirming, setConfirming] = useState(false)
   const [typed, setTyped] = useState('')
@@ -37,7 +40,7 @@ export default function DataProtection({ student, onRemoved }) {
     <div className="card">
       <h3 style={{ fontSize: 15, marginBottom: 6 }}>Data protection requests</h3>
       <p className="hint" style={{ marginTop: 0 }}>
-        Under the Kenya Data Protection Act, a family can ask for a copy of the data the school holds about them, or
+        Under {school?.country?.law || "Kenya's Data Protection Act, 2019"}, a family can ask for a copy of the data the school holds about them, or
         ask for it to be deleted.
       </p>
       {error && <div className="error-banner">{error}</div>}

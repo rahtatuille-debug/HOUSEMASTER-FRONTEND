@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
+import { formatDate } from '../format.js'
 import { api } from '../api.js'
 import ClassReports from './ClassReports.jsx'
 
@@ -19,6 +21,7 @@ const FILTERS = [
 // only). Parents only ever see finalized reports. An admin can send a
 // report back to draft with a note.
 export default function Reports({ me, onCountsChanged }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [filter, setFilter] = useState('')
   const [notice, setNotice] = useState('')
@@ -157,7 +160,7 @@ export default function Reports({ me, onCountsChanged }) {
             </select>
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="r-term">Term</label>
+            <label htmlFor="r-term">{words.term}</label>
             <select id="r-term" value={genTerm} onChange={(e) => setGenTerm(e.target.value)} required>
               <option value="">Select…</option>
               {terms.map((t) => (
@@ -304,7 +307,7 @@ export default function Reports({ me, onCountsChanged }) {
           <thead>
             <tr>
               <th>Student</th>
-              <th>Term</th>
+              <th>{words.term}</th>
               <th>Status</th>
               <th>Generated</th>
               <th></th>
@@ -318,7 +321,7 @@ export default function Reports({ me, onCountsChanged }) {
                 <td>
                   <span className={`badge ${r.status}`}>{STATUS_LABELS[r.status] || r.status}</span>
                 </td>
-                <td className="text-muted">{new Date(r.generated_at).toLocaleDateString()}</td>
+                <td className="text-muted">{formatDate(r.generated_at)}</td>
                 <td>
                   <button className="secondary" onClick={() => openForReview(r)}>
                     Review

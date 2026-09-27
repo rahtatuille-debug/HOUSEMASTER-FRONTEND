@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
+import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
 
 const CLASS_KINDS = {
@@ -7,6 +9,7 @@ const CLASS_KINDS = {
 }
 
 export default function Messages({ me, identityKind }) {
+  const words = useVocab()
   const isStaff = identityKind === 'staff'
   // 'direct' | 'class'
   const [composeMode, setComposeMode] = useState('direct')
@@ -253,7 +256,7 @@ export default function Messages({ me, identityKind }) {
               </p>
               <form onSubmit={handleClassSend}>
                 <div className="field">
-                  <label htmlFor="class-msg-class">Class</label>
+                  <label htmlFor="class-msg-class">{words.class}</label>
                   <select id="class-msg-class" value={classId} onChange={(e) => setClassId(e.target.value)} required>
                     <option value="">Choose a class…</option>
                     {classes.map((c) => (
@@ -392,7 +395,7 @@ export default function Messages({ me, identityKind }) {
                         {m.body}
                       </div>
                       <div className="text-muted" style={{ fontSize: 11, marginTop: 2, textAlign: isMine ? 'right' : 'left' }}>
-                        {m.sender_name} · {new Date(m.created_at).toLocaleString()}
+                        {m.sender_name} · {formatDateTime(m.created_at)}
                       </div>
                     </div>
                   )

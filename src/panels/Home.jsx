@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
+import { formatDate } from '../format.js'
 import { api } from '../api.js'
 
 function StatTile({ label, value, sub, onClick, alert }) {
@@ -20,6 +22,7 @@ function StatTile({ label, value, sub, onClick, alert }) {
 
 // Admin home page: today's attendance and everything waiting on an admin.
 export default function Home({ me, onNavigate }) {
+  const words = useVocab()
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
 
@@ -33,9 +36,9 @@ export default function Home({ me, onNavigate }) {
   const att = data.attendance_today
   const waiting = data.reports_waiting.count + data.requests_waiting
   const noParent = data.students_without_parent
-  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+  const today = formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long' })
   // At weekends the figures are for the last school day.
-  const registerDay = att.is_today ? 'today' : `on ${new Date(`${att.date}T00:00`).toLocaleDateString(undefined, { weekday: 'long' })}`
+  const registerDay = att.is_today ? 'today' : `on ${formatDate(att.date, { weekday: 'long' })}`
 
   return (
     <div>
@@ -98,7 +101,7 @@ export default function Home({ me, onNavigate }) {
           ) : (
             <table>
               <thead>
-                <tr><th>Class</th><th>Marked</th><th>Absent</th><th>Late</th></tr>
+                <tr><th>{words.class}</th><th>Marked</th><th>Absent</th><th>Late</th></tr>
               </thead>
               <tbody>
                 {att.classes.map((c) => (

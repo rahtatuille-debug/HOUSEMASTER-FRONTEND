@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { formatDate as localDate, formatDateTime } from '../format.js'
 import DataProtection from './DataProtection.jsx'
-import { useWithLevel } from '../levels.js'
+import { useWithLevel, useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import { ContactDetails, RELATIONSHIPS } from './ParentContact.jsx'
 import PerformanceChart from './PerformanceChart.jsx'
@@ -23,7 +24,7 @@ const MODES = { day: 'Day', boarding: 'Boarding' }
 const REPORT_STATUS = { draft: 'Draft', submitted: 'Waiting for approval', finalized: 'Finalized' }
 
 function formatDate(value) {
-  return value ? new Date(`${String(value).slice(0, 10)}T00:00`).toLocaleDateString() : '—'
+  return value ? localDate(String(value).slice(0, 10)) : '—'
 }
 
 function editableFields(student) {
@@ -44,6 +45,7 @@ function editableFields(student) {
 
 // Each subject in the chosen term against the class average.
 function SubjectBreakdown({ studentId, name }) {
+  const words = useVocab()
   const [data, setData] = useState(null)
   const [term, setTerm] = useState('')
   const [error, setError] = useState('')
@@ -57,7 +59,7 @@ function SubjectBreakdown({ studentId, name }) {
   return (
     <div className="card">
       <div className="panel-header" style={{ marginBottom: 4 }}>
-        <h3 style={{ fontSize: 15 }}>Subjects</h3>
+        <h3 style={{ fontSize: 15 }}>{words.subjects}</h3>
         <select aria-label="Term" value={term || data.term} onChange={(e) => setTerm(e.target.value)} style={{ width: 'auto' }}>
           {data.terms.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
         </select>
@@ -70,6 +72,7 @@ function SubjectBreakdown({ studentId, name }) {
 
 // Everything about one student, opened from the Students list.
 export default function StudentProfile({ studentId, me, onBack }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const fmt = useWithLevel()
   const [section, setSection] = useState('details')
@@ -255,12 +258,12 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     <h2>{name}</h2>
                     <ul className="fact-list">
                       <li>
-                        <span>Admission no.</span> <strong>{s.external_id || '—'}</strong>{' '}
+                        <span>{words.student_id}</span> <strong>{s.external_id || '—'}</strong>{' '}
                         <span className={`badge ${s.is_active ? 'active' : 'inactive'}`} style={{ minWidth: 0 }}>
                           {s.is_active ? 'Active' : 'Inactive'}
                         </span>
                       </li>
-                      <li><span>Class</span> {profile.class_name ? `${profile.year_group_name} · ${profile.class_name}` : 'Not in a class'}</li>
+                      <li><span>{words.class}</span> {profile.class_name ? `${profile.year_group_name} · ${profile.class_name}` : 'Not in a class'}</li>
                       <li><span>House</span> {s.house || '—'}</li>
                       <li><span>Gender</span> {GENDERS[s.gender] || '—'}</li>
                       <li><span>Date of birth</span> {formatDate(s.date_of_birth)}{profile.age !== null && ` (age ${profile.age})`}</li>
@@ -327,7 +330,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                       {[
                         ['first_name', 'First name', 'text', true],
                         ['last_name', 'Last name', 'text', true],
-                        ['external_id', 'Admission no.', 'text'],
+                        ['external_id', words.student_id, 'text'],
                         ['house', 'House', 'text'],
                         ['nationality', 'Nationality', 'text'],
                         ['date_of_birth', 'Date of birth', 'date'],
@@ -340,7 +343,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                         </div>
                       ))}
                       <div className="field" style={{ marginBottom: 0 }}>
-                        <label htmlFor="sp-class">Class</label>
+                        <label htmlFor="sp-class">{words.class}</label>
                         <select id="sp-class" value={form.school_class} onChange={(e) => setForm({ ...form, school_class: e.target.value })} required={!isAdmin}>
                           <option value="">{isAdmin ? 'Not in a class' : 'Select…'}</option>
                           {classOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -402,7 +405,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     <span className="text-muted">Average {fmt(t.average, 1)}</span>
                   </div>
                   <table>
-                    <thead><tr><th>Subject</th><th>Score</th><th>Percent</th></tr></thead>
+                    <thead><tr><th>{words.subject}</th><th>Score</th><th>Percent</th></tr></thead>
                     <tbody>
                       {t.grades.map((g) => (
                         <tr key={g.subject}>
@@ -425,7 +428,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                 <p className="text-muted">No teachers assigned to this class yet.</p>
               ) : (
                 <table>
-                  <thead><tr><th>Subject</th><th>Teacher</th></tr></thead>
+                  <thead><tr><th>{words.subject}</th><th>Teacher</th></tr></thead>
                   <tbody>
                     {profile.teachers.map((t, i) => (
                       <tr key={i}><td>{t.subject}</td><td>{t.teacher}</td></tr>
@@ -433,7 +436,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                   </tbody>
                 </table>
               )}
-              <h3 style={{ margin: '18px 0 8px', fontSize: 15 }}>Subjects</h3>
+              <h3 style={{ margin: '18px 0 8px', fontSize: 15 }}>{words.subjects}</h3>
               {profile.subjects.length === 0 ? (
                 <p className="text-muted" style={{ margin: 0 }}>None yet.</p>
               ) : (
@@ -492,7 +495,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                       <strong>{p.name}</strong>
                       <span className={`badge ${p.is_active ? 'active' : 'inactive'}`}>{p.is_active ? 'Active' : 'Deactivated'}</span>
                       <span className="text-muted" style={{ fontSize: 13 }}>
-                        Last login {p.last_login ? new Date(p.last_login).toLocaleDateString() : 'never'}
+                        Last login {p.last_login ? formatDate(p.last_login) : 'never'}
                       </span>
                     </div>
                     <ContactDetails parent={p} />
@@ -541,7 +544,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                   <tbody>
                     {profile.activity.map((a, i) => (
                       <tr key={i}>
-                        <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>{new Date(a.created_at).toLocaleString()}</td>
+                        <td className="text-muted" style={{ whiteSpace: 'nowrap' }}>{formatDateTime(a.created_at)}</td>
                         <td>{a.actor_name}</td>
                         <td>{a.summary}</td>
                       </tr>

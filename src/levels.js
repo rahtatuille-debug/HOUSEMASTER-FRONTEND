@@ -29,3 +29,21 @@ export function useWithLevel() {
 export function useSchoolLevels() {
   return useContext(SchoolContext)?.levels || []
 }
+
+// The school's own words for things ("Stream", "Learning area", "Semester"…).
+const DEFAULT_VOCAB = {
+  year_group: 'Year group', year_groups: 'Year groups', class: 'Class', classes: 'Classes',
+  subject: 'Subject', subjects: 'Subjects', term: 'Term', terms: 'Terms', student_id: 'Admission no.',
+}
+
+export function vocabFor(school) {
+  return { ...DEFAULT_VOCAB, ...(school?.vocab || {}) }
+}
+
+export function useVocab() {
+  return vocabFor(useContext(SchoolContext))
+}
+
+export function useSchool() {
+  return useContext(SchoolContext)
+}

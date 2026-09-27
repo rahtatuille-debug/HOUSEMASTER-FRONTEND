@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { useVocab } from '../levels.js'
 import { api } from '../api.js'
 
 // Reports for a whole class at once: generate the missing AI drafts (one
 // student at a time, so progress shows and it can be stopped), submit every
 // draft, and (admins) finalize everything submitted.
 export default function ClassReports({ me, terms, onChanged }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [classes, setClasses] = useState([])
   const [classId, setClassId] = useState('')
@@ -108,14 +110,14 @@ export default function ClassReports({ me, terms, onChanged }) {
       {notice && <div className="success-banner">{notice}</div>}
       <div className="form-row">
         <div className="field" style={{ marginBottom: 0 }}>
-          <label htmlFor="cr-class">Class</label>
+          <label htmlFor="cr-class">{words.class}</label>
           <select id="cr-class" value={classId} onChange={(e) => setClassId(e.target.value)} disabled={busy}>
             <option value="">Select…</option>
             {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
-          <label htmlFor="cr-term">Term</label>
+          <label htmlFor="cr-term">{words.term}</label>
           <select id="cr-term" value={termId} onChange={(e) => setTermId(e.target.value)} disabled={busy}>
             <option value="">Select…</option>
             {terms.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}

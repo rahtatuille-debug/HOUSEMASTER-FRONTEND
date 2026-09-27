@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
 import { api } from '../api.js'
 
 const STAY = ''
@@ -6,6 +7,7 @@ const LEAVE = 'leave'
 
 // End of year (admins): choose where each class's students go, preview, confirm.
 export default function YearEndCard({ classes, onDone }) {
+  const words = useVocab()
   const [counts, setCounts] = useState({})
   const [targets, setTargets] = useState({})
   const [preview, setPreview] = useState(null)
@@ -73,7 +75,7 @@ export default function YearEndCard({ classes, onDone }) {
       ) : (
         <table>
           <thead>
-            <tr><th>Class</th><th>Students</th><th>Next year</th></tr>
+            <tr><th>{words.class}</th><th>Students</th><th>Next year</th></tr>
           </thead>
           <tbody>
             {withStudents.map((c) => (

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
+import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
 
 const AUDIENCES = [
@@ -12,6 +14,7 @@ const AUDIENCES = [
 // Send urgent alerts and see who has seen them. Admins can alert anyone;
 // teachers only the parents of a class they teach (the API enforces this).
 export default function Alerts({ me }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [alerts, setAlerts] = useState([])
   const [yearGroups, setYearGroups] = useState([])
@@ -142,7 +145,7 @@ export default function Alerts({ me }) {
             </div>
             {form.audience === 'year_group' && (
               <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="alert-year">Year group</label>
+                <label htmlFor="alert-year">{words.year_group}</label>
                 <select id="alert-year" value={form.year_group} onChange={(e) => setForm({ ...form, year_group: e.target.value })} required>
                   <option value="">Select…</option>
                   {yearGroups.map((y) => (
@@ -153,7 +156,7 @@ export default function Alerts({ me }) {
             )}
             {form.audience === 'school_class' && (
               <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="alert-class">Class</label>
+                <label htmlFor="alert-class">{words.class}</label>
                 <select id="alert-class" value={form.school_class} onChange={(e) => setForm({ ...form, school_class: e.target.value })} required>
                   <option value="">Select…</option>
                   {classes.map((c) => (
@@ -213,7 +216,7 @@ export default function Alerts({ me }) {
             </div>
             <p style={{ margin: '0 0 8px' }}>{a.body}</p>
             <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
-              {a.created_by_name} · {a.audience_label} · {new Date(a.created_at).toLocaleString()}
+              {a.created_by_name} · {a.audience_label} · {formatDateTime(a.created_at)}
               {a.recipient_count !== null && ` · seen by ${a.acknowledged_count} of ${a.recipient_count}`}
               {a.emailed_at && ` · emailed ${a.emailed_count}${a.email_failed_count ? ` (${a.email_failed_count} failed)` : ''}`}
             </p>

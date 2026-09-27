@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useSchool } from '../levels.js'
 
 export const RELATIONSHIPS = {
   mother: 'Mother',
@@ -47,6 +48,7 @@ export function ContactDetails({ parent, showEmail = true }) {
 
 // Form for the contact fields. `withNote` adds the admin-only private note.
 export function ContactForm({ parent, withNote = false, saving, onSave, onCancel, idPrefix = 'pc' }) {
+  const school = useSchool()
   const [form, setForm] = useState(() => {
     const initial = Object.fromEntries(FIELDS.map((f) => [f, parent[f] || '']))
     if (withNote) initial.admin_note = parent.admin_note || ''
@@ -60,7 +62,7 @@ export function ContactForm({ parent, withNote = false, saving, onSave, onCancel
       <div className="form-row">
         <div className="field">
           <label htmlFor={id('phone')}>Phone</label>
-          <input id={id('phone')} type="tel" value={form.phone} onChange={set('phone')} placeholder="+254 712 345 678" />
+          <input id={id('phone')} type="tel" value={form.phone} onChange={set('phone')} placeholder={school?.country?.phone_example || '+254 712 345 678'} />
         </div>
         <div className="field">
           <label htmlFor={id('phone_alt')}>Second phone</label>

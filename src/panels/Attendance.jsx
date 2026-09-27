@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { useVocab } from '../levels.js'
+import { formatDate } from '../format.js'
 import { api } from '../api.js'
 
 const STATUSES = [
@@ -18,6 +20,7 @@ function todayLocal() {
 // Present, tap to change anyone who isn't, then save once. Teachers only
 // see the classes they're assigned to (the API enforces this too).
 export default function Attendance({ me }) {
+  const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [classes, setClasses] = useState([])
   const [classId, setClassId] = useState('')
@@ -151,7 +154,7 @@ export default function Attendance({ me }) {
       <div className="card">
         <div className="form-row">
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="att-class">Class</label>
+            <label htmlFor="att-class">{words.class}</label>
             <select id="att-class" value={classId} onChange={(e) => setClassId(e.target.value)}>
               <option value="">Select…</option>
               {classes.map((c) => (
@@ -294,7 +297,7 @@ export default function Attendance({ me }) {
                 <tbody>
                   {history.records.map((r) => (
                     <tr key={r.id}>
-                      <td>{new Date(`${r.date}T00:00`).toLocaleDateString()}</td>
+                      <td>{formatDate(r.date)}</td>
                       <td>
                         <span className={`badge ${r.status}`}>{r.status}</span>
                       </td>

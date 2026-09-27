@@ -1,9 +1,10 @@
 import { Fragment, useEffect, useState } from 'react'
+import { formatDate as localDate } from '../format.js'
 import { api } from '../api.js'
 import { ContactDetails, ContactForm } from './ParentContact.jsx'
 
 function formatDate(value) {
-  return value ? new Date(value).toLocaleDateString() : 'Never'
+  return value ? localDate(value) : 'Never'
 }
 
 export default function GuardianInvites() {
@@ -386,7 +387,7 @@ export default function GuardianInvites() {
                     {inv.status}
                   </span>
                 </td>
-                <td className="text-muted">{new Date(inv.created_at).toLocaleDateString()}</td>
+                <td className="text-muted">{formatDate(inv.created_at)}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
                   {inv.status === 'pending' && (
                     <button className="secondary" onClick={() => copyLink(inv)}>

@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { useVocab } from '../levels.js'
 import { api } from '../api.js'
 
 const ROLE = { teacher: 'Teacher', admin: 'Admin' }
@@ -22,6 +23,7 @@ function downloadLinks(people) {
 
 // Admins: invite many staff at once from a spreadsheet, with their classes.
 export default function StaffImportCard({ onImported }) {
+  const words = useVocab()
   const fileInput = useRef(null)
   const [file, setFile] = useState(null)
   const [preview, setPreview] = useState(null)
@@ -101,7 +103,7 @@ export default function StaffImportCard({ onImported }) {
           {result.people.length > 0 && (
             <div className="table-scroll">
               <table>
-                <thead><tr><th>Row</th><th>Name</th><th>Email</th><th>Role</th><th>Classes</th></tr></thead>
+                <thead><tr><th>Row</th><th>Name</th><th>Email</th><th>Role</th><th>{words.classes}</th></tr></thead>
                 <tbody>
                   {result.people.map((p) => (
                     <tr key={p.email}>

@@ -63,7 +63,7 @@ export default function Profile({ me, identityKind, onUserUpdated }) {
       {isGuardian && me?.contact && <GuardianContactCard me={me} onUserUpdated={onUserUpdated} />}
       <details className="card profile-card">
         <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Privacy notice</summary>
-        <PrivacyNotice schoolName={me?.school?.name} contact={me?.school?.privacy_contact} audience={isGuardian ? 'parent' : 'staff'} />
+        <PrivacyNotice schoolName={me?.school?.name} contact={me?.school?.privacy_contact} country={me?.school?.country} audience={isGuardian ? 'parent' : 'staff'} />
       </details>
     </section>
   )

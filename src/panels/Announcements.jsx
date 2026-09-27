@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useVocab } from '../levels.js'
+import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
 import { announcementAuthor } from '../user.js'
 
@@ -26,7 +28,7 @@ function backendFieldErrors(error) {
 }
 
 function dateTime(value) {
-  return value ? new Date(value).toLocaleString() : null
+  return value ? formatDateTime(value) : null
 }
 
 function audienceText(item, yearGroups, classes) {
@@ -101,6 +103,7 @@ function ReplaceDialog({ onCancel, onConfirm }) {
 // Assisted Communications: the AI suggests wording from a short brief. It
 // never saves or publishes anything; the text lands in the normal form.
 function AiDraftTool({ yearGroups, classes, audiences, initialContext, onUseDraft, autoApply = false, onManual }) {
+  const words = useVocab()
   const [context, setContext] = useState(() => ({
     summary: '', audience: initialContext?.audience || Object.keys(audiences)[0],
     year_group: initialContext?.year_group || '', school_class: initialContext?.school_class || '',
@@ -156,8 +159,8 @@ function AiDraftTool({ yearGroups, classes, audiences, initialContext, onUseDraf
       {error && <div className="error-banner">{error}{onManual && <button type="button" className="secondary retry-button" onClick={onManual}>Write it yourself</button>}</div>}
       <div className="field"><label htmlFor="ai-summary">What would you like to communicate?</label><textarea id="ai-summary" rows="4" value={context.summary} onChange={(e) => setContext({ ...context, summary: e.target.value })} placeholder="Tell Year 8 parents that assessment week begins Monday and students should bring their normal stationery." aria-invalid={!!errors.summary} /><div className="field-meta">{context.summary.length}/2000</div>{errors.summary && <p className="field-error">{errors.summary}</p>}</div>
       <div className="field"><label htmlFor="ai-audience">Intended audience</label><select id="ai-audience" value={context.audience} onChange={(e) => setAudience(e.target.value)}>{Object.entries(audiences).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-      {context.audience === 'year_group' && <div className="field"><label htmlFor="ai-year-group">Year group</label><select id="ai-year-group" value={context.year_group} onChange={(e) => setContext({ ...context, year_group: e.target.value })} aria-invalid={!!errors.year_group}><option value="">Choose a year group</option>{yearGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select>{errors.year_group && <p className="field-error">{errors.year_group}</p>}</div>}
-      {context.audience === 'school_class' && <div className="field"><label htmlFor="ai-class">Class</label><select id="ai-class" value={context.school_class} onChange={(e) => setContext({ ...context, school_class: e.target.value })} aria-invalid={!!errors.school_class}><option value="">Choose a class</option>{classOptions.map((item) => { const group = yearGroups.find((entry) => entry.id === item.year_group); return <option key={item.id} value={item.id}>{group ? `${group.name} — ` : ''}{item.name}</option> })}</select>{errors.school_class && <p className="field-error">{errors.school_class}</p>}</div>}
+      {context.audience === 'year_group' && <div className="field"><label htmlFor="ai-year-group">{words.year_group}</label><select id="ai-year-group" value={context.year_group} onChange={(e) => setContext({ ...context, year_group: e.target.value })} aria-invalid={!!errors.year_group}><option value="">Choose a year group</option>{yearGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select>{errors.year_group && <p className="field-error">{errors.year_group}</p>}</div>}
+      {context.audience === 'school_class' && <div className="field"><label htmlFor="ai-class">{words.class}</label><select id="ai-class" value={context.school_class} onChange={(e) => setContext({ ...context, school_class: e.target.value })} aria-invalid={!!errors.school_class}><option value="">Choose a class</option>{classOptions.map((item) => { const group = yearGroups.find((entry) => entry.id === item.year_group); return <option key={item.id} value={item.id}>{group ? `${group.name} — ` : ''}{item.name}</option> })}</select>{errors.school_class && <p className="field-error">{errors.school_class}</p>}</div>}
       <div className="form-actions"><button type="button" onClick={generate} disabled={generating}>{generating ? 'Writing your announcement…' : generated ? 'Suggest again' : 'Suggest wording'}</button></div>
       {generating && <p className="ai-writing" role="status">Writing your announcement…</p>}
       {generated && (autoApply ? <p className="draft-notice">Suggested wording added below — review and edit it before saving.</p> : <div className="ai-output"><p className="draft-notice">Suggested wording — review and edit it before using it.</p><div className="field"><label htmlFor="alternative-ai-title">Title</label><input id="alternative-ai-title" value={generated.title} onChange={(e) => setGenerated({ ...generated, title: e.target.value })} /></div><div className="field"><label htmlFor="alternative-ai-body">Message</label><textarea id="alternative-ai-body" rows="6" value={generated.body} onChange={(e) => setGenerated({ ...generated, body: e.target.value })} /></div><div className="form-actions"><button type="button" onClick={() => onUseDraft(generated, context)}>Use this draft</button></div></div>)}
@@ -166,11 +169,14 @@ function AiDraftTool({ yearGroups, classes, audiences, initialContext, onUseDraf
 }
 
 export default function Announcements({ me }) {
+  const words = useVocab()
   const admin = me?.role === 'admin'
   // Teachers write to the parents of the classes they teach, and publish
   // those themselves; everything else is for admins.
   const myClassIds = new Set((me?.assignments || []).map((a) => a.school_class))
-  const audiences = admin ? AUDIENCES : { school_class: 'Parents of a class I teach' }
+  const audiences = admin
+    ? { ...AUDIENCES, year_group: `Specific ${words.year_group.toLowerCase()}`, school_class: `Specific ${words.class.toLowerCase()}` }
+    : { school_class: `Parents of a ${words.class.toLowerCase()} I teach` }
   const canManage = (item) => admin || item.created_by === me?.id
   const [items, setItems] = useState([])
   const [yearGroups, setYearGroups] = useState([])
@@ -358,8 +364,8 @@ export default function Announcements({ me }) {
         <div className="field"><label htmlFor="announcement-title">Title</label><input id="announcement-title" maxLength="180" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} aria-invalid={!!formErrors.title} required /><div className="field-meta">{form.title.length}/180</div>{formErrors.title && <p className="field-error">{formErrors.title}</p>}</div>
         <div className="field"><label htmlFor="announcement-body">Message</label><textarea id="announcement-body" rows="8" value={form.body} onChange={(e) => setForm({ ...form, body: e.target.value })} aria-invalid={!!formErrors.body} required />{formErrors.body && <p className="field-error">{formErrors.body}</p>}</div>
         <div className="field"><label htmlFor="announcement-audience">Audience</label><select id="announcement-audience" value={form.audience} onChange={(e) => setAudience(e.target.value)}>{Object.entries(audiences).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></div>
-        {form.audience === 'year_group' && <div className="field"><label htmlFor="announcement-year-group">Year group</label><select id="announcement-year-group" value={form.year_group} onChange={(e) => setForm({ ...form, year_group: e.target.value })} aria-invalid={!!formErrors.year_group}><option value="">Choose a year group</option>{yearGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select>{formErrors.year_group && <p className="field-error">{formErrors.year_group}</p>}</div>}
-        {form.audience === 'school_class' && <div className="field"><label htmlFor="announcement-class">Class</label><select id="announcement-class" value={form.school_class} onChange={(e) => setForm({ ...form, school_class: e.target.value })} aria-invalid={!!formErrors.school_class}><option value="">Choose a class</option>{targetClasses.map((entry) => { const group = yearGroups.find((item) => item.id === entry.year_group); return <option key={entry.id} value={entry.id}>{group ? `${group.name} — ` : ''}{entry.name}</option> })}</select>{formErrors.school_class && <p className="field-error">{formErrors.school_class}</p>}</div>}
+        {form.audience === 'year_group' && <div className="field"><label htmlFor="announcement-year-group">{words.year_group}</label><select id="announcement-year-group" value={form.year_group} onChange={(e) => setForm({ ...form, year_group: e.target.value })} aria-invalid={!!formErrors.year_group}><option value="">Choose a year group</option>{yearGroups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}</select>{formErrors.year_group && <p className="field-error">{formErrors.year_group}</p>}</div>}
+        {form.audience === 'school_class' && <div className="field"><label htmlFor="announcement-class">{words.class}</label><select id="announcement-class" value={form.school_class} onChange={(e) => setForm({ ...form, school_class: e.target.value })} aria-invalid={!!formErrors.school_class}><option value="">Choose a class</option>{targetClasses.map((entry) => { const group = yearGroups.find((item) => item.id === entry.year_group); return <option key={entry.id} value={entry.id}>{group ? `${group.name} — ` : ''}{entry.name}</option> })}</select>{formErrors.school_class && <p className="field-error">{formErrors.school_class}</p>}</div>}
         <div className="form-actions"><button type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save draft'}</button><button type="button" className="secondary" onClick={() => selected ? setView('detail') : backToList()} disabled={saving}>Cancel</button></div>
       </form>
       {pendingAiDraft && <ReplaceDialog onCancel={() => setPendingAiDraft(null)} onConfirm={applyPendingAiDraft} />}
