@@ -309,6 +309,14 @@ export const api = {
     return postForm('/api/import/', form)
   },
   downloadImportTemplate: () => downloadFile('/api/import/template/'),
+  importStaff: (file, commit, sendEmails = false) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('commit', commit ? 'true' : 'false')
+    form.append('send_emails', sendEmails ? 'true' : 'false')
+    return postForm('/api/import/staff/', form)
+  },
+  downloadStaffTemplate: () => downloadFile('/api/import/staff-template/'),
   download: downloadFile,
   updateMe: (body) => request('/api/me/', { method: 'PATCH', body }),
   previewInvite,

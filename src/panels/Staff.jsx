@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from 'react'
+import StaffImportCard from './StaffImportCard.jsx'
 import { api } from '../api.js'
 import { displayRole, personIdentity } from '../user.js'
 
@@ -336,6 +337,8 @@ export default function Staff({ me }) {
           share the link directly with them; HouseMaster doesn't send it for you yet.
         </p>
       </div>
+
+      <StaffImportCard onImported={load} />
 
       <h3 style={{ margin: '24px 0 12px', fontSize: 15 }}>Invites</h3>
       {loading ? (
