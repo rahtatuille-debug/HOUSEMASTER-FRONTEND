@@ -115,6 +115,16 @@ export default function Setup({ me, onUserUpdated }) {
       .filter(([f, v]) => v !== (school[f] || '') && !(f === 'name' && !v)))
   }
 
+  const orderedYearGroups = [...yearGroups].sort((a, b) => (a.order - b.order) || (a.id - b.id))
+
+  // Swap a year group with its neighbour, renumbering everything so the order is unambiguous.
+  async function moveYearGroup(i, delta) {
+    const list = [...orderedYearGroups]
+    ;[list[i], list[i + delta]] = [list[i + delta], list[i]]
+    await change(() => Promise.all(list.map((yg, order) => (yg.order === order ? null : api.yearGroups.update(yg.id, { order })))),
+      'Order updated.')
+  }
+
   async function saveSchool(e) {
     e.preventDefault()
     if (!school) return
@@ -374,16 +384,40 @@ export default function Setup({ me, onUserUpdated }) {
           <p className="hint">No year groups yet — add one above before creating classes.</p>
         )}
         {yearGroups.length > 0 && (
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {yearGroups.map((yg) => (
-              <li key={yg.id} style={{ marginBottom: 4 }}>
-                {yg.name}{' '}
-                <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: '0 6px' }} onClick={() => remove(api.yearGroups, yg, 'year group')}>
-                  {isAdmin ? 'Delete' : 'Request delete'}
-                </button>
-              </li>
-            ))}
-          </ul>
+          <>
+            <p className="hint" style={{ marginTop: 0 }}>
+              In the order students move through them. At the end of the year, students in the final{' '}
+              {words.year_group.toLowerCase()} graduate.
+            </p>
+            <table>
+              <thead><tr><th>{words.year_group}</th><th>Final year</th><th /></tr></thead>
+              <tbody>
+                {orderedYearGroups.map((yg, i) => (
+                  <tr key={yg.id}>
+                    <td>
+                      {isAdmin && (
+                        <span className="order-buttons">
+                          <button type="button" className="secondary" aria-label={`Move ${yg.name} up`} disabled={i === 0} onClick={() => moveYearGroup(i, -1)}>↑</button>
+                          <button type="button" className="secondary" aria-label={`Move ${yg.name} down`} disabled={i === orderedYearGroups.length - 1} onClick={() => moveYearGroup(i, 1)}>↓</button>
+                        </span>
+                      )}
+                      {yg.name}
+                    </td>
+                    <td>
+                      <input type="checkbox" style={{ width: 'auto' }} aria-label={`${yg.name} is the final year`} checked={!!yg.is_final} disabled={!isAdmin}
+                        onChange={(e) => change(() => api.yearGroups.update(yg.id, { is_final: e.target.checked }),
+                          e.target.checked ? `${yg.name} is now a final (graduating) year.` : `${yg.name} is no longer a final year.`)} />
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: '0 6px' }} onClick={() => remove(api.yearGroups, yg, 'year group')}>
+                        {isAdmin ? 'Delete' : 'Request delete'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
         )}
       </div>
 
@@ -462,7 +496,7 @@ export default function Setup({ me, onUserUpdated }) {
           </>
         )}
       </div>
-      {isAdmin && <YearEndCard classes={classes} onDone={loadAll} />}
+      {isAdmin && <YearEndCard classes={classes} yearGroups={orderedYearGroups} onDone={loadAll} />}
     </div>
   )
 }

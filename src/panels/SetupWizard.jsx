@@ -62,7 +62,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
     if (key === answers.education_system) return
     const next = catalogue.systems.find((s) => s.key === key)
     const stages = next.stages.map((s) => s.key)
-    update({ education_system: key, stages, terms: next.terms, assessments: next.assessments || [], ...defaultsFor(next, stages) })
+    update({ education_system: key, stages, terms: next.terms, assessments: next.assessments || [], vocab_overrides: {}, ...defaultsFor(next, stages) })
   }
 
   function toggleStage(key) {
@@ -104,6 +104,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
         ...answers.school, education_system: answers.education_system, year_groups: answers.year_groups,
         subjects: answers.subjects, terms: answers.terms, grading_scale: answers.grading_scale,
         report_tone: answers.report_tone,
+        vocab_overrides: answers.vocab_overrides || {},
         assessments: (answers.assessments || []).filter((a) => a.name.trim()).map((a) => ({ name: a.name.trim(), weight: Number(a.weight) || 0 })),
       })
       setDone(result.created)
@@ -304,6 +305,19 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
         {step === 5 && (
           <>
             <p className="hint" style={{ marginTop: 0 }}>This school year's terms, with the usual dates for {system?.name}. Change them to match your calendar.</p>
+            {system?.alternative_terms && (
+              <div className="form-actions" style={{ marginBottom: 12 }}>
+                {answers.vocab_overrides?.term ? (
+                  <button type="button" className="secondary" onClick={() => update({ terms: system.terms, vocab_overrides: {} })}>
+                    Use semesters instead
+                  </button>
+                ) : (
+                  <button type="button" className="secondary" onClick={() => update({ terms: system.alternative_terms.terms, vocab_overrides: system.alternative_terms.vocab })}>
+                    Use {system.alternative_terms.label.toLowerCase()} instead
+                  </button>
+                )}
+              </div>
+            )}
             <div className="table-scroll">
               <table>
                 <thead><tr><th>Name</th><th>Starts</th><th>Ends</th><th /></tr></thead>

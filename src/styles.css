@@ -1000,3 +1000,5 @@ button.danger-solid:hover { background: #7f2929; }
 .entry-grid textarea { min-width: 260px; }
 .entry-grid .criterion { width: 56px; }
 .entry-grid select { width: auto; }
+.order-buttons { display: inline-flex; gap: 4px; margin-right: 10px; vertical-align: middle; }
+.order-buttons button { padding: 2px 8px; min-width: 0; height: auto; line-height: 1.2; }

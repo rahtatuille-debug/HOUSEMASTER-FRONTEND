@@ -6,7 +6,7 @@ const STAY = ''
 const LEAVE = 'leave'
 
 // End of year (admins): choose where each class's students go, preview, confirm.
-export default function YearEndCard({ classes, onDone }) {
+export default function YearEndCard({ classes, yearGroups = [], onDone }) {
   const words = useVocab()
   const [counts, setCounts] = useState({})
   const [targets, setTargets] = useState({})
@@ -59,12 +59,36 @@ export default function YearEndCard({ classes, onDone }) {
   }
 
   const withStudents = classes.filter((c) => counts[c.id])
+  const yearGroupOf = (c) => yearGroups.find((y) => y.id === c.year_group)
+  const isFinal = (c) => !!yearGroupOf(c)?.is_final
+
+  // Fill in the usual moves: each class to the class with the same stream in
+  // the next year group (or the only class there), and final years graduate.
+  function suggest() {
+    const next = {}
+    for (const c of withStudents) {
+      const yg = yearGroupOf(c)
+      if (!yg) continue
+      if (yg.is_final) {
+        next[c.id] = LEAVE
+        continue
+      }
+      const following = yearGroups[yearGroups.indexOf(yg) + 1]
+      if (!following) continue
+      const options = classes.filter((o) => o.year_group === following.id)
+      const stream = c.name.trim().split(/\s+/).pop()
+      const match = options.find((o) => o.name.trim().split(/\s+/).pop() === stream) || (options.length === 1 ? options[0] : null)
+      if (match) next[c.id] = String(match.id)
+    }
+    setTargets(next)
+    setPreview(null)
+  }
 
   return (
     <div className="card">
       <h3 style={{ marginBottom: 6 }}>End of year: move students up</h3>
       <p className="hint" style={{ marginTop: 0 }}>
-        For each class, choose where its students go next year. “Leaving school” deactivates them and keeps all their
+        For each class, choose where its students go next year, or press Suggest moves. “Leaving school” and “Graduating” deactivate them and keep all their
         records. Everyone moves at once, so 7A → 8A and 8A → 9A in the same step is fine. Lock last year's terms first
         so nothing in them changes by accident.
       </p>
@@ -95,7 +119,7 @@ export default function YearEndCard({ classes, onDone }) {
                     {classes.filter((o) => o.id !== c.id).map((o) => (
                       <option key={o.id} value={o.id}>Move to {o.name}</option>
                     ))}
-                    <option value={LEAVE}>Leaving school</option>
+                    <option value={LEAVE}>{isFinal(c) ? 'Graduating' : 'Leaving school'}</option>
                   </select>
                 </td>
               </tr>
@@ -108,12 +132,15 @@ export default function YearEndCard({ classes, onDone }) {
           <strong style={{ color: 'var(--navy)' }}>This will</strong>
           {preview.map((m) => (
             <div key={m.from_class}>
-              {m.to_class ? `Move ${m.students} students from ${m.from_name} to ${m.to_name}` : `Mark ${m.students} students in ${m.from_name} as leaving school`}
+              {m.to_class ? `Move ${m.students} students from ${m.from_name} to ${m.to_name}` : m.to_name === 'Graduating' ? `Graduate ${m.students} students from ${m.from_name}` : `Mark ${m.students} students in ${m.from_name} as leaving school`}
             </div>
           ))}
         </div>
       )}
       <div className="form-actions" style={{ marginTop: 12 }}>
+        {!preview && yearGroups.length > 0 && withStudents.length > 0 && (
+          <button type="button" className="secondary" onClick={suggest} disabled={busy}>Suggest moves</button>
+        )}
         {!preview ? (
           <button type="button" onClick={() => run(false)} disabled={busy || moves.length === 0}>Preview</button>
         ) : (
