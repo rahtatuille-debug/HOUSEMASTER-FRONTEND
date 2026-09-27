@@ -428,6 +428,15 @@ export const api = {
     submit: (id) => request(`/api/reports/${id}/submit/`, { method: 'POST' }),
     finalize: (id) => request(`/api/reports/${id}/finalize/`, { method: 'POST' }),
     sendBack: (id, note) => request(`/api/reports/${id}/send-back/`, { method: 'POST', body: { note } }),
+    // Whole class: start a run, then generate one student at a time with its token.
+    generateClass: (school_class, term) =>
+      request('/api/reports/generate-class/', { method: 'POST', body: { school_class, term } }),
+    generateClassNext: (run, student) =>
+      request('/api/reports/generate-class/next/', { method: 'POST', body: { run, student } }),
+    submitClass: (school_class, term) =>
+      request('/api/reports/submit-class/', { method: 'POST', body: { school_class, term } }),
+    finalizeClass: (school_class, term) =>
+      request('/api/reports/finalize-class/', { method: 'POST', body: { school_class, term } }),
   },
   announcements: {
     list: (params) => request('/api/announcements/', { params }),

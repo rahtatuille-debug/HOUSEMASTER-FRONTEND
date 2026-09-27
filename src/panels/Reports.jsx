@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
+import ClassReports from './ClassReports.jsx'
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -139,8 +140,10 @@ export default function Reports({ me, onCountsChanged }) {
       {error && <div className="error-banner">{error}</div>}
       {notice && <div className="success-banner">{notice}</div>}
 
+      <ClassReports me={me} terms={terms} onChanged={() => { loadReports(); onCountsChanged?.() }} />
+
       <div className="card">
-        <h3 style={{ marginBottom: 14, fontSize: 15 }}>Generate a report</h3>
+        <h3 style={{ marginBottom: 14, fontSize: 15 }}>One student</h3>
         <form onSubmit={handleGenerate} className="form-row">
           <div className="field" style={{ marginBottom: 0 }}>
             <label htmlFor="r-student">Student</label>

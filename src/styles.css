@@ -736,3 +736,19 @@ button.danger-solid:hover { background: #7f2929; }
 .change-up { color: var(--stamp-green); font-weight: 600; }
 .change-down { color: var(--stamp-red); font-weight: 600; }
 @media (max-width: 520px) { .perf-grid { grid-template-columns: 1fr; } }
+
+/* Progress while generating a whole class's reports */
+.bulk-progress {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.bulk-progress-label {
+  font-size: 14px;
+}
+.bulk-progress progress {
+  width: 100%;
+  height: 10px;
+  accent-color: var(--gold);
+}
