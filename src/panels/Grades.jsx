@@ -22,16 +22,19 @@ export default function Grades({ me }) {
   const [filterStudent, setFilterStudent] = useState('')
   const [filterTerm, setFilterTerm] = useState('')
 
-  const [form, setForm] = useState({ student: '', subject: '', term: '', score: '', max_score: '100' })
+  const [form, setForm] = useState({ student: '', subject: '', term: '', score: '', max_score: '100', assessment_type: '' })
+  const [types, setTypes] = useState([])
   const [editingId, setEditingId] = useState(null)
 
   async function loadOptions() {
     try {
-      const [s, subj, t] = await Promise.all([
+      const [s, subj, t, at] = await Promise.all([
         api.students.list({ is_active: true }),
         api.subjects.list(),
         api.terms.list(),
+        api.assessmentTypes.list(),
       ])
+      setTypes(at)
       setStudents(s)
       setSubjects(subj)
       setTerms(t)
@@ -64,7 +67,7 @@ export default function Grades({ me }) {
 
   function resetForm() {
     setEditingId(null)
-    setForm({ student: '', subject: '', term: '', score: '', max_score: '100' })
+    setForm((f) => ({ student: '', subject: '', term: '', score: '', max_score: '100', assessment_type: f.assessment_type }))
   }
 
   function startEdit(g) {
@@ -75,6 +78,7 @@ export default function Grades({ me }) {
       term: String(g.term),
       score: String(g.score),
       max_score: String(g.max_score),
+      assessment_type: g.assessment_type ? String(g.assessment_type) : '',
     })
   }
 
@@ -87,6 +91,7 @@ export default function Grades({ me }) {
       term: Number(form.term),
       score: form.score,
       max_score: form.max_score || '100',
+      assessment_type: form.assessment_type ? Number(form.assessment_type) : null,
     }
     try {
       if (editingId) {
@@ -203,6 +208,15 @@ export default function Grades({ me }) {
                   ))}
                 </select>
               </div>
+              {types.length > 0 && (
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label htmlFor="g-type">Assessment</label>
+                  <select id="g-type" value={form.assessment_type} onChange={(e) => setForm({ ...form, assessment_type: e.target.value })}>
+                    <option value="">Not specified</option>
+                    {types.map((t) => <option key={t.id} value={t.id}>{t.name} ({Number(t.weight)}%)</option>)}
+                  </select>
+                </div>
+              )}
               {canRecordLevel && (
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label htmlFor="g-mode">Record as</label>
@@ -298,6 +312,7 @@ export default function Grades({ me }) {
               <th>Student</th>
               <th>{words.subject}</th>
               <th>{words.term}</th>
+              {types.length > 0 && <th>Assessment</th>}
               <th>Score</th>
               <th></th>
             </tr>
@@ -308,6 +323,7 @@ export default function Grades({ me }) {
                 <td>{studentName(g.student)}</td>
                 <td>{subjectName(g.subject)}</td>
                 <td>{termName(g.term)}</td>
+                {types.length > 0 && <td className="text-muted">{types.find((t) => t.id === g.assessment_type)?.name || '—'}</td>}
                 <td className="mono">{g.score} / {g.max_score}</td>
                 <td style={{ display: 'flex', gap: 8 }}>
                   {canGrade(g.student, g.subject) && (

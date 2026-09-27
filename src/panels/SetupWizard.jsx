@@ -62,7 +62,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
     if (key === answers.education_system) return
     const next = catalogue.systems.find((s) => s.key === key)
     const stages = next.stages.map((s) => s.key)
-    update({ education_system: key, stages, terms: next.terms, ...defaultsFor(next, stages) })
+    update({ education_system: key, stages, terms: next.terms, assessments: next.assessments || [], ...defaultsFor(next, stages) })
   }
 
   function toggleStage(key) {
@@ -104,6 +104,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
         ...answers.school, education_system: answers.education_system, year_groups: answers.year_groups,
         subjects: answers.subjects, terms: answers.terms, grading_scale: answers.grading_scale,
         report_tone: answers.report_tone,
+        assessments: (answers.assessments || []).filter((a) => a.name.trim()).map((a) => ({ name: a.name.trim(), weight: Number(a.weight) || 0 })),
       })
       setDone(result.created)
     } catch (err) {
@@ -342,6 +343,35 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
                 <span><strong>{s.label}</strong>{s.key_text && <span className="text-muted"> · {s.key_text}</span>}</span>
               </label>
             ))}
+            <h3 style={{ fontSize: 14, margin: '20px 0 8px' }}>How marks are weighted</h3>
+            <p className="hint" style={{ marginTop: 0 }}>
+              Teachers tag each mark with one of these, and a subject's term result combines them by weight.
+              Change them to match your school, or remove them all to simply average every mark.
+            </p>
+            {(answers.assessments || []).map((a, i) => (
+              <div className="setup-row" key={i}>
+                <input aria-label={`Assessment ${i + 1} name`} value={a.name} onChange={(e) => {
+                  const assessments = [...answers.assessments]
+                  assessments[i] = { ...a, name: e.target.value }
+                  update({ assessments })
+                }} />
+                <input aria-label={`Assessment ${i + 1} weight`} type="number" min="0" max="100" style={{ maxWidth: 90 }} value={a.weight}
+                  onChange={(e) => {
+                    const assessments = [...answers.assessments]
+                    assessments[i] = { ...a, weight: e.target.value }
+                    update({ assessments })
+                  }} />
+                <span className="text-muted" style={{ alignSelf: 'center' }}>%</span>
+                <button type="button" className="secondary" onClick={() => update({ assessments: answers.assessments.filter((_, j) => j !== i) })}>Remove</button>
+              </div>
+            ))}
+            <button type="button" className="secondary" onClick={() => update({ assessments: [...(answers.assessments || []), { name: '', weight: '' }] })}>
+              Add an assessment type
+            </button>
+            {(answers.assessments || []).length > 0 && (
+              <p className="hint">Total: {(answers.assessments || []).reduce((sum, a) => sum + (Number(a.weight) || 0), 0)}%</p>
+            )}
+
             <h3 style={{ fontSize: 14, margin: '20px 0 8px' }}>Tone of AI-drafted report comments</h3>
             <select aria-label="Report tone" value={answers.report_tone} onChange={(e) => update({ report_tone: e.target.value })} style={{ maxWidth: 320 }}>
               {Object.entries(TONES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
@@ -356,6 +386,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
             <div><dt>Year groups and classes</dt><dd>{answers.year_groups.map((g) => `${g.name} (${g.classes.join(', ')})`).join('; ')}</dd></div>
             <div><dt>Subjects</dt><dd>{answers.subjects.join(', ')}</dd></div>
             <div><dt>Terms</dt><dd>{answers.terms.map((t) => `${t.name}: ${t.start_date} to ${t.end_date}`).join('; ')}</dd></div>
+            <div><dt>Assessments</dt><dd>{(answers.assessments || []).length ? answers.assessments.map((a) => `${a.name} ${a.weight}%`).join(', ') : 'None: every mark counts equally'}</dd></div>
             <div><dt>Grading</dt><dd>{catalogue.scales.find((s) => s.key === answers.grading_scale)?.label}</dd></div>
             <div><dt>Report tone</dt><dd>{TONES[answers.report_tone]}</dd></div>
           </dl>

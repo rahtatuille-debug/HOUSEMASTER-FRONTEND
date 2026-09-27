@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
+import AssessmentTypesCard from './AssessmentTypesCard.jsx'
 import ImportCard from './ImportCard.jsx'
 import YearEndCard from './YearEndCard.jsx'
 import { COUNTRIES } from '../countries.js'
@@ -277,6 +278,8 @@ export default function Setup({ me, onUserUpdated }) {
           </ul>
         )}
       </div>
+
+      <AssessmentTypesCard me={me} />
 
       <div className="card">
         <h3 style={{ marginBottom: 14 }}>{words.terms}</h3>

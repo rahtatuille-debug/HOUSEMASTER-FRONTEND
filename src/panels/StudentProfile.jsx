@@ -432,11 +432,12 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     <span className="text-muted">Average {fmt(t.average, 1)}</span>
                   </div>
                   <table>
-                    <thead><tr><th>{words.subject}</th><th>Score</th><th>Percent</th></tr></thead>
+                    <thead><tr><th>{words.subject}</th>{t.grades.some((g) => g.assessment) && <th>Assessment</th>}<th>Score</th><th>Percent</th></tr></thead>
                     <tbody>
-                      {t.grades.map((g) => (
-                        <tr key={g.subject}>
+                      {t.grades.map((g, i) => (
+                        <tr key={i}>
                           <td>{g.subject}</td>
+                          {t.grades.some((x) => x.assessment) && <td className="text-muted">{g.assessment || '—'}</td>}
                           <td>{Number(g.score)} / {Number(g.max_score)}</td>
                           <td>{fmt(g.percent)}</td>
                         </tr>

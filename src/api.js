@@ -445,6 +445,12 @@ export const api = {
     update: (id, body) => request(`/api/subjects/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/subjects/${id}/`, { method: 'DELETE' }),
   },
+  assessmentTypes: {
+    list: () => request('/api/assessment-types/'),
+    create: (body) => request('/api/assessment-types/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/assessment-types/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/assessment-types/${id}/`, { method: 'DELETE' }),
+  },
   terms: {
     list: () => request('/api/terms/'),
     create: (body) => request('/api/terms/', { method: 'POST', body }),
