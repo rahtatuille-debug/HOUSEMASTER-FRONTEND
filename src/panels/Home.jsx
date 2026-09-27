@@ -91,7 +91,10 @@ export default function Home({ me, onNavigate }) {
         <StatTile
           label="Students with no parent account"
           value={noParent.count}
-          sub={`of ${noParent.total_students} active students`}
+          sub={data.parent_signups_waiting
+            ? `${data.parent_signups_waiting} parent sign-up${data.parent_signups_waiting === 1 ? '' : 's'} to approve`
+            : `of ${noParent.total_students} active students`}
+          alert={data.parent_signups_waiting > 0}
           onClick={() => onNavigate('parents')}
         />
       </div>

@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { formatDate as localDate } from '../format.js'
 import { api } from '../api.js'
 import { ContactDetails, ContactForm } from './ParentContact.jsx'
+import { ClassSignupLinks, SignupRequests } from './ClassSignupCard.jsx'
 
 function formatDate(value) {
   return value ? localDate(value) : 'Never'
@@ -23,6 +24,8 @@ export default function GuardianInvites() {
   const [selectedStudentIds, setSelectedStudentIds] = useState([])
   const [creating, setCreating] = useState(false)
   const [copiedId, setCopiedId] = useState(null)
+  const [linksKey, setLinksKey] = useState(0)
+  const [studentFilter, setStudentFilter] = useState('')
 
   async function load() {
     setLoading(true)
@@ -166,6 +169,9 @@ export default function GuardianInvites() {
 
       {error && <div className="error-banner">{error}</div>}
       {notice && <div className="success-banner">{notice}</div>}
+
+      <SignupRequests onChanged={() => { load(); setLinksKey((k) => k + 1) }} />
+      <ClassSignupLinks refreshKey={linksKey} />
 
       <div className="card">
         <h3 style={{ marginBottom: 14, fontSize: 15 }}>Parents with an account</h3>
@@ -311,14 +317,21 @@ export default function GuardianInvites() {
           </div>
 
           <div className="field">
-            <label>Student(s)</label>
+            <label htmlFor="guardian-invite-filter">Student(s)</label>
+            <input id="guardian-invite-filter" type="search" placeholder="Search by name or admission no." value={studentFilter}
+              onChange={(e) => setStudentFilter(e.target.value)} style={{ maxWidth: 320, marginTop: 6 }} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 6 }}>
               {activeStudents.length === 0 && (
                 <p className="text-muted" style={{ margin: 0 }}>
                   No active students yet — add one under Students first.
                 </p>
               )}
-              {activeStudents.map((s) => (
+              {activeStudents.length > 40 && !studentFilter.trim() && (
+                <p className="hint" style={{ margin: 0 }}>Search to find the student.</p>
+              )}
+              {activeStudents.filter((s) => selectedStudentIds.includes(s.id) || (studentFilter.trim()
+                ? `${s.first_name} ${s.last_name} ${s.external_id || ''}`.toLowerCase().includes(studentFilter.trim().toLowerCase())
+                : activeStudents.length <= 40)).slice(0, 60).map((s) => (
                 <label
                   key={s.id}
                   style={{
@@ -347,8 +360,8 @@ export default function GuardianInvites() {
           </button>
         </form>
         <p className="hint">
-          The link is single-use and expires in 7 days. Share it directly with the parent/guardian
-          — HouseMaster doesn't send it for you yet.
+          HouseMaster emails the parent their link straight away. It works once and expires in 7 days;
+          you can also copy it below to send another way.
         </p>
       </div>
 

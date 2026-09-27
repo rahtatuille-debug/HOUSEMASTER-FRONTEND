@@ -7,6 +7,7 @@ import { api } from './api.js'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
 import AcceptGuardianInvite from './panels/AcceptGuardianInvite.jsx'
+import JoinClass from './panels/JoinClass.jsx'
 import ForgotPassword from './panels/ForgotPassword.jsx'
 import ResetPassword from './panels/ResetPassword.jsx'
 import Students from './panels/Students.jsx'
@@ -69,6 +70,11 @@ function getGuardianInviteToken() {
   return match ? match[1] : null
 }
 
+function getJoinToken() {
+  const match = window.location.pathname.match(/^\/join\/([^/]+)\/?$/)
+  return match ? match[1] : null
+}
+
 function getResetToken() {
   const match = window.location.pathname.match(/^\/reset-password\/([^/]+)\/?$/)
   return match ? match[1] : null
@@ -120,6 +126,7 @@ export default function App() {
   const [inviteToken, setInviteToken] = useState(getInviteToken())
   const [guardianInviteToken, setGuardianInviteToken] = useState(getGuardianInviteToken())
   const [resetToken, setResetToken] = useState(getResetToken())
+  const [joinToken, setJoinToken] = useState(getJoinToken())
   const [loggedIn, setLoggedIn] = useState(api.isLoggedIn())
   const [me, setMe] = useState(null)
   // 'staff' | 'guardian' | null (unknown until /api/me/ or /api/guardian-me/ resolves)
@@ -265,6 +272,10 @@ export default function App() {
 
   if (guardianInviteToken) {
     return <AcceptGuardianInvite token={guardianInviteToken} onAccepted={handleGuardianInviteAccepted} />
+  }
+
+  if (joinToken) {
+    return <JoinClass token={joinToken} onSignIn={() => { window.history.replaceState({}, '', '/'); setJoinToken(null) }} />
   }
 
   if (resetToken) {

@@ -1025,3 +1025,12 @@ button.danger-solid:hover { background: #7f2929; }
 .checklist-text .text-muted { font-size: 13px; }
 .checklist li button { width: auto; flex: none; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Class sign-up links on the Parents page */
+.error-text { color: var(--stamp-red); }
+a.button { display: inline-block; font-size: 14px; font-weight: 600; padding: 8px 16px; border-radius: var(--radius); text-decoration: none; }
+a.button.secondary { color: var(--navy); border: 1px solid var(--rule); background: transparent; }
+a.button.secondary:hover { background: var(--paper-2); }
+.signup-link { font-family: var(--font-mono); font-size: 12px; word-break: break-all; }
+.signup-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.signup-actions button { width: auto; }

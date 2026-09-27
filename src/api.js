@@ -43,6 +43,25 @@ async function previewGuardianInvite(token) {
   return res.json()
 }
 
+// A class sign-up link (public): what it's for, and asking to join.
+async function joinInfo(token) {
+  const res = await fetch(`${API_BASE}/api/join/${token}/`)
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(data?.detail || 'This sign-up link isn\'t working.')
+  return data
+}
+
+async function joinClass(token, body) {
+  const res = await fetch(`${API_BASE}/api/join/${token}/`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Sign-up failed (${res.status})`)
+  }
+  return data
+}
+
 async function acceptGuardianInvite(token, password, acceptPrivacy = false) {
   const res = await fetch(`${API_BASE}/api/guardian-invites/accept/`, {
     method: 'POST',
@@ -373,6 +392,16 @@ export const api = {
   acceptInvite,
   previewGuardianInvite,
   acceptGuardianInvite,
+  joinInfo,
+  joinClass,
+  signupLinks: {
+    list: () => request('/api/signup-links/'),
+    change: (schoolClass, action) => request('/api/signup-links/', { method: 'POST', body: { school_class: schoolClass, action } }),
+  },
+  signupRequests: {
+    list: (status = 'pending') => request(`/api/signup-requests/?status=${status}`),
+    decide: (ids, decision) => request('/api/signup-requests/', { method: 'POST', body: { ids, decision } }),
+  },
   guardianMe: () => request('/api/guardian-me/'),
   updateGuardianMe: (body) => request('/api/guardian-me/', { method: 'PATCH', body }),
   requestPasswordReset,
