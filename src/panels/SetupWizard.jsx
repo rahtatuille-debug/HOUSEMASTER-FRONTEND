@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import ReportPreview from './ReportPreview.jsx'
+import { PEOPLE_STEPS } from './PeopleSetup.jsx'
 
 const STEPS = ['School details', 'Education system', 'Levels', 'Classes', 'Subjects', 'Terms', 'Grading and reports', 'Review']
 const TONES = { formal: 'Formal', warm: 'Warm and encouraging', concise: 'Concise and direct' }
@@ -32,7 +33,6 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
   const [newYearGroup, setNewYearGroup] = useState('')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
-  const [done, setDone] = useState(null)
   const topRef = useRef(null)
 
   useEffect(() => {
@@ -101,44 +101,19 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
     setSaving(true)
     setError('')
     try {
-      const result = await api.setup.finish({
+      await api.setup.finish({
         ...answers.school, education_system: answers.education_system, year_groups: answers.year_groups,
         subjects: answers.subjects, terms: answers.terms, grading_scale: answers.grading_scale,
         report_tone: answers.report_tone,
         vocab_overrides: answers.vocab_overrides || {},
         assessments: (answers.assessments || []).filter((a) => a.name.trim()).map((a) => ({ name: a.name.trim(), weight: Number(a.weight) || 0 })),
       })
-      setDone(result.created)
+      onFinished() // on to staff, students and parents (PeopleSetup)
     } catch (err) {
       setError(err.message)
     } finally {
       setSaving(false)
     }
-  }
-
-  if (done) {
-    return (
-      <div className="setup-wrap">
-        <div className="card setup-card">
-          <p className="eyebrow">Setup complete</p>
-          <h2>{answers.school.name} is ready</h2>
-          <p>
-            Added {done.year_groups} year groups, {done.classes} classes, {done.subjects} subjects and {done.terms} terms.
-            You can change any of it later in Setup.
-          </p>
-          <h3 style={{ fontSize: 15, margin: '18px 0 6px' }}>Next steps</h3>
-          <ol className="setup-next">
-            <li><strong>Invite your staff</strong> on the Staff page, one at a time or from an Excel sheet with their classes.</li>
-            <li><strong>Add your students</strong> in Setup, by hand or with the Excel import.</li>
-            <li><strong>Invite parents</strong> on the Parents page once students are in.</li>
-          </ol>
-          <p className="hint">Your home page has a first-week checklist for your school that ticks itself off as you go.</p>
-          <div className="form-actions" style={{ marginTop: 16 }}>
-            <button type="button" onClick={onFinished}>Go to HouseMaster</button>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   const scales = catalogue.scales.filter((s) => !system || system.scales.includes(s.key))
@@ -168,6 +143,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
             <span>{i + 1}</span> {label}
           </li>
         ))}
+        {PEOPLE_STEPS.map((label, i) => <li key={label}><span>{STEPS.length + i + 1}</span> {label}</li>)}
       </ol>
 
       <div className="card setup-card">
@@ -427,7 +403,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
           {step > 0 && <button type="button" className="secondary" onClick={() => go(-1)} disabled={saving}>Back</button>}
           {step < STEPS.length - 1
             ? <button type="button" onClick={() => go(1)}>Continue</button>
-            : <button type="button" onClick={finish} disabled={saving}>{saving ? 'Setting up…' : 'Finish setup'}</button>}
+            : <button type="button" onClick={finish} disabled={saving}>{saving ? 'Setting up…' : 'Create and continue'}</button>}
         </div>
       </div>
       <p className="text-muted setup-foot">Signed in as {me?.name} · Your answers are saved as you go.</p>

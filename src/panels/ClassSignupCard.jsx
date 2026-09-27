@@ -110,7 +110,7 @@ export function SignupRequests({ onChanged }) {
 }
 
 // One sign-up link per class, to share with that class's parents.
-export function ClassSignupLinks({ refreshKey }) {
+export function ClassSignupLinks({ refreshKey, onChanged }) {
   const words = useVocab()
   const [rows, setRows] = useState(null)
   const [busy, setBusy] = useState(null)
@@ -128,6 +128,7 @@ export function ClassSignupLinks({ refreshKey }) {
     setError('')
     try {
       setRows(await api.signupLinks.change(row.school_class, action))
+      onChanged?.()
     } catch (err) {
       setError(err.message)
     } finally {

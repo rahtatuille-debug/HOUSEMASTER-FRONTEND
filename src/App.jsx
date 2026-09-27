@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { formatDateTime, setDateLocale } from './format.js'
 import RegisterSchool from './panels/RegisterSchool.jsx'
 import SetupWizard from './panels/SetupWizard.jsx'
+import PeopleSetup from './panels/PeopleSetup.jsx'
 import { SchoolContext } from './levels.js'
 import { api } from './api.js'
 import Login from './panels/Login.jsx'
@@ -327,6 +328,15 @@ export default function App() {
 
   // A new school has to finish setup before anyone can use it.
   if (identityKind === 'staff' && me?.school && me.school.setup_completed === false) {
+    if (me.role === 'admin' && me.school.setup_stage === 'people') {
+      // Staff, students and parents, once the structure is in place. Words follow the chosen system.
+      return (
+        <SchoolContext.Provider value={me.school}>
+          <PeopleSetup me={me} onLogout={handleLogout}
+            onFinished={() => api.me().then(setMe).catch(() => setLoggedIn(false))} />
+        </SchoolContext.Provider>
+      )
+    }
     if (me.role === 'admin') {
       return (
         <SetupWizard

@@ -387,6 +387,8 @@ export const api = {
     finish: (body) => request('/api/setup/finish/', { method: 'POST', body }),
     addSection: (body) => request('/api/setup/add-section/', { method: 'POST', body }),
     previewReport: previewReportCard,
+    people: () => request('/api/setup/people/'),
+    complete: () => request('/api/setup/complete/', { method: 'POST' }),
   },
   previewInvite,
   acceptInvite,
@@ -397,6 +399,7 @@ export const api = {
   signupLinks: {
     list: () => request('/api/signup-links/'),
     change: (schoolClass, action) => request('/api/signup-links/', { method: 'POST', body: { school_class: schoolClass, action } }),
+    turnOnAll: () => request('/api/signup-links/', { method: 'POST', body: { action: 'create_all' } }),
   },
   signupRequests: {
     list: (status = 'pending') => request(`/api/signup-requests/?status=${status}`),
