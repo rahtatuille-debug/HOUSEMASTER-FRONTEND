@@ -132,7 +132,10 @@ export default function Grades({ me }) {
     )
   }
 
-  const formSubjects = form.student ? subjects.filter((s) => canGrade(form.student, s.id)) : subjects
+  // Only subjects the chosen student takes: every core subject plus their electives.
+  const takes = (studentId, subject) => !subject.is_elective ||
+    (students.find((st) => st.id === Number(studentId))?.subject_choices || []).some((c) => c.subject === subject.id)
+  const formSubjects = form.student ? subjects.filter((s) => canGrade(form.student, s.id) && takes(form.student, s)) : subjects
 
   const noPrereqs = subjects.length === 0 || terms.length === 0
 

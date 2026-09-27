@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import SubjectChoicesCard from './SubjectChoicesCard.jsx'
 import { useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import StudentProfile from './StudentProfile.jsx'
@@ -280,6 +281,7 @@ export default function Students({ me }) {
           </tbody>
         </table>
       )}
+      <SubjectChoicesCard me={me} />
     </div>
   )
 }

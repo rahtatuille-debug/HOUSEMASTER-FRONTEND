@@ -445,6 +445,11 @@ export const api = {
     update: (id, body) => request(`/api/subjects/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/subjects/${id}/`, { method: 'DELETE' }),
   },
+  subjectChoices: {
+    get: (school_class) => request('/api/subject-choices/', { params: { school_class } }),
+    save: (school_class, students) =>
+      request('/api/subject-choices/', { method: 'POST', body: { school_class: Number(school_class), students } }),
+  },
   assessmentTypes: {
     list: () => request('/api/assessment-types/'),
     create: (body) => request('/api/assessment-types/', { method: 'POST', body }),

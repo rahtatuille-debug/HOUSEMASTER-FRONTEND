@@ -61,7 +61,7 @@ export default function TermSummary({ summary }) {
           <tbody>
             {summary.subjects.map((r) => (
               <tr key={r.subject}>
-                <td>{r.subject}</td>
+                <td>{r.subject}{r.subject_level && <span className="text-muted"> {r.subject_level}</span>}</td>
                 {columns.map(([label, value]) => <td key={label}>{value(r)}</td>)}
                 <td className="text-muted">{r.comment || '—'}</td>
               </tr>

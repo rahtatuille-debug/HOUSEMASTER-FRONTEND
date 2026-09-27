@@ -269,7 +269,12 @@ export default function Setup({ me, onUserUpdated }) {
           <ul style={{ margin: 0, paddingLeft: 18 }}>
             {subjects.map((s) => (
               <li key={s.id} style={{ marginBottom: 4 }}>
-                {s.name}{' '}
+                {s.name}{s.is_elective && <span className="badge pending" style={{ marginLeft: 6 }}>Elective</span>}{' '}
+                <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: '0 6px' }}
+                  onClick={() => change(() => api.subjects.update(s.id, { is_elective: !s.is_elective }),
+                    `${s.name} is now ${s.is_elective ? 'a core' : 'an elective'} ${words.subject.toLowerCase()}.`)}>
+                  {s.is_elective ? 'Make core' : 'Make elective'}
+                </button>
                 <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: '0 6px' }} onClick={() => remove(api.subjects, s, 'subject')}>
                   {isAdmin ? 'Delete' : 'Request delete'}
                 </button>
