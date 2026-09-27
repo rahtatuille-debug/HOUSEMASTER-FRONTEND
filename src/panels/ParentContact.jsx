@@ -31,6 +31,7 @@ export function ContactDetails({ parent, showEmail = true }) {
     'occupation' in parent && ['Occupation', parent.occupation],
     'address' in parent && ['Home address', parent.address],
     'admin_note' in parent && ['Admin note', parent.admin_note],
+    'email_notifications' in parent && ['Email updates', parent.email_notifications ? 'On' : 'Turned off by the parent'],
   ].filter(Boolean)
   return (
     <dl className="contact-list">

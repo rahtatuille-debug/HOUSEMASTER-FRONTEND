@@ -94,6 +94,17 @@ function GuardianContactCard({ me, onUserUpdated }) {
       {error && <div className="error-banner">{error}</div>}
       {success && <div className="success-banner" role="status">{success}</div>}
       <ContactForm parent={me.contact} saving={saving} onSave={save} idPrefix="my-contact" />
+      <div className="field" style={{ marginTop: 18, marginBottom: 0 }}>
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={!!me.contact.email_notifications}
+            disabled={saving}
+            onChange={(e) => save({ email_notifications: e.target.checked })}
+          />
+          Email me when the school publishes an announcement or a report for my children
+        </label>
+      </div>
     </div>
   )
 }

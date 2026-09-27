@@ -791,3 +791,13 @@ button.danger-solid:hover { background: #7f2929; }
   justify-content: space-between;
   gap: 10px;
 }
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: normal;
+}
+.checkbox-label input { width: auto; }
