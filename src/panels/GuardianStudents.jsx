@@ -44,6 +44,15 @@ export default function GuardianStudents() {
 
   useEffect(() => { loadStudents() }, [])
 
+  async function downloadCard(report) {
+    setError('')
+    try {
+      await api.guardianStudents.reportCard(selected.id, report.term)
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
   async function openStudent(id) {
     setDetailLoading(true)
     setError('')
@@ -140,7 +149,7 @@ export default function GuardianStudents() {
             </div>
           )}
           {tab === 'grades' && (grades.length ? <div className="table-wrap"><table><thead><tr><th>Subject</th><th>Term</th><th>Score</th><th>Result</th><th>Recorded</th></tr></thead><tbody>{grades.map((grade) => <tr key={grade.id}><td>{grade.subject_name}</td><td>{grade.term_name}</td><td>{grade.score} / {grade.max_score}</td><td>{percentage(grade)}</td><td>{formatDate(grade.recorded_at)}</td></tr>)}</tbody></table></div> : <div className="empty-state"><h3>No grades have been recorded yet.</h3></div>)}
-          {tab === 'reports' && (reports.length ? <div className="guardian-reports">{reports.map((report) => <article className="report-doc" key={report.id}><p className="eyebrow">{report.term_name}</p><h3>Progress review</h3><h4>Progress summary</h4><p>{report.progress_summary}</p><h4>School comment</h4><p>{report.report_comment}</p><p className="text-muted">Finalized {formatDate(report.edited_at || report.generated_at)}</p></article>)}</div> : <div className="empty-state"><h3>No finalized reports are available yet.</h3></div>)}
+          {tab === 'reports' && (reports.length ? <div className="guardian-reports">{reports.map((report) => <article className="report-doc" key={report.id}><p className="eyebrow">{report.term_name}</p><h3>Report</h3><h4>School comment</h4><p>{report.report_comment}</p><div className="report-card-footer"><p className="text-muted">Finalized {formatDate(report.finalized_at || report.edited_at || report.generated_at)}</p><button type="button" className="secondary" onClick={() => downloadCard(report)}>Download report card</button></div></article>)}</div> : <div className="empty-state"><h3>No finalized reports are available yet.</h3></div>)}
         </article>
       </section>
     )

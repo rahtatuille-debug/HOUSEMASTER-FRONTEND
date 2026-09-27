@@ -784,3 +784,10 @@ button.danger-solid:hover { background: #7f2929; }
   gap: 10px;
   margin-bottom: 10px;
 }
+.report-card-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}

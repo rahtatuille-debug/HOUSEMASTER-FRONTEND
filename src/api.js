@@ -340,6 +340,7 @@ export const api = {
     get: (id) => request(`/api/guardian-students/${id}/`),
     grades: (id, params) => request(`/api/guardian-students/${id}/grades/`, { params }),
     reports: (id) => request(`/api/guardian-students/${id}/reports/`),
+    reportCard: (id, term) => downloadFile(`/api/guardian-students/${id}/report-card/`, { term }),
     profile: (id) => request(`/api/guardian-students/${id}/profile/`),
     photoUrl: async (id) => {
       const res = await authedFetch(`/api/guardian-students/${id}/photo/`)
