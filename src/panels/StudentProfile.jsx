@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useWithLevel } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import { ContactDetails, RELATIONSHIPS } from './ParentContact.jsx'
 import PerformanceChart from './PerformanceChart.jsx'
@@ -68,6 +69,7 @@ function SubjectBreakdown({ studentId, name }) {
 // Everything about one student, opened from the Students list.
 export default function StudentProfile({ studentId, me, onBack }) {
   const isAdmin = me?.role === 'admin'
+  const fmt = useWithLevel()
   const [section, setSection] = useState('details')
   const [profile, setProfile] = useState(null)
   const [classes, setClasses] = useState([])
@@ -293,7 +295,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
               <div className="stat-row">
                 <div className="stat-tile">
                   <div className="stat-label">Latest term average</div>
-                  <div className="stat-value">{latest?.student != null ? `${latest.student}%` : '—'}</div>
+                  <div className="stat-value">{fmt(latest?.student, 1)}</div>
                   {latest && <div className="text-muted" style={{ fontSize: 12 }}>{latest.term}{latest.class != null && ` · class ${latest.class}%`}</div>}
                 </div>
                 <div className="stat-tile">
@@ -395,7 +397,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                 <div className="card" key={t.term_id}>
                   <div className="panel-header" style={{ marginBottom: 10 }}>
                     <h3 style={{ fontSize: 15 }}>{t.term}</h3>
-                    <span className="text-muted">Average {t.average != null ? `${t.average}%` : '—'}</span>
+                    <span className="text-muted">Average {fmt(t.average, 1)}</span>
                   </div>
                   <table>
                     <thead><tr><th>Subject</th><th>Score</th><th>Percent</th></tr></thead>
@@ -404,7 +406,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                         <tr key={g.subject}>
                           <td>{g.subject}</td>
                           <td>{Number(g.score)} / {Number(g.max_score)}</td>
-                          <td>{g.percent != null ? `${g.percent}%` : '—'}</td>
+                          <td>{fmt(g.percent)}</td>
                         </tr>
                       ))}
                     </tbody>

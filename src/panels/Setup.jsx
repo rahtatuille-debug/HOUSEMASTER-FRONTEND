@@ -3,6 +3,11 @@ import { api, needsApproval } from '../api.js'
 import ImportCard from './ImportCard.jsx'
 import YearEndCard from './YearEndCard.jsx'
 
+const SCALES = [
+  { key: 'cbc4', label: 'CBC: 4 levels (EE, ME, AE, BE)' },
+  { key: 'cbc8', label: 'CBC junior school: 8 levels (EE1 to BE2)' },
+  { key: 'percent', label: 'Percentages only' },
+]
 const TONES = [
   { key: 'formal', label: 'Formal' },
   { key: 'warm', label: 'Warm / encouraging' },
@@ -11,11 +16,12 @@ const TONES = [
 
 // Admins' changes apply straight away. A teacher's change is sent to an
 // admin for approval instead (the API answers 202), and this screen says so.
-export default function Setup({ me }) {
+export default function Setup({ me, onUserUpdated }) {
   const isAdmin = me?.role === 'admin'
   const [school, setSchool] = useState(null)
   const [schoolName, setSchoolName] = useState('')
   const [tone, setTone] = useState('formal')
+  const [scale, setScale] = useState('cbc4')
   const [notice, setNotice] = useState('')
   const [subjects, setSubjects] = useState([])
   const [terms, setTerms] = useState([])
@@ -48,6 +54,7 @@ export default function Setup({ me }) {
         setSchool(schools[0])
         setSchoolName(schools[0].name)
         setTone(schools[0].report_tone)
+        setScale(schools[0].grading_scale)
       }
       setSubjects(s)
       setTerms(t)
@@ -98,8 +105,11 @@ export default function Setup({ me }) {
     const body = {}
     if (schoolName.trim() && schoolName.trim() !== school.name) body.name = schoolName.trim()
     if (tone !== school.report_tone) body.report_tone = tone
+    if (scale !== school.grading_scale) body.grading_scale = scale
     if (Object.keys(body).length === 0) return
-    change(() => api.schools.update(school.id, body), 'School settings saved.')
+    const ok = await change(() => api.schools.update(school.id, body), 'School settings saved.')
+    // Levels are shown everywhere from the signed-in user's school, so refresh it.
+    if (ok && isAdmin && body.grading_scale) api.me().then((fresh) => onUserUpdated?.(fresh)).catch(() => {})
   }
 
   async function addSubject(e) {
@@ -183,11 +193,25 @@ export default function Setup({ me }) {
               ))}
             </select>
           </div>
-          <button type="submit" disabled={!school || (schoolName.trim() === school.name && tone === school.report_tone)}>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor="school-scale">Performance levels</label>
+            <select id="school-scale" value={scale} onChange={(e) => setScale(e.target.value)}>
+              {SCALES.map((t) => (
+                <option key={t.key} value={t.key}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button type="submit" disabled={!school || (schoolName.trim() === school.name && tone === school.report_tone && scale === school.grading_scale)}>
             {isAdmin ? 'Save settings' : 'Ask for approval'}
           </button>
         </form>
-        <p className="hint">The report tone is how AI-written report comments are phrased.</p>
+        <p className="hint">
+          The report tone is how AI-written report comments are phrased. Performance levels are shown next to percentages
+          on grades, reports, report cards and charts: the CBC 4-level scale is EE 80–100%, ME 50–79%, AE 30–49% and
+          BE 0–29%; the junior school 8-level scale runs from EE1 (90–100%) to BE2 (0–10%).
+        </p>
       </div>
 
       <div className="card">

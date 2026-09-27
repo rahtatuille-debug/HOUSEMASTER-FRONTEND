@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSchoolLevels, useWithLevel } from '../levels.js'
 import { api } from '../api.js'
 import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, ColumnChart, LineChart } from './charts.jsx'
 
@@ -9,7 +10,6 @@ const SCOPES = [
   { key: 'school', label: 'Whole school', adminOnly: true },
 ]
 
-const pct = (v) => (v == null ? '—' : `${v}%`)
 
 function Change({ value }) {
   if (value == null) return <span className="text-muted">—</span>
@@ -37,33 +37,38 @@ function ChartCard({ title, hint, children, table }) {
 }
 
 function TrendTable({ data, series }) {
+  const fmt = useWithLevel()
   return (
     <table>
       <thead><tr><th>Term</th>{series.map((s) => <th key={s.key}>{s.label}</th>)}</tr></thead>
-      <tbody>{data.map((d) => <tr key={d.term}><td>{d.term}</td>{series.map((s) => <td key={s.key}>{pct(d[s.key])}</td>)}</tr>)}</tbody>
+      <tbody>{data.map((d) => <tr key={d.term}><td>{d.term}</td>{series.map((s) => <td key={s.key}>{fmt(d[s.key], 1)}</td>)}</tr>)}</tbody>
     </table>
   )
 }
 
 function RowsTable({ rows, bars }) {
+  const fmt = useWithLevel()
   return (
     <table>
       <thead><tr><th /> {bars.map((b) => <th key={b.key}>{b.label}</th>)}</tr></thead>
-      <tbody>{rows.map((r) => <tr key={r.label}><td>{r.label}</td>{bars.map((b) => <td key={b.key}>{pct(r[b.key])}</td>)}</tr>)}</tbody>
+      <tbody>{rows.map((r) => <tr key={r.label}><td>{r.label}</td>{bars.map((b) => <td key={b.key}>{fmt(r[b.key], 1)}</td>)}</tr>)}</tbody>
     </table>
   )
 }
 
 function BandsTable({ bands }) {
+  const levels = useSchoolLevels()
+  const name = (band) => levels.find((l) => l.code === band)?.name
   return (
     <table>
-      <thead><tr><th>Average</th><th>Students</th></tr></thead>
-      <tbody>{bands.map((b) => <tr key={b.band}><td>{b.band}</td><td>{b.students}</td></tr>)}</tbody>
+      <thead><tr><th>{levels.length ? 'Level' : 'Average'}</th><th>Students</th></tr></thead>
+      <tbody>{bands.map((b) => <tr key={b.band}><td>{b.band}{name(b.band) && <span className="text-muted"> ({name(b.band)})</span>}</td><td>{b.students}</td></tr>)}</tbody>
     </table>
   )
 }
 
 function StudentTable({ students, showClass, onOpenStudent }) {
+  const fmt = useWithLevel()
   const [showAll, setShowAll] = useState(false)
   if (!students?.length) return null
   const LIMIT = 15
@@ -86,8 +91,8 @@ function StudentTable({ students, showClass, onOpenStudent }) {
                 </button>
               </td>
               {showClass && <td>{s.class_name || '—'}</td>}
-              <td><strong>{pct(s.average)}</strong></td>
-              <td>{pct(s.previous)}</td>
+              <td><strong>{fmt(s.average, 1)}</strong></td>
+              <td>{fmt(s.previous, 1)}</td>
               <td><Change value={s.change} /></td>
             </tr>
           ))}
@@ -219,6 +224,7 @@ export default function Performance({ me }) {
 }
 
 function Charts({ data, termName, onOpenStudent }) {
+  const byLevel = useSchoolLevels().length > 0
   if (data.scope === 'student') {
     const series = [
       { key: 'student', label: data.name, color: COMPARE[0] },
@@ -294,7 +300,9 @@ function Charts({ data, termName, onOpenStudent }) {
           <BarChart rows={subjectRows} bars={subjectBars} label={`Subjects, ${termName}`} />
         </ChartCard>
 
-        <ChartCard title={`Spread of averages, ${termName}`} hint="How many students' averages fall in each band." table={<BandsTable bands={data.distribution} />}>
+        <ChartCard title={`${byLevel ? 'Students at each level' : 'Spread of averages'}, ${termName}`}
+          hint={byLevel ? "How many students' averages are at each CBC level." : "How many students' averages fall in each band."}
+          table={<BandsTable bands={data.distribution} />}>
           <ColumnChart bands={data.distribution} label={`Spread of student averages, ${termName}`} />
         </ChartCard>
       </div>

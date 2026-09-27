@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { SchoolContext } from './levels.js'
 import { api } from './api.js'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
@@ -459,15 +460,17 @@ export default function App() {
         ))}
 
         <main className="content">
-          {ActivePanel && (
-            <ActivePanel
-              me={me}
-              identityKind={identityKind}
-              onUserUpdated={setMe}
-              onCountsChanged={refreshWaitingCount}
-              onNavigate={selectTab}
-            />
-          )}
+          <SchoolContext.Provider value={me?.school || null}>
+            {ActivePanel && (
+              <ActivePanel
+                me={me}
+                identityKind={identityKind}
+                onUserUpdated={setMe}
+                onCountsChanged={refreshWaitingCount}
+                onNavigate={selectTab}
+              />
+            )}
+          </SchoolContext.Provider>
         </main>
       </div>
     </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useWithLevel } from '../levels.js'
 
 // Colours checked with the dataviz palette validator against the white card.
 // COMPARE: a student/class against wider averages (3 slots, all pairs pass).
@@ -10,7 +11,6 @@ export const CATEGORICAL = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4
 // they read as a reference, not another group.
 export const BENCHMARK = '#52514e'
 
-const pct = (v) => (v == null ? '—' : `${v}%`)
 
 function Legend({ series }) {
   return (
@@ -27,6 +27,7 @@ function Legend({ series }) {
 
 // Average by term, one line per series. data: [{ term, [series.key]: number|null }]
 export function LineChart({ data, series, label }) {
+  const fmt = useWithLevel()
   const [hover, setHover] = useState(null)
   const shown = series.filter((s) => data.some((d) => d[s.key] != null))
   if (!data.length || !shown.length) return <p className="text-muted" style={{ margin: 0 }}>No grades recorded yet.</p>
@@ -100,7 +101,7 @@ export function LineChart({ data, series, label }) {
           <div className="chart-tooltip" style={{ left: `${(x(hover) / W) * 100}%`, transform: hover > data.length / 2 ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)' }}>
             <strong>{hovered.term}</strong>
             {shown.map((s) => (
-              <div key={s.key}><i style={{ background: s.color }} /> {s.label}: {pct(hovered[s.key])}</div>
+              <div key={s.key}><i style={{ background: s.color }} /> {s.label}: {fmt(hovered[s.key])}</div>
             ))}
           </div>
         )}
@@ -111,6 +112,7 @@ export function LineChart({ data, series, label }) {
 
 // Horizontal bars, 0–100%. rows: [{ label, [bar.key]: number|null }]; up to 2 bars per row.
 export function BarChart({ rows, bars, label }) {
+  const fmt = useWithLevel()
   const [hover, setHover] = useState(null)
   if (!rows.length) return <p className="text-muted" style={{ margin: 0 }}>Nothing to show for this term.</p>
   const shown = bars.filter((b) => rows.some((r) => r[b.key] != null))
@@ -119,7 +121,7 @@ export function BarChart({ rows, bars, label }) {
   const rowH = shown.length * barH + (shown.length - 1) * gap + 14
   const W = 640
   const LABEL = 150
-  const VALUE = 52
+  const VALUE = 72 // room for "100% · EE1"
   const plotW = W - LABEL - VALUE
   const H = rows.length * rowH + 24
   const xw = (v) => (Math.max(0, Math.min(100, v)) / 100) * plotW
@@ -152,7 +154,7 @@ export function BarChart({ rows, bars, label }) {
                     <g key={b.key}>
                       {/* Square at the baseline, 4px round at the data end. */}
                       <path d={`M${LABEL},${yb} h${Math.max(w - 4, 0)} a4,4 0 0 1 4,4 v${barH - 8} a4,4 0 0 1 -4,4 h${-Math.max(w - 4, 0)} z`} fill={b.color} />
-                      {k === 0 && <text x={LABEL + w + 6} y={yb + barH - 2} className="chart-value">{pct(v)}</text>}
+                      {k === 0 && <text x={LABEL + w + 6} y={yb + barH - 2} className="chart-value">{fmt(v)}</text>}
                     </g>
                   )
                 })}
@@ -164,7 +166,7 @@ export function BarChart({ rows, bars, label }) {
           <div className="chart-tooltip" style={{ top: `${((hover * rowH + 6) / H) * 100}%`, left: '40%' }}>
             <strong>{rows[hover].label}</strong>
             {shown.map((b) => (
-              <div key={b.key}><i style={{ background: b.color }} /> {b.label}: {pct(rows[hover][b.key])}</div>
+              <div key={b.key}><i style={{ background: b.color }} /> {b.label}: {fmt(rows[hover][b.key])}</div>
             ))}
             {rows[hover].note && <div className="text-muted">{rows[hover].note}</div>}
           </div>
