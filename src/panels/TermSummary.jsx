@@ -56,7 +56,7 @@ export default function TermSummary({ summary }) {
       <div className="table-scroll">
         <table>
           <thead>
-            <tr><th>{words.subject}</th>{columns.map(([label]) => <th key={label}>{label}</th>)}<th>Comment</th></tr>
+            <tr><th>{summary.subject_word || words.subject}</th>{columns.map(([label]) => <th key={label}>{label}</th>)}<th>Comment</th></tr>
           </thead>
           <tbody>
             {summary.subjects.map((r) => (

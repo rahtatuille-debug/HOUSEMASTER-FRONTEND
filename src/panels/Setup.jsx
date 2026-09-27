@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
+import AddSectionCard from './AddSectionCard.jsx'
 import AssessmentTypesCard from './AssessmentTypesCard.jsx'
 import ImportCard from './ImportCard.jsx'
 import YearEndCard from './YearEndCard.jsx'
@@ -116,6 +117,15 @@ export default function Setup({ me, onUserUpdated }) {
   }
 
   const orderedYearGroups = [...yearGroups].sort((a, b) => (a.order - b.order) || (a.id - b.id))
+  // A school running two systems sets a different curriculum on some year groups.
+  const mixed = yearGroups.some((yg) => yg.education_system)
+  const showCurriculum = isAdmin || mixed
+
+  function setCurriculum(yg, education_system) {
+    const own = !education_system || education_system === school?.education_system
+    change(() => api.yearGroups.update(yg.id, { education_system: own ? '' : education_system, grading_scale: '' }),
+      own ? `${yg.name} follows the school's curriculum.` : `${yg.name} now follows ${SYSTEMS[education_system]}.`)
+  }
 
   // Swap a year group with its neighbour, renumbering everything so the order is unambiguous.
   async function moveYearGroup(i, delta) {
@@ -390,7 +400,7 @@ export default function Setup({ me, onUserUpdated }) {
               {words.year_group.toLowerCase()} graduate.
             </p>
             <table>
-              <thead><tr><th>{words.year_group}</th><th>Final year</th><th /></tr></thead>
+              <thead><tr><th>{words.year_group}</th>{showCurriculum && <th>Curriculum and grading</th>}<th>Final year</th><th /></tr></thead>
               <tbody>
                 {orderedYearGroups.map((yg, i) => (
                   <tr key={yg.id}>
@@ -403,6 +413,29 @@ export default function Setup({ me, onUserUpdated }) {
                       )}
                       {yg.name}
                     </td>
+                    {showCurriculum && (
+                      <td>
+                        {isAdmin ? (
+                          <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <select aria-label={`Curriculum for ${yg.name}`} style={{ width: 'auto' }}
+                              value={yg.education_system || ''} onChange={(e) => setCurriculum(yg, e.target.value)}>
+                              <option value="">School's own ({SYSTEMS[school?.education_system] || 'not set'})</option>
+                              {Object.entries(SYSTEMS).filter(([key]) => key !== school?.education_system)
+                                .map(([key, name]) => <option key={key} value={key}>{name}</option>)}
+                            </select>
+                            <select aria-label={`Grading for ${yg.name}`} style={{ width: 'auto' }}
+                              value={yg.grading_scale || ''}
+                              onChange={(e) => change(() => api.yearGroups.update(yg.id, { grading_scale: e.target.value }),
+                                `Updated grading for ${yg.name}.`)}>
+                              <option value="">{yg.education_system ? 'Usual for this curriculum' : "School's grading"}</option>
+                              {SCALES.map((sc) => <option key={sc.key} value={sc.key}>{sc.label}</option>)}
+                            </select>
+                          </span>
+                        ) : (
+                          <span>{SYSTEMS[yg.education_system || school?.education_system] || '—'}</span>
+                        )}
+                      </td>
+                    )}
                     <td>
                       <input type="checkbox" style={{ width: 'auto' }} aria-label={`${yg.name} is the final year`} checked={!!yg.is_final} disabled={!isAdmin}
                         onChange={(e) => change(() => api.yearGroups.update(yg.id, { is_final: e.target.checked }),
@@ -496,6 +529,8 @@ export default function Setup({ me, onUserUpdated }) {
           </>
         )}
       </div>
+      {isAdmin && <AddSectionCard school={school} scales={SCALES} onDone={loadAll} />}
+
       {isAdmin && <YearEndCard classes={classes} yearGroups={orderedYearGroups} onDone={loadAll} />}
     </div>
   )

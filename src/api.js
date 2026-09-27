@@ -350,6 +350,7 @@ export const api = {
     state: () => request('/api/setup/'),
     saveProgress: (progress) => request('/api/setup/', { method: 'PATCH', body: { progress } }),
     finish: (body) => request('/api/setup/finish/', { method: 'POST', body }),
+    addSection: (body) => request('/api/setup/add-section/', { method: 'POST', body }),
   },
   previewInvite,
   acceptInvite,

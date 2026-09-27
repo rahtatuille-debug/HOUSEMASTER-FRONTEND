@@ -6,7 +6,7 @@ import { useSchool, useVocab } from '../levels.js'
 // Level and CBC senior school pathways. Core subjects are taken by everyone.
 export default function SubjectChoicesCard({ me }) {
   const words = useVocab()
-  const ib = useSchool()?.education_system === 'ib'
+  const school = useSchool()
   const isAdmin = me?.role === 'admin'
   const [classes, setClasses] = useState([])
   const [classId, setClassId] = useState('')
@@ -30,6 +30,8 @@ export default function SubjectChoicesCard({ me }) {
     api.subjectChoices.get(classId).then((d) => { setData(d); setDirty(false) }).catch((err) => setError(err.message))
   }, [classId])
 
+  // The class's own system: a school running two systems may have an IB section.
+  const ib = (data?.system ?? school?.education_system) === 'ib'
   // IB students can take any subject at Higher or Standard Level; elsewhere only electives are chosen.
   const columns = data ? data.subjects.filter((s) => s.is_elective || ib) : []
 

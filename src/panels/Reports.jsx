@@ -44,7 +44,8 @@ export default function Reports({ me, onCountsChanged }) {
   const [editPrincipal, setEditPrincipal] = useState('')
   const [editExtra, setEditExtra] = useState({})
   // CBC competencies and values, or IB approaches to learning, rated on the report.
-  const extraGroups = me?.school?.report_extras || []
+  // A school running two systems has different ratings in each section, so the report says which.
+  const extraGroups = openReport?.extra_groups ?? me?.school?.report_extras ?? []
   const [saving, setSaving] = useState(false)
 
   async function loadOptions() {
