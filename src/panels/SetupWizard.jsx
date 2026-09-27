@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
+import ReportPreview from './ReportPreview.jsx'
 
 const STEPS = ['School details', 'Education system', 'Levels', 'Classes', 'Subjects', 'Terms', 'Grading and reports', 'Review']
 const TONES = { formal: 'Formal', warm: 'Warm and encouraging', concise: 'Concise and direct' }
@@ -131,6 +132,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
             <li><strong>Add your students</strong> in Setup, by hand or with the Excel import.</li>
             <li><strong>Invite parents</strong> on the Parents page once students are in.</li>
           </ol>
+          <p className="hint">Your home page has a first-week checklist for your school that ticks itself off as you go.</p>
           <div className="form-actions" style={{ marginTop: 16 }}>
             <button type="button" onClick={onFinished}>Go to HouseMaster</button>
           </div>
@@ -140,6 +142,16 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
   }
 
   const scales = catalogue.scales.filter((s) => !system || system.scales.includes(s.key))
+  // The answers the sample report card is drawn from.
+  const previewBody = system && {
+    education_system: answers.education_system, name: answers.school.name, motto: answers.school.motto,
+    address: answers.school.address, phone: answers.school.phone, email: answers.school.email,
+    country: answers.school.country, report_tone: answers.report_tone, vocab_overrides: answers.vocab_overrides || {},
+    ...(step >= 6 && system.scales.includes(answers.grading_scale) ? { grading_scale: answers.grading_scale } : {}),
+    ...(step >= 3 ? { year_groups: answers.year_groups.filter((g) => g.classes.length) } : {}),
+    ...(step >= 4 && answers.subjects.length ? { subjects: answers.subjects } : {}),
+    ...(step >= 5 && answers.terms.length ? { terms: answers.terms.slice(0, 1) } : {}),
+  }
 
   return (
     <div className="setup-wrap" ref={topRef}>
@@ -393,6 +405,10 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
           </>
         )}
 
+        {previewBody && [1, 6].includes(step) && (
+          <ReportPreview body={previewBody} title={step === 1 ? `Sample report card: ${system.name}` : 'See how your report cards will look'} />
+        )}
+
         {step === 7 && (
           <dl className="setup-review">
             <div><dt>School</dt><dd>{answers.school.name}{answers.school.motto && ` · "${answers.school.motto}"`}</dd></div>
@@ -405,6 +421,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
             <div><dt>Report tone</dt><dd>{TONES[answers.report_tone]}</dd></div>
           </dl>
         )}
+        {step === 7 && previewBody && <ReportPreview body={previewBody} title="Your report card" />}
 
         <div className="form-actions setup-actions">
           {step > 0 && <button type="button" className="secondary" onClick={() => go(-1)} disabled={saving}>Back</button>}

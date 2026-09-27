@@ -44,8 +44,11 @@ export default function TermSummary({ summary }) {
   const columns = {
     844: [['Marks', (r) => pct(r.percent)], ['Grade', (r) => r.kcse_grade || '—'], ['Points', (r) => r.points ?? '—']],
     american: [['Percent', (r) => pct(r.percent)], ['Grade', (r) => r.letter || '—'], ['Credits', (r) => r.credits]],
-    ib: [['A', (r) => r.criteria?.A ?? '—'], ['B', (r) => r.criteria?.B ?? '—'], ['C', (r) => r.criteria?.C ?? '—'],
-      ['D', (r) => r.criteria?.D ?? '—'], ['Grade', (r) => r.ib_grade ?? '—']],
+    // MYP students are graded on criteria A to D; Diploma students from their marks.
+    ib: summary.subjects.some((r) => r.criteria && Object.keys(r.criteria).length)
+      ? [['A', (r) => r.criteria?.A ?? '—'], ['B', (r) => r.criteria?.B ?? '—'], ['C', (r) => r.criteria?.C ?? '—'],
+        ['D', (r) => r.criteria?.D ?? '—'], ['Grade', (r) => r.ib_grade ?? '—']]
+      : [['Percent', (r) => pct(r.percent)], ['Grade', (r) => r.ib_grade ?? '—']],
     british: [['Percent', (r) => pct(r.percent)], ['Grade', (r) => r.level || '—'], ['Effort', (r) => r.effort || '—'],
       ['Target', (r) => r.target || '—']],
   }[system] || [['Percent', (r) => pct(r.percent)], ...(summary.subjects.some((r) => r.level) ? [['Level', (r) => r.level || '—']] : [])]

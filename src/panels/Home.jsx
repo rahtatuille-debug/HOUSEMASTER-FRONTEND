@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
 import { api } from '../api.js'
+import FirstWeekChecklist from './FirstWeekChecklist.jsx'
 
 function StatTile({ label, value, sub, onClick, alert }) {
   const content = (
@@ -63,6 +64,8 @@ export default function Home({ me, onNavigate }) {
           </button>
         </div>
       )}
+
+      <FirstWeekChecklist onNavigate={onNavigate} />
 
       <div className="stat-row">
         <StatTile

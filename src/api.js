@@ -287,6 +287,18 @@ async function uploadStudentPhoto(id, file) {
   return data
 }
 
+// The setup wizard's sample report card: a PDF made from the answers so far, as an object URL.
+async function previewReportCard(body) {
+  const res = await authedFetch('/api/setup/preview-report/', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Preview failed (${res.status})`)
+  }
+  return URL.createObjectURL(await res.blob())
+}
+
 // Download a file (spreadsheet, PDF...) from the API and save it.
 async function downloadFile(path, params) {
   const qs = params
@@ -346,11 +358,16 @@ export const api = {
   download: downloadFile,
   updateMe: (body) => request('/api/me/', { method: 'PATCH', body }),
   registerSchool,
+  checklist: {
+    get: () => request('/api/checklist/'),
+    setHidden: (hidden) => request('/api/checklist/', { method: 'PATCH', body: { hidden } }),
+  },
   setup: {
     state: () => request('/api/setup/'),
     saveProgress: (progress) => request('/api/setup/', { method: 'PATCH', body: { progress } }),
     finish: (body) => request('/api/setup/finish/', { method: 'POST', body }),
     addSection: (body) => request('/api/setup/add-section/', { method: 'POST', body }),
+    previewReport: previewReportCard,
   },
   previewInvite,
   acceptInvite,

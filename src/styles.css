@@ -1002,3 +1002,26 @@ button.danger-solid:hover { background: #7f2929; }
 .entry-grid select { width: auto; }
 .order-buttons { display: inline-flex; gap: 4px; margin-right: 10px; vertical-align: middle; }
 .order-buttons button { padding: 2px 8px; min-width: 0; height: auto; line-height: 1.2; }
+
+/* The setup wizard's sample report card */
+.report-preview { margin-top: 20px; padding: 14px; border: 1px solid var(--rule); border-radius: var(--radius); background: var(--paper-2); }
+.report-preview-bar { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.report-preview-bar button { width: auto; }
+.report-preview-frame { display: block; width: 100%; height: 640px; margin: 12px 0 6px; border: 1px solid var(--rule); border-radius: var(--radius); background: #fff; }
+@media (max-width: 640px) { .report-preview-frame { height: 460px; } }
+
+/* The first-week checklist on the admin home page */
+.checklist-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.checklist-count { font-family: var(--font-display); font-size: 20px; color: var(--navy); white-space: nowrap; }
+.checklist-bar { height: 4px; background: var(--paper-2); border-radius: 2px; margin: 12px 0 8px; overflow: hidden; }
+.checklist-bar span { display: block; height: 100%; background: var(--stamp-green); transition: width 0.3s; }
+.checklist { list-style: none; margin: 0 0 12px; padding: 0; }
+.checklist li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.checklist li:last-child { border-bottom: 0; }
+.checklist-mark { flex: none; width: 22px; height: 22px; border: 1.5px solid var(--rule); border-radius: 50%; display: grid; place-items: center; font-size: 12px; color: #fff; }
+.checklist li.done .checklist-mark { background: var(--stamp-green); border-color: var(--stamp-green); }
+.checklist li.done strong { color: var(--stamp-green); }
+.checklist-text { flex: 1; display: grid; gap: 2px; font-size: 14px; min-width: 0; }
+.checklist-text .text-muted { font-size: 13px; }
+.checklist li button { width: auto; flex: none; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
