@@ -5,7 +5,7 @@ export default function PrivacyNotice({ schoolName, contact, audience = 'parent'
   const school = schoolName || 'Your school'
   return (
     <div className="privacy-notice">
-      <h3>How {school} uses personal data</h3>
+      <h3>How {schoolName || 'your school'} uses personal data</h3>
       <p>
         {school} uses HouseMaster to run the school and keep in touch with families. The school is responsible for
         your personal data under Kenya's Data Protection Act, 2019. HouseMaster stores and processes it only on the
