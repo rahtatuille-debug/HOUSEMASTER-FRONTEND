@@ -164,11 +164,22 @@ async function acceptInvite(token, password, acceptPrivacy = false) {
   return data
 }
 
-async function requestPasswordReset(username) {
-  const res = await fetch(`${API_BASE}/api/password-reset/`, {
+// "Too many requests" from the rate limits (F-05). Retry-After is in seconds.
+function waitMessage(res, what) {
+  const seconds = Number(res.headers.get('Retry-After'))
+  let wait = 'a little while'
+  if (Number.isFinite(seconds) && seconds > 0) {
+    const minutes = Math.ceil(seconds / 60)
+    wait = minutes <= 1 ? 'a minute' : `${minutes} minutes`
+  }
+  return `There have been too many ${what} from here. Please wait ${wait} and try again.`
+}
+
+async function publicPost(path, body, fallback, what) {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username }),
+    body: JSON.stringify(body),
   })
   let data = null
   try {
@@ -177,32 +188,24 @@ async function requestPasswordReset(username) {
     // no body
   }
   if (!res.ok) {
-    const message =
-      (data && (data.detail || Object.values(data).flat().join(' '))) ||
-      'Could not request a reset link.'
-    throw new Error(message)
+    const message = res.status === 429
+      ? waitMessage(res, what)
+      : (data && (data.detail || Object.values(data).flat().join(' '))) || fallback
+    const err = new Error(message)
+    err.status = res.status
+    throw err
   }
   return data
 }
 
-async function confirmPasswordReset(token, password) {
-  const res = await fetch(`${API_BASE}/api/password-reset/confirm/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, password }),
-  })
-  let data = null
-  try {
-    data = await res.json()
-  } catch {
-    // no body
-  }
-  if (!res.ok) {
-    const message =
-      (data && (data.detail || Object.values(data).flat().join(' '))) || 'Could not reset password.'
-    throw new Error(message)
-  }
-  return data
+// The API asks for the account's email address and answers the same way
+// whether or not an account uses it.
+function requestPasswordReset(email) {
+  return publicPost('/api/password-reset/', { email }, 'Could not request a reset link.', 'reset requests')
+}
+
+function confirmPasswordReset(token, password) {
+  return publicPost('/api/password-reset/confirm/', { token, password }, 'Could not reset password.', 'attempts')
 }
 
 // Trades the refresh token for a new access token. The backend may rotate
