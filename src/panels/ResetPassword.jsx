@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api.js'
+import { LogoFull } from './Logo.jsx'
 
 // Unlike AcceptInvite, there's no preview endpoint for a reset token — the
 // backend only validates it when the new password is actually submitted,
@@ -32,7 +33,7 @@ export default function ResetPassword({ token, onDone }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <h1>HouseMaster</h1>
+        <LogoFull />
         <p className="tagline">Choose a new password</p>
 
         {error && <div className="error-banner">{error}</div>}

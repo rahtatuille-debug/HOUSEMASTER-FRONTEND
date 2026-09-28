@@ -877,16 +877,15 @@ button.danger-solid:hover { background: #7f2929; }
   letter-spacing: 0.01em;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
-.register-brand::before {
-  content: '';
-  width: 26px;
-  height: 26px;
-  border: 2px solid var(--gold);
-  border-radius: 3px;
-  background: linear-gradient(135deg, var(--gold) 0 50%, transparent 50%);
-}
+.register-brand .logo-mark { height: 46px; width: auto; flex: none; }
+.register-brand small { display: block; font-family: var(--font-body); font-size: 12px; font-weight: 500; letter-spacing: 0.02em; color: rgba(250, 247, 240, 0.7); }
+
+/* The full logo at the top of the sign-in cards */
+.login-card .auth-logo { margin: -8px 0 6px; text-align: center; line-height: 0; }
+.login-card .auth-logo img { width: 190px; max-width: 70%; height: auto; }
+.login-card .auth-logo + .tagline { text-align: center; }
 .register-hero h1 {
   font-family: var(--font-display);
   font-size: clamp(30px, 3.4vw, 44px);

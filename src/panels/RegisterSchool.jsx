@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api } from '../api.js'
 import PrivacyNotice from './PrivacyNotice.jsx'
+import { LogoMarkLight } from './Logo.jsx'
 import { COUNTRIES, countryFor } from '../countries.js'
 
 // Small line icons for the feature list (24px grid, drawn with currentColor).
@@ -65,7 +66,10 @@ export default function RegisterSchool({ onRegistered, onBack }) {
   return (
     <div className="register-page">
       <section className="register-hero">
-        <div className="register-brand">HouseMaster</div>
+        <div className="register-brand">
+          <LogoMarkLight />
+          <span>HouseMaster<small>AI-powered school operating system</small></span>
+        </div>
         <h1>Run your whole school from one place.</h1>
         <p className="register-lead">
           Grades, attendance, reports and parent communication for your staff, with a clear view for every family.

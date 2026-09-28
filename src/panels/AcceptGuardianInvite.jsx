@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PrivacyNotice, { PrivacyConsent } from './PrivacyNotice.jsx'
 import { api } from '../api.js'
+import { LogoFull } from './Logo.jsx'
 
 export default function AcceptGuardianInvite({ token, onAccepted }) {
   const [preview, setPreview] = useState(null)
@@ -41,7 +42,7 @@ export default function AcceptGuardianInvite({ token, onAccepted }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <h1>HouseMaster</h1>
+        <LogoFull />
         <p className="tagline">Parent/Guardian sign-up</p>
 
         {previewError && <div className="error-banner">{previewError}</div>}

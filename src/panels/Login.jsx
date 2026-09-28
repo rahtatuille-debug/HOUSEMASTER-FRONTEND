@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api.js'
+import { LogoFull } from './Logo.jsx'
 
 export default function Login({ onLoggedIn, onForgotPassword, onRegister, successMessage }) {
   const [email, setEmail] = useState('')
@@ -24,7 +25,7 @@ export default function Login({ onLoggedIn, onForgotPassword, onRegister, succes
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <h1>HouseMaster</h1>
+        <LogoFull />
         <p className="tagline">Sign in</p>
         {successMessage && <div className="success-banner">{successMessage}</div>}
         {error && <div className="error-banner">{error}</div>}

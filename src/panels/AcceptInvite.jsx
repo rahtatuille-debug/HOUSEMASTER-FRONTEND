@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PrivacyNotice, { PrivacyConsent } from './PrivacyNotice.jsx'
 import { api } from '../api.js'
+import { LogoFull } from './Logo.jsx'
 import { displayRole } from '../user.js'
 
 export default function AcceptInvite({ token, onAccepted }) {
@@ -42,7 +43,7 @@ export default function AcceptInvite({ token, onAccepted }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <h1>HouseMaster</h1>
+        <LogoFull />
         <p className="tagline">Accept your invite</p>
 
         {previewError && <div className="error-banner">{previewError}</div>}

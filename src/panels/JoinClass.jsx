@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import PrivacyNotice, { PrivacyConsent } from './PrivacyNotice.jsx'
 import { api } from '../api.js'
+import { LogoFull } from './Logo.jsx'
 
 const RELATIONSHIPS = [
   ['mother', 'Mother'], ['father', 'Father'], ['guardian', 'Guardian'], ['grandparent', 'Grandparent'],
@@ -42,7 +43,7 @@ export default function JoinClass({ token, onSignIn }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <h1>HouseMaster</h1>
+        <LogoFull />
         <p className="tagline">Parent/Guardian sign-up</p>
 
         {loadError && <div className="error-banner">{loadError}</div>}

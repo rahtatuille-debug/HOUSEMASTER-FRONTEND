@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api } from '../api.js'
+import { LogoFull } from './Logo.jsx'
 
 export default function ForgotPassword({ onBack }) {
   const [username, setUsername] = useState('')
@@ -27,7 +28,7 @@ export default function ForgotPassword({ onBack }) {
   return (
     <div className="login-wrap">
       <div className="login-card">
-        <h1>HouseMaster</h1>
+        <LogoFull />
         <p className="tagline">Reset your password</p>
 
         {sent ? (
