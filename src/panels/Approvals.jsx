@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
+import { usePagedList } from '../usePagedList.js'
+import ShowMore from './ShowMore.jsx'
 
 const FILTERS = [
   { key: 'pending', label: 'Waiting' },
@@ -19,11 +21,8 @@ function formatWhen(value) {
 export default function Approvals({ me, onCountsChanged }) {
   const isAdmin = me?.role === 'admin'
   const [filter, setFilter] = useState('pending')
-  const [requests, setRequests] = useState([])
-  const [reports, setReports] = useState([])
   const [students, setStudents] = useState([])
   const [terms, setTerms] = useState([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   // Which row has its note box open, and for what: { type: 'reject' | 'send-back', id }
@@ -31,36 +30,29 @@ export default function Approvals({ me, onCountsChanged }) {
   const [note, setNote] = useState('')
   const [busyId, setBusyId] = useState(null)
 
-  async function load() {
-    setLoading(true)
-    setError('')
-    try {
-      const params = filter ? { status: filter } : {}
-      if (isAdmin) {
-        const [req, rep, st, te] = await Promise.all([
-          api.changeRequests.list(params),
-          api.reports.list({ status: 'submitted' }),
-          api.students.list(),
-          api.terms.list(),
-        ])
-        setRequests(req)
-        setReports(rep)
-        setStudents(st)
-        setTerms(te)
-      } else {
-        setRequests(await api.changeRequests.list(params))
-      }
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+  // Both lists come from the server a page at a time (F-4).
+  const requestList = usePagedList(
+    (page) => api.changeRequests.page({ ...(filter ? { status: filter } : {}), ...page }), [filter, isAdmin])
+  const reportList = usePagedList(
+    (page) => (isAdmin ? api.reports.page({ status: 'submitted', ...page }) : Promise.resolve([])), [isAdmin])
+  const requests = requestList.rows
+  const reports = reportList.rows
+  const loading = requestList.loading || reportList.loading
+  const listError = requestList.error || reportList.error
+
+  function load() {
+    return Promise.all([requestList.reload(), reportList.reload()])
   }
 
   useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter, isAdmin])
+    if (!isAdmin) return
+    Promise.all([api.students.list(), api.terms.list()])
+      .then(([st, te]) => {
+        setStudents(st)
+        setTerms(te)
+      })
+      .catch((err) => setError(err.message))
+  }, [isAdmin])
 
   async function run(id, action, message) {
     setBusyId(id)
@@ -102,7 +94,7 @@ export default function Approvals({ me, onCountsChanged }) {
         <h2>{isAdmin ? 'Approvals' : 'My requests'}</h2>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {(error || listError) && <div className="error-banner">{error || listError}</div>}
       {notice && <div className="success-banner">{notice}</div>}
 
       {!isAdmin && (
@@ -162,6 +154,7 @@ export default function Approvals({ me, onCountsChanged }) {
               </div>
             ))
           )}
+          <ShowMore shown={reports.length} total={reportList.total} onMore={reportList.loadMore} noun="reports" />
         </div>
       )}
 
@@ -252,6 +245,7 @@ export default function Approvals({ me, onCountsChanged }) {
             </tbody>
           </table>
         )}
+        <ShowMore shown={requests.length} total={requestList.total} onMore={requestList.loadMore} noun="requests" />
       </div>
     </div>
   )

@@ -446,6 +446,13 @@ export function isPage(data) {
   return !!data && !Array.isArray(data) && Array.isArray(data.results)
 }
 
+// How many rows a list response describes: the page's count, or the
+// length of a whole list from an older backend.
+export function countOf(data) {
+  if (isPage(data)) return data.count
+  return Array.isArray(data) ? data.length : 0
+}
+
 export function listFrom(data) {
   if (Array.isArray(data)) return data
   if (isPage(data)) return data.results
@@ -719,7 +726,11 @@ export const api = {
     save: (body) => request('/api/subject-reports/', { method: 'POST', body }),
   },
   reports: {
-    list: (params) => request('/api/reports/', { params }),
+    // Reports, announcements and change requests: page() asks for one page
+    // (F-4); list() still returns the whole list, whichever way the backend
+    // sends it.
+    list: (params) => listRequest('/api/reports/', { params }),
+    page: (params) => request('/api/reports/', { params }),
     generate: (student, term) =>
       request('/api/reports/generate/', { method: 'POST', body: { student, term } }),
     update: (id, body) => request(`/api/reports/${id}/`, { method: 'PATCH', body }),
@@ -737,7 +748,8 @@ export const api = {
       request('/api/reports/finalize-class/', { method: 'POST', body: { school_class, term } }),
   },
   announcements: {
-    list: (params) => request('/api/announcements/', { params }),
+    list: (params) => listRequest('/api/announcements/', { params }),
+    page: (params) => request('/api/announcements/', { params }),
     get: (id) => request(`/api/announcements/${id}/`),
     create: (body) => request('/api/announcements/', { method: 'POST', body }),
     update: (id, body) => request(`/api/announcements/${id}/`, { method: 'PATCH', body }),
@@ -778,7 +790,8 @@ export const api = {
 
   // Admins see and decide every request; teachers see and cancel their own.
   changeRequests: {
-    list: (params) => request('/api/change-requests/', { params }),
+    list: (params) => listRequest('/api/change-requests/', { params }),
+    page: (params) => request('/api/change-requests/', { params }),
     approve: (id, note) => request(`/api/change-requests/${id}/approve/`, { method: 'POST', body: { note } }),
     reject: (id, note) => request(`/api/change-requests/${id}/reject/`, { method: 'POST', body: { note } }),
     cancel: (id) => request(`/api/change-requests/${id}/cancel/`, { method: 'POST' }),
