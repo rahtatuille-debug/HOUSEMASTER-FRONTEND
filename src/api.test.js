@@ -145,6 +145,21 @@ describe('list shapes', () => {
     expect(secondCall.search).toBe('?page=2&term=4')
   })
 
+  it('leaves the activity log page as it is (that screen pages itself)', async () => {
+    store({ access: 'a', refresh: 'r' })
+    const page = { count: 60, next: 'https://api.example.org/api/activity/?page=2', previous: null, results: [{ id: 1 }] }
+    globalThis.fetch = routeFetch({ '/api/activity/': () => json(200, page) })
+    await expect(api.activity.list({ page: 1 })).resolves.toEqual(page)
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks for large pages', async () => {
+    store({ access: 'a', refresh: 'r' })
+    globalThis.fetch = routeFetch({ '/api/grades/': () => json(200, []) })
+    await api.grades.list({ term: 2 })
+    expect(new URL(globalThis.fetch.mock.calls[0][0]).searchParams.get('page_size')).toBe('500')
+  })
+
   it('reads either shape with listFrom', () => {
     expect(listFrom([1, 2])).toEqual([1, 2])
     expect(listFrom({ count: 1, next: null, previous: null, results: [3] })).toEqual([3])

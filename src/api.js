@@ -352,7 +352,10 @@ async function authedFetch(path, options = {}) {
 // ({count, next, previous, results}). listRequest() always returns the
 // whole list as an array, following `next` links in bounded chunks, so the
 // screens work the same either way.
-const MAX_LIST_PAGES = 50
+// Ask for the largest page the backend allows (a plain list ignores it),
+// and stop after this many pages rather than loop forever.
+const LIST_PAGE_SIZE = 500
+const MAX_LIST_PAGES = 100
 
 function samePath(nextUrl) {
   try {
@@ -374,7 +377,7 @@ export function listFrom(data) {
 }
 
 async function listRequest(path, options = {}) {
-  const first = await request(path, options)
+  const first = await request(path, { ...options, params: { page_size: LIST_PAGE_SIZE, ...(options.params || {}) } })
   if (!isPage(first)) return first
   const rows = [...first.results]
   let next = first.next
@@ -691,7 +694,8 @@ export const api = {
     sendPasswordReset: (id) => request(`/api/parents/${id}/send-password-reset/`, { method: 'POST' }),
   },
   activity: {
-    list: (params) => listRequest('/api/activity/', { params }),
+    // Already paged by the backend; the Activity screen reads `results` itself.
+    list: (params) => request('/api/activity/', { params }),
   },
 
   // Admins see and decide every request; teachers see and cancel their own.
