@@ -1,0 +1,41 @@
+# Runs on every push and pull request. Make the "build" check required on
+# main (backend docs/HUMAN_ACTIONS.md, H-7) so nothing reaches production
+# untested.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Tests
+        run: npm test
+
+      - name: Build
+        # Not a Vercel production build, so the production guard (which
+        # needs VITE_API_BASE_URL) doesn't apply here.
+        run: npm run build
+
+      - name: Known vulnerabilities in production dependencies
+        run: npm audit --omit=dev
