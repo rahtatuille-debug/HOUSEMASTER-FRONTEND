@@ -42,6 +42,7 @@ async function login(email, password) {
 function logout() {
   const refresh = getTokens()?.refresh
   clearTokens()
+  clearLease()
   if (!refresh) return
   try {
     fetch(`${API_BASE}/api/logout/`, {
@@ -227,11 +228,83 @@ async function refreshAccessToken(staleAccess) {
   return refreshInFlight
 }
 
+// Across tabs, a Web Lock makes one tab refresh while the others wait. Where
+// there are no Web Locks (older Safari) or they throw (some privacy modes),
+// a short lease in localStorage does the same job, best effort: a tab that
+// finds another tab's lease waits for the new tokens to appear (or the lease
+// to run out) and then uses them. The refresh itself never runs twice.
 function withRefreshLock(fn) {
-  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
-    return navigator.locks.request('housemaster-token-refresh', fn)
+  let started = false
+  let result
+  const once = () => {
+    if (!started) {
+      started = true
+      result = fn()
+    }
+    return result
   }
-  return fn()
+  const fallback = () => (started ? result : withStorageLease(once))
+  if (typeof navigator === 'undefined' || !navigator.locks?.request) return fallback()
+  try {
+    return Promise.resolve(navigator.locks.request('housemaster-token-refresh', once)).catch(fallback)
+  } catch {
+    return fallback()
+  }
+}
+
+const LEASE_KEY = 'housemaster_refresh_lease'
+const LEASE_MS = 10000
+
+function readLease() {
+  try {
+    return JSON.parse(localStorage.getItem(LEASE_KEY))
+  } catch {
+    return null
+  }
+}
+
+function clearLease(id) {
+  try {
+    if (id === undefined || readLease()?.id === id) localStorage.removeItem(LEASE_KEY)
+  } catch {
+    // storage unavailable: nothing to clear
+  }
+}
+
+// Resolves when another tab writes new tokens, or after `ms`.
+function tokensChangeOrTimeout(ms) {
+  return new Promise((resolve) => {
+    const done = () => {
+      clearTimeout(timer)
+      window.removeEventListener('storage', onStorage)
+      resolve()
+    }
+    const onStorage = (event) => {
+      if (event.key === TOKEN_KEY || event.key === LEASE_KEY) done()
+    }
+    const timer = setTimeout(done, Math.max(0, ms))
+    window.addEventListener('storage', onStorage)
+  })
+}
+
+async function withStorageLease(fn) {
+  const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  try {
+    const lease = readLease()
+    if (lease && lease.id !== id && lease.until > Date.now()) {
+      // Another tab is refreshing. doRefresh then finds its new access token.
+      await tokensChangeOrTimeout(lease.until - Date.now())
+    } else {
+      localStorage.setItem(LEASE_KEY, JSON.stringify({ id, until: Date.now() + LEASE_MS }))
+    }
+  } catch {
+    // no usable storage: refresh without cross-tab coordination
+  }
+  try {
+    return await fn()
+  } finally {
+    clearLease(id)
+  }
 }
 
 async function doRefresh(staleAccess) {
