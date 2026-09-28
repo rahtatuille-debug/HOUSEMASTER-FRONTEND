@@ -83,7 +83,7 @@ function StudentTable({ students: given, showClass, onOpenStudent, system }) {
     <div className="card">
       <h3 style={{ fontSize: 15, marginBottom: 10 }}>{noRanking ? 'Students' : 'Students, highest average first'}</h3>
       <div className="table-scroll">
-      <table>
+      <table className="responsive-table">
         <thead>
           <tr>{!noRanking && <th>#</th>}<th>Student</th>{showClass && <th>{words.class}</th>}<th>Average</th><th>Previous {words.term.toLowerCase()}</th><th>Change</th></tr>
         </thead>

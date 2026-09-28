@@ -433,7 +433,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     <h3 style={{ fontSize: 15 }}>{t.term}</h3>
                     <span className="text-muted">Average {fmt(t.average, 1)}</span>
                   </div>
-                  <table>
+                  <table className="responsive-table">
                     <thead><tr><th>{words.subject}</th>{t.grades.some((g) => g.assessment) && <th>Assessment</th>}<th>Score</th><th>Percent</th></tr></thead>
                     <tbody>
                       {t.grades.map((g, i) => (
@@ -569,7 +569,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
               {!profile.activity || profile.activity.length === 0 ? (
                 <p className="text-muted" style={{ margin: 0 }}>Nothing recorded yet.</p>
               ) : (
-                <table>
+                <table className="responsive-table">
                   <thead><tr><th>When</th><th>Who</th><th>What happened</th></tr></thead>
                   <tbody>
                     {profile.activity.map((a, i) => (

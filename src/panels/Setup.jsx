@@ -345,7 +345,7 @@ export default function Setup({ me, onUserUpdated }) {
           <p className="hint">No terms yet — add one above before recording grades or generating reports.</p>
         )}
         {terms.length > 0 && (
-          <table>
+          <table className="responsive-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -412,7 +412,7 @@ export default function Setup({ me, onUserUpdated }) {
               In the order students move through them. At the end of the year, students in the final{' '}
               {words.year_group.toLowerCase()} graduate.
             </p>
-            <table>
+            <table className="responsive-table">
               <thead><tr><th>{words.year_group}</th>{showCurriculum && <th>Curriculum and grading</th>}<th>Final year</th><th /></tr></thead>
               <tbody>
                 {orderedYearGroups.map((yg, i) => (
@@ -514,7 +514,7 @@ export default function Setup({ me, onUserUpdated }) {
             {classes.length === 0 ? (
               <p className="hint">No classes yet — add one above.</p>
             ) : (
-              <table>
+              <table className="responsive-table">
                 <thead>
                   <tr>
                     <th>{words.class}</th>

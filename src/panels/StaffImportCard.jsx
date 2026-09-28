@@ -102,7 +102,7 @@ export default function StaffImportCard({ onImported }) {
 
           {result.people.length > 0 && (
             <div className="table-scroll">
-              <table>
+              <table className="responsive-table">
                 <thead><tr><th>Row</th><th>Name</th><th>Email</th><th>Role</th><th>{words.classes}</th></tr></thead>
                 <tbody>
                   {result.people.map((p) => (
@@ -124,7 +124,7 @@ export default function StaffImportCard({ onImported }) {
           )}
           {result.errors.length > 0 && (
             <div style={{ maxHeight: 240, overflowY: 'auto', marginTop: 8 }}>
-              <table>
+              <table className="responsive-table">
                 <thead><tr><th>Row</th><th>Problem</th></tr></thead>
                 <tbody>{result.errors.map((e, i) => <tr key={i}><td>{e.row}</td><td>{e.message}</td></tr>)}</tbody>
               </table>

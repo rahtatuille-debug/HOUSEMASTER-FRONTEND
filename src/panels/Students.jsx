@@ -3,6 +3,7 @@ import SubjectChoicesCard from './SubjectChoicesCard.jsx'
 import { useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import StudentProfile from './StudentProfile.jsx'
+import ShowMore, { PAGE } from './ShowMore.jsx'
 
 const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', school_class: '' }
 
@@ -22,6 +23,11 @@ export default function Students({ me }) {
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [showInactive, setShowInactive] = useState(false)
+  // The add/edit form opens on demand, so the list comes first (especially on phones).
+  const [showForm, setShowForm] = useState(false)
+  const [search, setSearch] = useState('')
+  const [classFilter, setClassFilter] = useState('')
+  const [limit, setLimit] = useState(PAGE)
 
   async function load() {
     setLoading(true)
@@ -44,6 +50,8 @@ export default function Students({ me }) {
   }, [showInactive])
 
   function startEdit(student) {
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
     setEditingId(student.id)
     setForm({
       first_name: student.first_name,
@@ -57,6 +65,7 @@ export default function Students({ me }) {
   function cancelEdit() {
     setEditingId(null)
     setForm(emptyForm)
+    setShowForm(false)
   }
 
   async function handleSubmit(e) {
@@ -113,6 +122,10 @@ export default function Students({ me }) {
     ? allClasses
     : allClasses.filter((c) => (me?.assignments || []).some((a) => a.school_class === c.id))
 
+  const query = search.trim().toLowerCase()
+  const filtered = students.filter((s) => (!classFilter || String(s.school_class) === classFilter)
+    && (!query || `${s.first_name} ${s.last_name} ${s.external_id || ''}`.toLowerCase().includes(query)))
+
   const className = (id) => {
     if (!id) return '—'
     return allClasses.find((c) => c.id === id)?.name || `#${id}`
@@ -136,7 +149,27 @@ export default function Students({ me }) {
     <div>
       <div className="panel-header">
         <h2>Students</h2>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, textTransform: 'none' }}>
+        {!showForm && (
+          <button type="button" style={{ width: 'auto' }} onClick={() => { setEditingId(null); setForm(emptyForm); setShowForm(true) }}>
+            Add a student
+          </button>
+        )}
+      </div>
+
+      <div className="list-filters">
+        <div className="field">
+          <label htmlFor="student-search">Search</label>
+          <input id="student-search" type="search" value={search} placeholder={`Name or ${words.student_id.toLowerCase()}`}
+            onChange={(e) => { setSearch(e.target.value); setLimit(PAGE) }} />
+        </div>
+        <div className="field">
+          <label htmlFor="student-class-filter">{words.class}</label>
+          <select id="student-class-filter" value={classFilter} onChange={(e) => { setClassFilter(e.target.value); setLimit(PAGE) }}>
+            <option value="">All {words.classes.toLowerCase()}</option>
+            {classes.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+        <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', alignSelf: 'end', marginBottom: 14 }}>
           <input
             type="checkbox"
             style={{ width: 'auto' }}
@@ -155,6 +188,7 @@ export default function Students({ me }) {
         </p>
       )}
 
+      {showForm && (
       <div className="card">
         <h3 style={{ marginBottom: 14, fontSize: 15 }}>
           {editingId ? 'Edit student' : 'Add a student'}
@@ -204,7 +238,7 @@ export default function Students({ me }) {
               />
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
-              <label htmlFor="external-id">External ID</label>
+              <label htmlFor="external-id">{words.student_id}</label>
               <input
                 id="external-id"
                 value={form.external_id}
@@ -215,38 +249,40 @@ export default function Students({ me }) {
           </div>
           <div className="form-actions">
             <button type="submit">{editingId ? 'Save changes' : 'Add student'}</button>
-            {editingId && (
-              <button type="button" className="secondary" onClick={cancelEdit}>
-                Cancel
-              </button>
-            )}
+            <button type="button" className="secondary" onClick={cancelEdit}>
+              {editingId ? 'Cancel' : 'Close'}
+            </button>
           </div>
         </form>
       </div>
+      )}
 
       {loading ? (
         <p className="text-muted">Loading…</p>
       ) : students.length === 0 ? (
         <div className="empty-state">
           <h3>No students yet</h3>
-          <p>Add your first student above.</p>
+          <p>Add your first student with the button above, or import them from Excel in Setup.</p>
         </div>
+      ) : filtered.length === 0 ? (
+        <p className="text-muted">No students match that search.</p>
       ) : (
-        <table>
+        <>
+        <table className="responsive-table">
           <thead>
             <tr>
               <th>Name</th>
               <th>{words.class}</th>
               <th>House</th>
-              <th>External ID</th>
+              <th>{words.student_id}</th>
               <th>Status</th>
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {students.map((s) => (
+            {filtered.slice(0, limit).map((s) => (
               <tr key={s.id}>
-                <td>
+                <td className="row-title">
                   <button
                     type="button"
                     className="link-button"
@@ -256,23 +292,24 @@ export default function Students({ me }) {
                     {s.first_name} {s.last_name}
                   </button>
                 </td>
-                <td>{className(s.school_class)}</td>
-                <td>{s.house || '—'}</td>
-                <td className="mono">{s.external_id || '—'}</td>
-                <td>
+                <td data-label={words.class}>{className(s.school_class)}</td>
+                <td data-label="House">{s.house || '—'}</td>
+                <td data-label={words.student_id} className="mono">{s.external_id || '—'}</td>
+                <td data-label="Status">
                   <span className={`badge ${s.is_active ? 'finalized' : 'draft'}`}>
                     {s.is_active ? 'Active' : 'Inactive'}
                   </span>
                 </td>
-                <td style={{ display: 'flex', gap: 8 }}>
+                <td className="row-actions" style={{ display: 'flex', gap: 8 }}>
                   <button onClick={() => setOpenStudentId(s.id)}>View</button>
                   <button className="secondary" onClick={() => startEdit(s)}>
                     Edit
                   </button>
-                  <button className="secondary" onClick={() => toggleActive(s)}>
+                  {/* On phones these two live on the student's profile, to keep each card short. */}
+                  <button className="secondary desktop-only" onClick={() => toggleActive(s)}>
                     {s.is_active ? 'Deactivate' : 'Reactivate'}
                   </button>
-                  <button className="danger" onClick={() => removeStudent(s)}>
+                  <button className="danger desktop-only" onClick={() => removeStudent(s)}>
                     {isAdmin ? 'Delete' : 'Request delete'}
                   </button>
                 </td>
@@ -280,6 +317,8 @@ export default function Students({ me }) {
             ))}
           </tbody>
         </table>
+        <ShowMore shown={limit} total={filtered.length} onMore={() => setLimit(limit + PAGE)} noun="students" />
+        </>
       )}
       <SubjectChoicesCard me={me} />
     </div>

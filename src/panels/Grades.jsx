@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { levelFor, levelMidpoint, levelsForScale, useSchool, useVocab } from '../levels.js'
 import { api } from '../api.js'
+import ShowMore, { PAGE } from './ShowMore.jsx'
 
 // Teachers can see every subject's grades for students in their classes,
 // but only add or change grades for the subjects they teach there.
@@ -20,6 +21,7 @@ export default function Grades({ me }) {
   const [loading, setLoading] = useState(true)
 
   const [filterStudent, setFilterStudent] = useState('')
+  const [limit, setLimit] = useState(PAGE)
   const [filterTerm, setFilterTerm] = useState('')
 
   const [form, setForm] = useState({ student: '', subject: '', term: '', score: '', max_score: '100', assessment_type: '' })
@@ -64,6 +66,7 @@ export default function Grades({ me }) {
     loadGrades()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterStudent, filterTerm])
+  useEffect(() => setLimit(PAGE), [filterStudent, filterTerm])
 
   function resetForm() {
     setEditingId(null)
@@ -314,7 +317,8 @@ export default function Grades({ me }) {
           <p>Record one above, or adjust the filters.</p>
         </div>
       ) : (
-        <table>
+        <>
+        <table className="responsive-table">
           <thead>
             <tr>
               <th>Student</th>
@@ -326,14 +330,14 @@ export default function Grades({ me }) {
             </tr>
           </thead>
           <tbody>
-            {grades.map((g) => (
+            {grades.slice(0, limit).map((g) => (
               <tr key={g.id}>
-                <td>{studentName(g.student)}</td>
-                <td>{subjectName(g.subject)}</td>
-                <td>{termName(g.term)}</td>
-                {types.length > 0 && <td className="text-muted">{types.find((t) => t.id === g.assessment_type)?.name || '—'}</td>}
-                <td className="mono">{g.score} / {g.max_score}</td>
-                <td style={{ display: 'flex', gap: 8 }}>
+                <td className="row-title">{studentName(g.student)}</td>
+                <td data-label={words.subject}>{subjectName(g.subject)}</td>
+                <td data-label={words.term}>{termName(g.term)}</td>
+                {types.length > 0 && <td data-label="Assessment" className="text-muted">{types.find((t) => t.id === g.assessment_type)?.name || '—'}</td>}
+                <td data-label="Score" className="mono">{g.score} / {g.max_score}</td>
+                <td className="row-actions" style={{ display: 'flex', gap: 8 }}>
                   {canGrade(g.student, g.subject) && (
                     <>
                       <button className="secondary" onClick={() => startEdit(g)}>
@@ -349,6 +353,8 @@ export default function Grades({ me }) {
             ))}
           </tbody>
         </table>
+        <ShowMore shown={limit} total={grades.length} onMore={() => setLimit(limit + PAGE)} noun="marks" />
+        </>
       )}
     </div>
   )

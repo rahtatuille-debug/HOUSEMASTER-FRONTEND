@@ -57,7 +57,7 @@ export default function TermSummary({ summary }) {
     <>
       <Headline summary={summary} words={words} />
       <div className="table-scroll">
-        <table>
+        <table className="responsive-table">
           <thead>
             <tr><th>{summary.subject_word || words.subject}</th>{columns.map(([label]) => <th key={label}>{label}</th>)}<th>Comment</th></tr>
           </thead>

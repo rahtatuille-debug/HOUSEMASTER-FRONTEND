@@ -3,8 +3,10 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import { initSentry, ErrorBoundary } from './sentry.js'
 import './styles.css'
+import { startResponsiveTables } from './responsiveTables.js'
 
 initSentry()
+startResponsiveTables()
 
 // Shown instead of a blank white page if a render error escapes the app.
 // The error is reported to Sentry (when configured) by the boundary itself.

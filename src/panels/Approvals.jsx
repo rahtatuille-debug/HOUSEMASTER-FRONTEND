@@ -186,7 +186,7 @@ export default function Approvals({ me, onCountsChanged }) {
         ) : requests.length === 0 ? (
           <p className="text-muted" style={{ margin: 0 }}>Nothing here.</p>
         ) : (
-          <table>
+          <table className="responsive-table">
             <thead>
               <tr>
                 {isAdmin && <th>Asked by</th>}

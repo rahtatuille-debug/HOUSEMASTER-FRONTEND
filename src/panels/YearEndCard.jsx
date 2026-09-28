@@ -97,7 +97,7 @@ export default function YearEndCard({ classes, yearGroups = [], onDone }) {
       {withStudents.length === 0 ? (
         <p className="text-muted" style={{ margin: 0 }}>No classes with active students.</p>
       ) : (
-        <table>
+        <table className="responsive-table">
           <thead>
             <tr><th>{words.class}</th><th>Students</th><th>Next year</th></tr>
           </thead>

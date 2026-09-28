@@ -98,7 +98,7 @@ export default function ImportCard({ onImported }) {
                 problems {done ? 'were' : 'will be'} skipped:
               </p>
               <div style={{ maxHeight: 240, overflowY: 'auto' }}>
-                <table>
+                <table className="responsive-table">
                   <thead><tr><th>Sheet</th><th>Row</th><th>Problem</th></tr></thead>
                   <tbody>
                     {result.errors.map((e, i) => (

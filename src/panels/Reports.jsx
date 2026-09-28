@@ -4,6 +4,7 @@ import { formatDate } from '../format.js'
 import { api } from '../api.js'
 import ClassReports from './ClassReports.jsx'
 import SubjectReportsCard from './SubjectReportsCard.jsx'
+import ShowMore, { PAGE } from './ShowMore.jsx'
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -25,6 +26,7 @@ export default function Reports({ me, onCountsChanged }) {
   const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [filter, setFilter] = useState('')
+  const [limit, setLimit] = useState(PAGE)
   const [notice, setNotice] = useState('')
   const [sendingBack, setSendingBack] = useState(false)
   const [backNote, setBackNote] = useState('')
@@ -328,7 +330,7 @@ export default function Reports({ me, onCountsChanged }) {
             key={f.key || 'all'}
             type="button"
             className={`secondary${filter === f.key ? ' active' : ''}`}
-            onClick={() => setFilter(f.key)}
+            onClick={() => { setFilter(f.key); setLimit(PAGE) }}
           >
             {f.label}
           </button>
@@ -342,7 +344,8 @@ export default function Reports({ me, onCountsChanged }) {
           <p>{filter ? 'Try a different filter.' : 'Generate one above to get started.'}</p>
         </div>
       ) : (
-        <table>
+        <>
+        <table className="responsive-table">
           <thead>
             <tr>
               <th>Student</th>
@@ -353,15 +356,15 @@ export default function Reports({ me, onCountsChanged }) {
             </tr>
           </thead>
           <tbody>
-            {reports.map((r) => (
+            {reports.slice(0, limit).map((r) => (
               <tr key={r.id}>
-                <td>{studentName(r.student)}</td>
-                <td>{termName(r.term)}</td>
-                <td>
+                <td className="row-title">{studentName(r.student)}</td>
+                <td data-label={words.term}>{termName(r.term)}</td>
+                <td data-label="Status">
                   <span className={`badge ${r.status}`}>{STATUS_LABELS[r.status] || r.status}</span>
                 </td>
-                <td className="text-muted">{formatDate(r.generated_at)}</td>
-                <td>
+                <td data-label="Generated" className="text-muted">{formatDate(r.generated_at)}</td>
+                <td className="row-actions">
                   <button className="secondary" onClick={() => openForReview(r)}>
                     Review
                   </button>
@@ -370,6 +373,8 @@ export default function Reports({ me, onCountsChanged }) {
             ))}
           </tbody>
         </table>
+        <ShowMore shown={limit} total={reports.length} onMore={() => setLimit(limit + PAGE)} noun="reports" />
+        </>
       )}
     </div>
   )

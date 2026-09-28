@@ -49,7 +49,7 @@ export default function AssessmentTypesCard({ me }) {
       {error && <div className="error-banner">{error}</div>}
       {notice && <div className="success-banner">{notice}</div>}
       {types.length > 0 && (
-        <table style={{ marginBottom: 12 }}>
+        <table className="responsive-table" style={{ marginBottom: 12 }}>
           <thead><tr><th>Type</th><th>Weight</th><th /></tr></thead>
           <tbody>
             {types.map((t) => (

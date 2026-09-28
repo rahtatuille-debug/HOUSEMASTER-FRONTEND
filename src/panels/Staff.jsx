@@ -164,7 +164,7 @@ export default function Staff({ me }) {
         {loading ? (
           <p className="text-muted">Loading…</p>
         ) : (
-          <table>
+          <table className="responsive-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -357,7 +357,7 @@ export default function Staff({ me }) {
           <p>Create one above to bring on a teacher or admin.</p>
         </div>
       ) : (
-        <table>
+        <table className="responsive-table">
           <thead>
             <tr>
               <th>Name</th>

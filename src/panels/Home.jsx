@@ -106,7 +106,7 @@ export default function Home({ me, onNavigate, onStartTour }) {
           {att.classes.length === 0 ? (
             <p className="text-muted" style={{ margin: 0 }}>No classes with students yet.</p>
           ) : (
-            <table>
+            <table className="responsive-table">
               <thead>
                 <tr><th>{words.class}</th><th>Marked</th><th>Absent</th><th>Late</th></tr>
               </thead>

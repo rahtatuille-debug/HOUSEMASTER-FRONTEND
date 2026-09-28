@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api.js'
 import ReportPreview from './ReportPreview.jsx'
-import { PEOPLE_STEPS } from './PeopleSetup.jsx'
+import { PEOPLE_STEPS, StepProgress } from './PeopleSetup.jsx'
 
 const STEPS = ['School details', 'Education system', 'Levels', 'Classes', 'Subjects', 'Terms', 'Grading and reports', 'Review']
 const TONES = { formal: 'Formal', warm: 'Warm and encouraging', concise: 'Concise and direct' }
@@ -145,6 +145,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
         ))}
         {PEOPLE_STEPS.map((label, i) => <li key={label}><span>{STEPS.length + i + 1}</span> {label}</li>)}
       </ol>
+      <StepProgress step={step + 1} total={STEPS.length + PEOPLE_STEPS.length} />
 
       <div className="card setup-card">
         {error && <div className="error-banner">{error}</div>}
@@ -239,7 +240,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
                 year_groups: answers.year_groups.map((g) => ({ ...g, classes: [g.name] })),
               })}>One class each</button>
             </div>
-            <table style={{ marginTop: 12 }}>
+            <table className="responsive-table" style={{ marginTop: 12 }}>
               <thead><tr><th>Year group</th><th>Classes (separate with commas)</th></tr></thead>
               <tbody>
                 {answers.year_groups.map((g, i) => (
@@ -307,7 +308,7 @@ export default function SetupWizard({ me, onFinished, onLogout }) {
               </div>
             )}
             <div className="table-scroll">
-              <table>
+              <table className="responsive-table">
                 <thead><tr><th>Name</th><th>Starts</th><th>Ends</th><th /></tr></thead>
                 <tbody>
                   {answers.terms.map((t, i) => {

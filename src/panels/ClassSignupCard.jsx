@@ -61,7 +61,7 @@ export function SignupRequests({ onChanged }) {
       )}
       {rows.length > 0 && (
         <div className="table-scroll">
-          <table>
+          <table className="responsive-table">
             <thead>
               <tr><th>Parent</th><th>Child</th><th>Already linked</th><th>Asked</th><th /></tr>
             </thead>
@@ -110,7 +110,7 @@ export function SignupRequests({ onChanged }) {
 }
 
 // One sign-up link per class, to share with that class's parents.
-export function ClassSignupLinks({ refreshKey, onChanged }) {
+export function ClassSignupLinks({ refreshKey, onChanged, showTurnOnAll = true }) {
   const words = useVocab()
   const [rows, setRows] = useState(null)
   const [busy, setBusy] = useState(null)
@@ -128,6 +128,20 @@ export function ClassSignupLinks({ refreshKey, onChanged }) {
     setError('')
     try {
       setRows(await api.signupLinks.change(row.school_class, action))
+      onChanged?.()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function turnOnAll() {
+    setBusy('all')
+    setError('')
+    try {
+      await api.signupLinks.turnOnAll()
+      setRows(await api.signupLinks.list())
       onChanged?.()
     } catch (err) {
       setError(err.message)
@@ -161,10 +175,15 @@ export function ClassSignupLinks({ refreshKey, onChanged }) {
         child&apos;s admission number, and their requests wait above for you to approve.
       </p>
       {error && <div className="error-banner">{error}</div>}
+      {showTurnOnAll && rows && rows.some((r) => !r.token) && (
+        <button type="button" style={{ width: 'auto', marginBottom: 12 }} disabled={busy === 'all'} onClick={turnOnAll}>
+          {busy === 'all' ? 'Turning on…' : `Turn on links for every ${words.class.toLowerCase()}`}
+        </button>
+      )}
       {rows && rows.length === 0 && <p className="text-muted">Add {words.classes.toLowerCase()} in Setup first.</p>}
       {rows && rows.length > 0 && (
         <div className="table-scroll">
-          <table>
+          <table className="responsive-table">
             <thead><tr><th>{words.class}</th><th>Link</th><th /></tr></thead>
             <tbody>
               {rows.map((row) => (

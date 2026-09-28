@@ -90,7 +90,7 @@ export default function Activity() {
           <p>Try a different filter or date range.</p>
         </div>
       ) : (
-        <table>
+        <table className="responsive-table">
           <thead>
             <tr>
               <th>When</th>

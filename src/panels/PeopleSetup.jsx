@@ -123,6 +123,16 @@ function QuickStudentAdd({ onDone }) {
   )
 }
 
+// On phones the full list of steps is replaced by this bar, to save space.
+export function StepProgress({ step, total }) {
+  return (
+    <div className="setup-progress-mobile">
+      <div className="bar" aria-hidden="true"><span style={{ width: `${(step / total) * 100}%` }} /></div>
+      <small>Step {step} of {total}</small>
+    </div>
+  )
+}
+
 function plural(n, one, many = `${one}s`) {
   return `${n} ${n === 1 ? one : many}`
 }
@@ -193,7 +203,7 @@ export default function PeopleSetup({ me, onFinished, onLogout }) {
   const waiting = {
     staff: 'Invite at least one member of staff to continue.',
     students: 'Add at least one student to continue.',
-    parents: 'Turn on a sign-up link for at least one class to continue.',
+    parents: `Turn on a sign-up link for at least one ${words.class.toLowerCase()} to continue.`,
   }[key]
   const staffCount = status.staff.accounts + status.staff.invites
 
@@ -214,6 +224,7 @@ export default function PeopleSetup({ me, onFinished, onLogout }) {
           </li>
         ))}
       </ol>
+      <StepProgress step={STRUCTURE_STEPS + step + 1} total={STRUCTURE_STEPS + PEOPLE_STEPS.length} />
 
       <div className="card setup-card">
         {error && <div className="error-banner">{error}</div>}
@@ -302,7 +313,7 @@ export default function PeopleSetup({ me, onFinished, onLogout }) {
           <QuickStudentAdd onDone={refresh} />
         </>
       )}
-      {step === 2 && <ClassSignupLinks refreshKey={linksKey} onChanged={refresh} />}
+      {step === 2 && <ClassSignupLinks refreshKey={linksKey} onChanged={refresh} showTurnOnAll={false} />}
 
       <p className="text-muted setup-foot">Signed in as {me?.name} · You can sign out and pick up where you left off.</p>
     </div>

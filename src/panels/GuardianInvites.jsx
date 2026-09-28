@@ -3,6 +3,7 @@ import { formatDate as localDate } from '../format.js'
 import { api } from '../api.js'
 import { ContactDetails, ContactForm } from './ParentContact.jsx'
 import { ClassSignupLinks, SignupRequests } from './ClassSignupCard.jsx'
+import ShowMore, { PAGE } from './ShowMore.jsx'
 
 function formatDate(value) {
   return value ? localDate(value) : 'Never'
@@ -26,6 +27,8 @@ export default function GuardianInvites() {
   const [copiedId, setCopiedId] = useState(null)
   const [linksKey, setLinksKey] = useState(0)
   const [studentFilter, setStudentFilter] = useState('')
+  const [parentSearch, setParentSearch] = useState('')
+  const [parentLimit, setParentLimit] = useState(PAGE)
 
   async function load() {
     setLoading(true)
@@ -51,6 +54,10 @@ export default function GuardianInvites() {
   }, [])
 
   const activeStudents = students.filter((s) => s.is_active)
+  const parentQuery = parentSearch.trim().toLowerCase()
+  const matchingParents = parentQuery
+    ? parents.filter((p) => `${p.name} ${p.phone || ''} ${p.student_names.join(' ')}`.toLowerCase().includes(parentQuery))
+    : parents
 
   function toggleStudent(id) {
     setSelectedStudentIds((current) =>
@@ -180,8 +187,16 @@ export default function GuardianInvites() {
         ) : parents.length === 0 ? (
           <p className="text-muted" style={{ margin: 0 }}>No parent has accepted an invite yet.</p>
         ) : (
+          <>
+          {parents.length > 10 && (
+            <div className="field" style={{ maxWidth: 360 }}>
+              <label htmlFor="parent-search">Search</label>
+              <input id="parent-search" type="search" placeholder="Parent, child or phone" value={parentSearch}
+                onChange={(e) => { setParentSearch(e.target.value); setParentLimit(PAGE) }} />
+            </div>
+          )}
           <div className="table-scroll">
-          <table>
+          <table className="responsive-table">
             <thead>
               <tr>
                 <th>Name</th>
@@ -193,26 +208,26 @@ export default function GuardianInvites() {
               </tr>
             </thead>
             <tbody>
-              {parents.map((p) => {
+              {matchingParents.slice(0, parentLimit).map((p) => {
                 const mode = openParent.id === p.id ? openParent.mode : null
                 return (
                   <Fragment key={p.id}>
                     <tr>
-                      <td>
+                      <td className="row-title">
                         <button type="button" className="link-button" aria-expanded={mode !== null}
                           onClick={() => toggleOpen(p, 'details')}>
                           {p.name}
                         </button>
                       </td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{p.phone || <span className="text-muted">—</span>}</td>
-                      <td>{p.student_names.length ? p.student_names.join(', ') : <span className="text-muted">None</span>}</td>
-                      <td>
+                      <td data-label="Phone" style={{ whiteSpace: 'nowrap' }}>{p.phone || <span className="text-muted">—</span>}</td>
+                      <td data-label="Children">{p.student_names.length ? p.student_names.join(', ') : <span className="text-muted">None</span>}</td>
+                      <td data-label="Status">
                         <span className={`badge ${p.is_active ? 'active' : 'inactive'}`}>
                           {p.is_active ? 'Active' : 'Deactivated'}
                         </span>
                       </td>
-                      <td className="text-muted">{formatDate(p.last_login)}</td>
-                      <td style={{ display: 'flex', gap: 8 }}>
+                      <td data-label="Last login" className="text-muted">{formatDate(p.last_login)}</td>
+                      <td className="row-actions" style={{ display: 'flex', gap: 8 }}>
                         <button className="secondary" onClick={() => toggleOpen(p, 'details')}>
                           {mode ? 'Close' : 'Details'}
                         </button>
@@ -285,6 +300,9 @@ export default function GuardianInvites() {
             </tbody>
           </table>
           </div>
+          {matchingParents.length === 0 && <p className="text-muted">No parents match that search.</p>}
+          <ShowMore shown={parentLimit} total={matchingParents.length} onMore={() => setParentLimit(parentLimit + PAGE)} noun="parents" />
+          </>
         )}
       </div>
 
@@ -374,7 +392,7 @@ export default function GuardianInvites() {
           <p>Create one above to give a parent access to messaging.</p>
         </div>
       ) : (
-        <table>
+        <table className="responsive-table">
           <thead>
             <tr>
               <th>Name</th>

@@ -233,7 +233,7 @@ export default function Alerts({ me }) {
               </div>
             )}
             {openId === a.id && (
-              <table style={{ marginTop: 12 }}>
+              <table className="responsive-table" style={{ marginTop: 12 }}>
                 <thead>
                   <tr>
                     <th>Name</th>
