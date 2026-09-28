@@ -18,10 +18,39 @@ export function checkProductionEnv(env, vercelEnv, warn = console.warn) {
   }
 }
 
+// The body font is only discovered once the app has rendered, after the
+// main script has downloaded and run. Preloading it from index.html starts
+// that download straight away, so text appears in Inter sooner (F-2).
+export const PRELOADED_FONT = 'inter-latin-wght-normal'
+
+export function fontPreloadTags(bundle = {}, base = '/') {
+  const file = Object.keys(bundle).find((name) => name.includes(PRELOADED_FONT) && name.endsWith('.woff2'))
+  if (!file) return []
+  return [{
+    tag: 'link',
+    attrs: { rel: 'preload', as: 'font', type: 'font/woff2', href: `${base}${file}`, crossorigin: '' },
+    injectTo: 'head',
+  }]
+}
+
+function preloadBodyFont() {
+  let base = '/'
+  return {
+    name: 'housemaster-preload-body-font',
+    apply: 'build',
+    configResolved(config) {
+      base = config.base
+    },
+    transformIndexHtml(html, ctx) {
+      return fontPreloadTags(ctx.bundle, base)
+    },
+  }
+}
+
 export default defineConfig(({ mode }) => {
   checkProductionEnv(loadEnv(mode, process.cwd(), 'VITE_'), process.env.VERCEL_ENV)
   return {
-    plugins: [react()],
+    plugins: [react(), preloadBodyFont()],
     server: {
       port: 5173,
     },
