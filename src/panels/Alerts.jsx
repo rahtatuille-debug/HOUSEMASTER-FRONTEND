@@ -11,6 +11,16 @@ const AUDIENCES = [
   { key: 'school_class', label: 'Parents of a class' },
 ]
 
+const people = (n) => `${n} ${n === 1 ? 'person' : 'people'}`
+
+// Email goes out in the background (B-9); an older backend sends it before answering.
+function emailNote(alert) {
+  if (!alert.emailed_at) return 'It is being emailed to them now; the count shows in the list when it has gone.'
+  const failed = alert.email_failed_count
+    ? ` ${alert.email_failed_count} email(s) couldn't be sent; they'll still see the banner in the app.` : ''
+  return `Emailed ${people(alert.emailed_count)}.${failed}`
+}
+
 // Send urgent alerts and see who has seen them. Admins can alert anyone;
 // teachers only the parents of a class they teach (the API enforces this).
 export default function Alerts({ me }) {
@@ -25,7 +35,6 @@ export default function Alerts({ me }) {
     audience: isAdmin ? 'everyone' : 'school_class',
     year_group: '',
     school_class: '',
-    send_email: false,
   })
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
@@ -66,16 +75,37 @@ export default function Alerts({ me }) {
         audience: form.audience,
         year_group: form.audience === 'year_group' ? Number(form.year_group) : null,
         school_class: form.audience === 'school_class' ? Number(form.school_class) : null,
-        send_email: form.send_email,
+        // Every alert is emailed as well (B-9). Sent so that an older
+        // backend, which only emails when asked, does the same.
+        send_email: true,
       })
-      const people = (n) => `${n} ${n === 1 ? 'person' : 'people'}`
-      let message = `Urgent alert sent to ${people(alert.recipient_count)}.`
-      if (form.send_email) {
-        message += ` Emailed ${people(alert.emailed_count)}.`
-        if (alert.email_failed_count) message += ` ${alert.email_failed_count} email(s) couldn't be sent; they'll still see the banner in the app.`
-      }
-      setNotice(message)
-      setForm({ ...form, title: '', body: '', send_email: false })
+      setNotice(`Urgent alert sent to ${people(alert.recipient_count)}. ${emailNote(alert)}`)
+      setForm({ ...form, title: '', body: '' })
+      load()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSending(false)
+    }
+  }
+
+  // Admins: check that alerts reach people, without alarming parents. Goes to
+  // all staff only (an older backend without test alerts sends it to staff
+  // as an ordinary alert titled "Test alert").
+  async function sendTest() {
+    if (!window.confirm('Send a test alert to all staff? It shows as a banner and is emailed to them, marked as a test. Parents don\'t get it.')) return
+    setSending(true)
+    setError('')
+    setNotice('')
+    try {
+      const alert = await api.alerts.create({
+        title: 'Test alert',
+        body: "This is a test of HouseMaster's urgent alerts. No action is needed: tap \"I've seen this\".",
+        audience: 'all_staff',
+        is_test: true,
+        send_email: true,
+      })
+      setNotice(`Test alert sent to ${people(alert.recipient_count)} (staff only). ${emailNote(alert)}`)
       load()
     } catch (err) {
       setError(err.message)
@@ -187,20 +217,19 @@ export default function Alerts({ me }) {
               required
             />
           </div>
-          <label className="checkbox-list" style={{ display: 'flex', maxHeight: 'none', marginBottom: 12 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-              <input
-                type="checkbox"
-                style={{ width: 'auto' }}
-                checked={form.send_email}
-                onChange={(e) => setForm({ ...form, send_email: e.target.checked })}
-              />
-              Also email everyone it goes to, for people who don't have the app open
-            </span>
-          </label>
-          <button type="submit" className="danger-solid" disabled={sending}>
-            {sending ? 'Sending…' : 'Send urgent alert'}
-          </button>
+          <p className="hint" style={{ marginTop: 0 }}>
+            It is also emailed to everyone it goes to, for people who don't have the app open.
+          </p>
+          <div className="form-actions">
+            <button type="submit" className="danger-solid" disabled={sending}>
+              {sending ? 'Sending…' : 'Send urgent alert'}
+            </button>
+            {isAdmin && (
+              <button type="button" className="secondary" disabled={sending} onClick={sendTest}>
+                Send a test alert to staff
+              </button>
+            )}
+          </div>
         </form>
       </div>
 
@@ -212,7 +241,10 @@ export default function Alerts({ me }) {
           <div className="card" key={a.id} style={{ borderLeft: `3px solid ${a.is_active ? 'var(--stamp-red)' : 'var(--rule)'}` }}>
             <div className="panel-header" style={{ marginBottom: 6 }}>
               <strong>{a.title}</strong>
-              <span className={`badge ${a.is_active ? 'rejected' : 'cancelled'}`}>{a.is_active ? 'Active' : 'Ended'}</span>
+              <span style={{ display: 'flex', gap: 6 }}>
+                {a.is_test && <span className="badge pending">TEST</span>}
+                <span className={`badge ${a.is_active ? 'rejected' : 'cancelled'}`}>{a.is_active ? 'Active' : 'Ended'}</span>
+              </span>
             </div>
             <p style={{ margin: '0 0 8px' }}>{a.body}</p>
             <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>

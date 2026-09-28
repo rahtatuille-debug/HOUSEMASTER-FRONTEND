@@ -560,7 +560,7 @@ export default function App() {
         {urgentAlerts.map((a) => (
           <div className="urgent-banner" role="alert" key={a.id}>
             <div>
-              <span className="urgent-label">Urgent</span>
+              <span className="urgent-label">{a.is_test ? 'Test' : 'Urgent'}</span>
               <strong>{a.title}</strong>
               <p>{a.body}</p>
               <span className="urgent-meta">
