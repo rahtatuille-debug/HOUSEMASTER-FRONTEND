@@ -632,6 +632,8 @@ export const api = {
   },
   grades: {
     list: (params) => listRequest('/api/grades/', { params }),
+    // One page from the server ({count, next, results}), or a plain list from an older backend.
+    page: (params) => request('/api/grades/', { params }),
     create: (body) => request('/api/grades/', { method: 'POST', body }),
     update: (id, body) => request(`/api/grades/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/grades/${id}/`, { method: 'DELETE' }),

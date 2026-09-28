@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { levelFor, levelMidpoint, levelsForScale, useSchool, useVocab } from '../levels.js'
-import { api } from '../api.js'
+import { api, isPage } from '../api.js'
 import ShowMore, { PAGE } from './ShowMore.jsx'
 
 // Teachers can see every subject's grades for students in their classes,
@@ -17,6 +17,13 @@ export default function Grades({ me }) {
   const [subjects, setSubjects] = useState([])
   const [terms, setTerms] = useState([])
   const [grades, setGrades] = useState([])
+  // Marks come from the server a page at a time: how many there are in all,
+  // and the next page to fetch (null when everything is loaded, or when an
+  // older backend sent the whole list and it is paged on screen instead).
+  const [gradesTotal, setGradesTotal] = useState(0)
+  const [nextPage, setNextPage] = useState(null)
+  const [serverPaged, setServerPaged] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -49,14 +56,44 @@ export default function Grades({ me }) {
     setLoading(true)
     setError('')
     try {
-      const data = await api.grades.list({ student: filterStudent, term: filterTerm })
-      setGrades(data)
+      const data = await api.grades.page({ student: filterStudent, term: filterTerm, page: 1, page_size: PAGE })
+      setServerPaged(isPage(data))
+      if (isPage(data)) {
+        setGrades(data.results)
+        setGradesTotal(data.count)
+        setNextPage(data.next ? 2 : null)
+      } else {
+        setGrades(data)
+        setGradesTotal(data.length)
+        setNextPage(null)
+      }
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
   }
+
+  async function loadMoreGrades() {
+    if (!nextPage) {
+      setLimit(limit + PAGE)
+      return
+    }
+    setLoadingMore(true)
+    try {
+      const data = await api.grades.page({ student: filterStudent, term: filterTerm, page: nextPage, page_size: PAGE })
+      setGrades((current) => [...current, ...data.results])
+      setNextPage(data.next ? nextPage + 1 : null)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  // Paged by the server: show everything loaded so far. A whole list from
+  // an older backend is paged on screen as before.
+  const shownGrades = serverPaged ? grades : grades.slice(0, limit)
 
   useEffect(() => {
     loadOptions()
@@ -330,7 +367,7 @@ export default function Grades({ me }) {
             </tr>
           </thead>
           <tbody>
-            {grades.slice(0, limit).map((g) => (
+            {shownGrades.map((g) => (
               <tr key={g.id}>
                 <td className="row-title">{studentName(g.student)}</td>
                 <td data-label={words.subject}>{subjectName(g.subject)}</td>
@@ -353,7 +390,7 @@ export default function Grades({ me }) {
             ))}
           </tbody>
         </table>
-        <ShowMore shown={limit} total={grades.length} onMore={() => setLimit(limit + PAGE)} noun="marks" />
+        <ShowMore shown={shownGrades.length} total={gradesTotal} onMore={loadingMore ? () => {} : loadMoreGrades} noun="marks" />
         </>
       )}
     </div>
