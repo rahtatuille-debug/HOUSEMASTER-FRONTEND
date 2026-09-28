@@ -23,14 +23,34 @@ function forbidden() {
 
 const school = { id: 1, name: 'Alpha Academy', setup_completed: true, education_system: 'cbc' }
 
+// What /api/dashboard/ and /api/checklist/ return (an empty school). The
+// admin home page reads both; without them the page threw after the menu
+// had rendered, and the test passed or failed depending on timing.
+const dashboard = {
+  attendance_today: { date: '2026-09-28', is_today: true, students: 0, marked: 0, absent: 0, rate: 0,
+    classes_not_taken: [], classes: [] },
+  reports_waiting: { count: 0, items: [] },
+  requests_waiting: 0,
+  parent_signups_waiting: 0,
+  invites: { pending: 0, expired: 0, items: [] },
+  students_without_parent: { count: 0, total_students: 0, items: [] },
+  active_alerts: [],
+}
+const checklist = { system: 'cbc', hidden: false, steps: [], done: 0, total: 0 }
+
 describe('identity fork', () => {
   it('shows the staff menu for a staff account', async () => {
     mockApi.current = deepApiMock({
       isLoggedIn: () => true,
       me: () => Promise.resolve({ id: 1, name: 'Amina', role: 'admin', tour_seen: true, school, assignments: [] }),
+      dashboard: () => Promise.resolve(dashboard),
+      'checklist.get': () => Promise.resolve(checklist),
     })
-    const { container } = render(<App />)
+    const { container, findByText } = render(<App />)
     await waitFor(() => expect(container.querySelector('[data-tab="grades"]')).toBeInTheDocument())
+    expect(container.querySelector('[data-tab="staff"]')).toBeInTheDocument()
+    // The home page itself renders, rather than crashing after the menu.
+    expect(await findByText(/Good (morning|afternoon), Amina/)).toBeInTheDocument()
     expect(container.querySelector('[data-tab="staff"]')).toBeInTheDocument()
   })
 

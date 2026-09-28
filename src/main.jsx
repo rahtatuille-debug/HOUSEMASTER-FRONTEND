@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import CrashFallback from './CrashFallback.jsx'
 import { initSentry, ErrorBoundary } from './sentry.js'
+import './fonts.css'
 import './styles.css'
 import { startResponsiveTables } from './responsiveTables.js'
 

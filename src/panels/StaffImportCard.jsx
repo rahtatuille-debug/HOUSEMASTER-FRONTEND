@@ -63,6 +63,8 @@ export default function StaffImportCard({ onImported }) {
   }
 
   const result = preview || done
+  // Rows over the invite limits (older backends don't send this).
+  const deferred = result?.deferred || []
   return (
     <div className="card">
       <h3 style={{ marginBottom: 6 }}>Import staff from Excel</h3>
@@ -98,6 +100,9 @@ export default function StaffImportCard({ onImported }) {
             {result.errors.length > 0 && (result.errors.length === 1
               ? ` 1 row has a problem and ${done ? "wasn't" : "won't be"} imported (see below).`
               : ` ${result.errors.length} rows have problems and ${done ? "weren't" : "won't be"} imported (see below).`)}
+            {deferred.length > 0 && (deferred.length === 1
+              ? ` 1 row is over the invite limit and ${done ? "wasn't" : "won't be"} invited yet (see below).`
+              : ` ${deferred.length} rows are over the invite limit and ${done ? "weren't" : "won't be"} invited yet (see below).`)}
           </div>
 
           {result.people.length > 0 && (
@@ -121,6 +126,20 @@ export default function StaffImportCard({ onImported }) {
 
           {result.skipped.length > 0 && (
             <p className="hint">Skipped because they already have an account or a pending invite: {result.skipped.map((s) => `${s.name} (row ${s.row})`).join(', ')}.</p>
+          )}
+          {deferred.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <p className="hint" style={{ marginBottom: 6 }}>
+                Invites are limited per hour and per address, so these rows wait. Import the same sheet again later:
+                people already invited are skipped and these are invited then.
+              </p>
+              <div style={{ maxHeight: 240, overflowY: 'auto' }}>
+                <table className="responsive-table">
+                  <thead><tr><th>Row</th><th>Name</th><th>Why it waits</th></tr></thead>
+                  <tbody>{deferred.map((d) => <tr key={d.row}><td>{d.row}</td><td>{d.name}</td><td>{d.reason}</td></tr>)}</tbody>
+                </table>
+              </div>
+            </div>
           )}
           {result.errors.length > 0 && (
             <div style={{ maxHeight: 240, overflowY: 'auto', marginTop: 8 }}>
