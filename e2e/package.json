@@ -1,0 +1,12 @@
+{
+  "name": "housemaster-e2e",
+  "private": true,
+  "type": "module",
+  "description": "Post-deploy smoke tests for HouseMaster. Kept apart from the app's dependencies. See README.md.",
+  "scripts": {
+    "test": "node run.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1"
+  }
+}
