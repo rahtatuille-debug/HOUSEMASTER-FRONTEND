@@ -4,7 +4,8 @@ import { formatDate } from '../format.js'
 import { api } from '../api.js'
 import ClassReports from './ClassReports.jsx'
 import SubjectReportsCard from './SubjectReportsCard.jsx'
-import ShowMore, { PAGE } from './ShowMore.jsx'
+import ShowMore from './ShowMore.jsx'
+import { usePagedList } from '../usePagedList.js'
 
 const STATUS_LABELS = {
   draft: 'Draft',
@@ -26,15 +27,12 @@ export default function Reports({ me, onCountsChanged }) {
   const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [filter, setFilter] = useState('')
-  const [limit, setLimit] = useState(PAGE)
   const [notice, setNotice] = useState('')
   const [sendingBack, setSendingBack] = useState(false)
   const [backNote, setBackNote] = useState('')
   const [students, setStudents] = useState([])
   const [terms, setTerms] = useState([])
-  const [reports, setReports] = useState([])
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
 
   const [genStudent, setGenStudent] = useState('')
@@ -60,27 +58,19 @@ export default function Reports({ me, onCountsChanged }) {
     }
   }
 
-  async function loadReports() {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await api.reports.list(filter ? { status: filter } : {})
-      setReports(data)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+  // A page at a time from the server (F-4).
+  const reportList = usePagedList((page) => api.reports.page({ ...(filter ? { status: filter } : {}), ...page }), [filter])
+  const reports = reportList.rows
+  const loading = reportList.loading
+
+  function loadReports() {
+    return reportList.reload()
   }
 
   useEffect(() => {
     loadOptions()
   }, [])
 
-  useEffect(() => {
-    loadReports()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filter])
 
   async function handleGenerate(e) {
     e.preventDefault()
@@ -153,7 +143,7 @@ export default function Reports({ me, onCountsChanged }) {
         <h2>Reports</h2>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
+      {(error || reportList.error) && <div className="error-banner">{error || reportList.error}</div>}
       {notice && <div className="success-banner">{notice}</div>}
 
       <ClassReports me={me} terms={terms} onChanged={() => { loadReports(); onCountsChanged?.() }} />
@@ -330,7 +320,7 @@ export default function Reports({ me, onCountsChanged }) {
             key={f.key || 'all'}
             type="button"
             className={`secondary${filter === f.key ? ' active' : ''}`}
-            onClick={() => { setFilter(f.key); setLimit(PAGE) }}
+            onClick={() => setFilter(f.key)}
           >
             {f.label}
           </button>
@@ -356,7 +346,7 @@ export default function Reports({ me, onCountsChanged }) {
             </tr>
           </thead>
           <tbody>
-            {reports.slice(0, limit).map((r) => (
+            {reports.map((r) => (
               <tr key={r.id}>
                 <td className="row-title">{studentName(r.student)}</td>
                 <td data-label={words.term}>{termName(r.term)}</td>
@@ -373,7 +363,7 @@ export default function Reports({ me, onCountsChanged }) {
             ))}
           </tbody>
         </table>
-        <ShowMore shown={limit} total={reports.length} onMore={() => setLimit(limit + PAGE)} noun="reports" />
+        <ShowMore shown={reports.length} total={reportList.total} onMore={reportList.loadMore} noun="reports" />
         </>
       )}
     </div>

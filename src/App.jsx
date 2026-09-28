@@ -8,7 +8,7 @@ import { guideSections } from './guide.js'
 import Guide from './panels/Guide.jsx'
 import TeacherHome from './panels/TeacherHome.jsx'
 import Tour from './panels/Tour.jsx'
-import { api } from './api.js'
+import { api, countOf } from './api.js'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
 import AcceptGuardianInvite from './panels/AcceptGuardianInvite.jsx'
@@ -212,8 +212,9 @@ export default function App() {
       setWaitingCount(0)
       return
     }
-    Promise.all([api.changeRequests.list({ status: 'pending' }), api.reports.list({ status: 'submitted' })])
-      .then(([requests, reports]) => setWaitingCount(requests.length + reports.length))
+    // One-row pages: only the counts are needed (a whole list from an older backend works too).
+    Promise.all([api.changeRequests.page({ status: 'pending', page_size: 1 }), api.reports.page({ status: 'submitted', page_size: 1 })])
+      .then(([requests, reports]) => setWaitingCount(countOf(requests) + countOf(reports)))
       .catch(() => {})
   }
 

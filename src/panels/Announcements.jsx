@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useVocab } from '../levels.js'
 import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
+import { usePagedList } from '../usePagedList.js'
+import ShowMore from './ShowMore.jsx'
 import { announcementAuthor } from '../user.js'
 
 const AUDIENCES = {
@@ -178,7 +180,6 @@ export default function Announcements({ me }) {
     ? { ...AUDIENCES, year_group: `Specific ${words.year_group.toLowerCase()}`, school_class: `Specific ${words.class.toLowerCase()}` }
     : { school_class: `Parents of a ${words.class.toLowerCase()} I teach` }
   const canManage = (item) => admin || item.created_by === me?.id
-  const [items, setItems] = useState([])
   const [yearGroups, setYearGroups] = useState([])
   const [classes, setClasses] = useState([])
   const [status, setStatus] = useState('')
@@ -199,20 +200,14 @@ export default function Announcements({ me }) {
   const myClasses = admin ? classes : classes.filter((c) => myClassIds.has(c.id))
   const canWrite = admin || myClassIds.size > 0
 
-  async function load() {
-    setLoading(true)
-    setError('')
-    try {
-      const data = await api.announcements.list(status ? { status } : undefined)
-      setItems(data)
-    } catch (err) {
-      setError(errorMessage(err))
-    } finally {
-      setLoading(false)
-    }
-  }
+  // A page at a time from the server (F-4).
+  const list = usePagedList((page) => api.announcements.page({ ...(status ? { status } : {}), ...page }), [status])
+  const items = list.rows
 
-  useEffect(() => { load() }, [status])
+  function load() {
+    setError('')
+    return list.reload()
+  }
   useEffect(() => { loadTargets() }, [])
 
   async function loadTargets() {
@@ -386,7 +381,8 @@ export default function Announcements({ me }) {
     <div className="panel-header"><div><h2>Announcements</h2><p className="text-muted">{admin ? 'Create and manage school announcements.' : 'Staff notices, and announcements to the parents of your classes.'}</p></div>{canWrite && <button onClick={openCreate}>New announcement</button>}</div>
     {toast && <div className="success-banner" role="status">{toast}</div>}
     {canWrite && <div className="announcement-filters" aria-label="Filter announcements by status">{[['', 'All'], ['draft', 'Drafts'], ['published', 'Published'], ['archived', 'Archived']].map(([value, label]) => <button key={label} className={status === value ? 'active-filter' : 'secondary'} onClick={() => setStatus(value)}>{label}</button>)}</div>}
-    {error && <div className="error-banner">{error}<button className="secondary retry-button" onClick={load}>Retry</button></div>}
-    {loading ? <div className="announcement-skeleton" aria-label="Loading announcements"><span /><span /><span /></div> : items.length === 0 ? <div className="empty-state"><h3>No announcements yet</h3><p>{canWrite ? 'Create your first announcement.' : 'Published staff announcements will appear here.'}</p>{canWrite && <button onClick={openCreate}>New announcement</button>}</div> : <div className="announcement-list">{items.map((item) => <button className="announcement-card" key={item.id} onClick={() => openDetail(item.id)}><div className="announcement-card-top"><span className="eyebrow">{audienceText(item, yearGroups, classes)}</span>{canManage(item) && <StatusBadge status={item.status} />}</div><h3>{item.title}</h3><p>{item.body}</p><div className="announcement-card-footer"><span>{announcementAuthor(item)}</span><span>{item.status === 'published' ? `Published ${dateTime(item.published_at)}` : item.status === 'archived' ? `Archived ${dateTime(item.archived_at)}` : `Created ${dateTime(item.created_at)}`}</span></div>{canManage(item) && item.status === 'draft' && <span className="draft-helper">Draft — not visible to recipients.</span>}</button>)}</div>}
+    {(error || list.error) && <div className="error-banner">{error || list.error}<button className="secondary retry-button" onClick={load}>Retry</button></div>}
+    {loading || list.loading ? <div className="announcement-skeleton" aria-label="Loading announcements"><span /><span /><span /></div> : items.length === 0 ? <div className="empty-state"><h3>No announcements yet</h3><p>{canWrite ? 'Create your first announcement.' : 'Published staff announcements will appear here.'}</p>{canWrite && <button onClick={openCreate}>New announcement</button>}</div> : <div className="announcement-list">{items.map((item) => <button className="announcement-card" key={item.id} onClick={() => openDetail(item.id)}><div className="announcement-card-top"><span className="eyebrow">{audienceText(item, yearGroups, classes)}</span>{canManage(item) && <StatusBadge status={item.status} />}</div><h3>{item.title}</h3><p>{item.body}</p><div className="announcement-card-footer"><span>{announcementAuthor(item)}</span><span>{item.status === 'published' ? `Published ${dateTime(item.published_at)}` : item.status === 'archived' ? `Archived ${dateTime(item.archived_at)}` : `Created ${dateTime(item.created_at)}`}</span></div>{canManage(item) && item.status === 'draft' && <span className="draft-helper">Draft — not visible to recipients.</span>}</button>)}</div>}
+    {!list.loading && <ShowMore shown={items.length} total={list.total} onMore={list.loadMore} noun="announcements" />}
   </div>
 }
