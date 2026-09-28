@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { api } from './api.js'
+import { api, listFrom } from './api.js'
 
 const TOKEN_KEY = 'housemaster_tokens'
 
@@ -117,5 +117,37 @@ describe('logout', () => {
     globalThis.fetch = vi.fn(() => Promise.reject(new Error('offline')))
     expect(() => api.logout()).not.toThrow()
     expect(localStorage.getItem(TOKEN_KEY)).toBeNull()
+  })
+})
+
+describe('list shapes', () => {
+  it('returns a plain list unchanged (current backend)', async () => {
+    store({ access: 'a', refresh: 'r' })
+    globalThis.fetch = routeFetch({ '/api/grades/': () => json(200, [{ id: 1 }, { id: 2 }]) })
+    await expect(api.grades.list()).resolves.toEqual([{ id: 1 }, { id: 2 }])
+  })
+
+  it('follows page links and returns the whole list (paginated backend)', async () => {
+    store({ access: 'a', refresh: 'r' })
+    globalThis.fetch = routeFetch({
+      '/api/grades/': (url) => {
+        const page = new URL(url).searchParams.get('page') || '1'
+        if (page === '1') {
+          return json(200, { count: 3, next: 'https://api.example.org/api/grades/?page=2&term=4', previous: null,
+            results: [{ id: 1 }, { id: 2 }] })
+        }
+        return json(200, { count: 3, next: null, previous: 'x', results: [{ id: 3 }] })
+      },
+    })
+    await expect(api.grades.list({ term: 4 })).resolves.toEqual([{ id: 1 }, { id: 2 }, { id: 3 }])
+    const secondCall = new URL(globalThis.fetch.mock.calls[1][0])
+    expect(secondCall.origin).toBe('http://127.0.0.1:8001')
+    expect(secondCall.search).toBe('?page=2&term=4')
+  })
+
+  it('reads either shape with listFrom', () => {
+    expect(listFrom([1, 2])).toEqual([1, 2])
+    expect(listFrom({ count: 1, next: null, previous: null, results: [3] })).toEqual([3])
+    expect(listFrom(null)).toEqual([])
   })
 })

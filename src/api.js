@@ -348,6 +348,46 @@ async function authedFetch(path, options = {}) {
   return res
 }
 
+// Lists may come back whole (a plain array) or a page at a time
+// ({count, next, previous, results}). listRequest() always returns the
+// whole list as an array, following `next` links in bounded chunks, so the
+// screens work the same either way.
+const MAX_LIST_PAGES = 50
+
+function samePath(nextUrl) {
+  try {
+    const url = new URL(nextUrl, API_BASE)
+    return `${url.pathname}${url.search}`
+  } catch {
+    return null
+  }
+}
+
+export function isPage(data) {
+  return !!data && !Array.isArray(data) && Array.isArray(data.results)
+}
+
+export function listFrom(data) {
+  if (Array.isArray(data)) return data
+  if (isPage(data)) return data.results
+  return []
+}
+
+async function listRequest(path, options = {}) {
+  const first = await request(path, options)
+  if (!isPage(first)) return first
+  const rows = [...first.results]
+  let next = first.next
+  for (let page = 1; next && page < MAX_LIST_PAGES; page += 1) {
+    const nextPath = samePath(next)
+    if (!nextPath) break
+    const data = await request(nextPath)
+    rows.push(...listFrom(data))
+    next = isPage(data) ? data.next : null
+  }
+  return rows
+}
+
 async function studentPhotoUrl(id) {
   const res = await authedFetch(`/api/students/${id}/photo/`)
   if (!res.ok) return null
@@ -505,9 +545,9 @@ export const api = {
   },
 
   conversations: {
-    list: () => request('/api/conversations/'),
+    list: () => listRequest('/api/conversations/'),
     create: (body) => request('/api/conversations/', { method: 'POST', body }),
-    messages: (id) => request(`/api/conversations/${id}/messages/`),
+    messages: (id) => listRequest(`/api/conversations/${id}/messages/`),
     sendMessage: (id, body) => request(`/api/conversations/${id}/messages/`, { method: 'POST', body }),
     markRead: (id) => request(`/api/conversations/${id}/read/`, { method: 'POST' }),
     contacts: () => request('/api/conversations/contacts/'),
@@ -583,12 +623,12 @@ export const api = {
   // End of year (admins): moves = [{ from_class, to_class or null for leaving }].
   promotion: (moves, commit) => request('/api/promotion/', { method: 'POST', body: { moves, commit } }),
   attendance: {
-    list: (params) => request('/api/attendance/', { params }),
+    list: (params) => listRequest('/api/attendance/', { params }),
     create: (body) => request('/api/attendance/', { method: 'POST', body }),
     update: (id, body) => request(`/api/attendance/${id}/`, { method: 'PATCH', body }),
   },
   grades: {
-    list: (params) => request('/api/grades/', { params }),
+    list: (params) => listRequest('/api/grades/', { params }),
     create: (body) => request('/api/grades/', { method: 'POST', body }),
     update: (id, body) => request(`/api/grades/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/grades/${id}/`, { method: 'DELETE' }),
@@ -651,7 +691,7 @@ export const api = {
     sendPasswordReset: (id) => request(`/api/parents/${id}/send-password-reset/`, { method: 'POST' }),
   },
   activity: {
-    list: (params) => request('/api/activity/', { params }),
+    list: (params) => listRequest('/api/activity/', { params }),
   },
 
   // Admins see and decide every request; teachers see and cancel their own.
