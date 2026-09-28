@@ -5,8 +5,12 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 const TOKEN_KEY = 'housemaster_tokens'
 
 function getTokens() {
-  const raw = localStorage.getItem(TOKEN_KEY)
-  return raw ? JSON.parse(raw) : null
+  try {
+    const raw = localStorage.getItem(TOKEN_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
 }
 
 function setTokens(tokens) {
@@ -31,8 +35,24 @@ async function login(email, password) {
   return tokens
 }
 
+// Signs out on this device straight away, then asks the server to retire the
+// refresh token too. That second part is best effort: the device is signed
+// out whether or not it reaches the server (an older backend without
+// /api/logout/ just answers 404).
 function logout() {
+  const refresh = getTokens()?.refresh
   clearTokens()
+  if (!refresh) return
+  try {
+    fetch(`${API_BASE}/api/logout/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+      keepalive: true,
+    }).catch(() => {})
+  } catch {
+    // ignore: signing out locally is what matters
+  }
 }
 
 async function previewGuardianInvite(token) {
@@ -185,22 +205,61 @@ async function confirmPasswordReset(token, password) {
   return data
 }
 
-async function refreshAccessToken() {
+// Trades the refresh token for a new access token. The backend may rotate
+// the refresh token (it returns a new one and retires the old one), so a
+// returned `refresh` is always stored.
+//
+// Only one refresh runs at a time: requests that hit an expired token
+// together share it, and a Web Lock does the same across tabs. Reusing a
+// retired refresh token would sign the user out, so before refreshing we
+// check whether another request or tab already got a new access token.
+let refreshInFlight = null
+
+async function refreshAccessToken(staleAccess) {
+  if (!refreshInFlight) {
+    refreshInFlight = withRefreshLock(() => doRefresh(staleAccess)).finally(() => {
+      refreshInFlight = null
+    })
+  }
+  return refreshInFlight
+}
+
+function withRefreshLock(fn) {
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    return navigator.locks.request('housemaster-token-refresh', fn)
+  }
+  return fn()
+}
+
+async function doRefresh(staleAccess) {
   const tokens = getTokens()
   if (!tokens?.refresh) return null
-  const res = await fetch(`${API_BASE}/api/token/refresh/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh: tokens.refresh }),
-  })
+  // Someone else refreshed while we waited: use their access token.
+  if (staleAccess !== undefined && tokens.access && tokens.access !== staleAccess) {
+    return tokens.access
+  }
+  let res
+  try {
+    res = await fetch(`${API_BASE}/api/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: tokens.refresh }),
+    })
+  } catch {
+    return null
+  }
   if (!res.ok) {
+    // Another tab may have rotated the token a moment ago (browsers without
+    // Web Locks); only sign out if the stored token is still the one that
+    // was refused.
+    const now = getTokens()
+    if (now?.refresh && now.refresh !== tokens.refresh) return now.access || null
     clearTokens()
     return null
   }
   const data = await res.json()
-  const updated = { ...tokens, access: data.access }
-  setTokens(updated)
-  return updated.access
+  setTokens({ ...tokens, access: data.access, ...(data.refresh ? { refresh: data.refresh } : {}) })
+  return data.access
 }
 
 // Core request wrapper: attaches the access token, retries once via refresh
@@ -236,7 +295,7 @@ async function request(path, { method = 'GET', body, params } = {}) {
   }
 
   if (res.status === 401 && tokens?.refresh) {
-    const newAccess = await refreshAccessToken()
+    const newAccess = await refreshAccessToken(tokens?.access)
     if (newAccess) {
       res = await doFetch(newAccess)
     }
@@ -280,12 +339,56 @@ async function authedFetch(path, options = {}) {
       ...options,
       headers: { ...(options.headers || {}), ...(access ? { Authorization: `Bearer ${access}` } : {}) },
     })
-  let res = await send(getTokens()?.access)
+  const used = getTokens()?.access
+  let res = await send(used)
   if (res.status === 401 && getTokens()?.refresh) {
-    const access = await refreshAccessToken()
+    const access = await refreshAccessToken(used)
     if (access) res = await send(access)
   }
   return res
+}
+
+// Lists may come back whole (a plain array) or a page at a time
+// ({count, next, previous, results}). listRequest() always returns the
+// whole list as an array, following `next` links in bounded chunks, so the
+// screens work the same either way.
+// Ask for the largest page the backend allows (a plain list ignores it),
+// and stop after this many pages rather than loop forever.
+const LIST_PAGE_SIZE = 500
+const MAX_LIST_PAGES = 100
+
+function samePath(nextUrl) {
+  try {
+    const url = new URL(nextUrl, API_BASE)
+    return `${url.pathname}${url.search}`
+  } catch {
+    return null
+  }
+}
+
+export function isPage(data) {
+  return !!data && !Array.isArray(data) && Array.isArray(data.results)
+}
+
+export function listFrom(data) {
+  if (Array.isArray(data)) return data
+  if (isPage(data)) return data.results
+  return []
+}
+
+async function listRequest(path, options = {}) {
+  const first = await request(path, { ...options, params: { page_size: LIST_PAGE_SIZE, ...(options.params || {}) } })
+  if (!isPage(first)) return first
+  const rows = [...first.results]
+  let next = first.next
+  for (let page = 1; next && page < MAX_LIST_PAGES; page += 1) {
+    const nextPath = samePath(next)
+    if (!nextPath) break
+    const data = await request(nextPath)
+    rows.push(...listFrom(data))
+    next = isPage(data) ? data.next : null
+  }
+  return rows
 }
 
 async function studentPhotoUrl(id) {
@@ -445,9 +548,9 @@ export const api = {
   },
 
   conversations: {
-    list: () => request('/api/conversations/'),
+    list: () => listRequest('/api/conversations/'),
     create: (body) => request('/api/conversations/', { method: 'POST', body }),
-    messages: (id) => request(`/api/conversations/${id}/messages/`),
+    messages: (id) => listRequest(`/api/conversations/${id}/messages/`),
     sendMessage: (id, body) => request(`/api/conversations/${id}/messages/`, { method: 'POST', body }),
     markRead: (id) => request(`/api/conversations/${id}/read/`, { method: 'POST' }),
     contacts: () => request('/api/conversations/contacts/'),
@@ -523,12 +626,12 @@ export const api = {
   // End of year (admins): moves = [{ from_class, to_class or null for leaving }].
   promotion: (moves, commit) => request('/api/promotion/', { method: 'POST', body: { moves, commit } }),
   attendance: {
-    list: (params) => request('/api/attendance/', { params }),
+    list: (params) => listRequest('/api/attendance/', { params }),
     create: (body) => request('/api/attendance/', { method: 'POST', body }),
     update: (id, body) => request(`/api/attendance/${id}/`, { method: 'PATCH', body }),
   },
   grades: {
-    list: (params) => request('/api/grades/', { params }),
+    list: (params) => listRequest('/api/grades/', { params }),
     create: (body) => request('/api/grades/', { method: 'POST', body }),
     update: (id, body) => request(`/api/grades/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/grades/${id}/`, { method: 'DELETE' }),
@@ -591,6 +694,7 @@ export const api = {
     sendPasswordReset: (id) => request(`/api/parents/${id}/send-password-reset/`, { method: 'POST' }),
   },
   activity: {
+    // Already paged by the backend; the Activity screen reads `results` itself.
     list: (params) => request('/api/activity/', { params }),
   },
 
