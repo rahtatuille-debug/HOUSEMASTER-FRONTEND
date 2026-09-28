@@ -5,8 +5,12 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 const TOKEN_KEY = 'housemaster_tokens'
 
 function getTokens() {
-  const raw = localStorage.getItem(TOKEN_KEY)
-  return raw ? JSON.parse(raw) : null
+  try {
+    const raw = localStorage.getItem(TOKEN_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
 }
 
 function setTokens(tokens) {
@@ -31,8 +35,24 @@ async function login(email, password) {
   return tokens
 }
 
+// Signs out on this device straight away, then asks the server to retire the
+// refresh token too. That second part is best effort: the device is signed
+// out whether or not it reaches the server (an older backend without
+// /api/logout/ just answers 404).
 function logout() {
+  const refresh = getTokens()?.refresh
   clearTokens()
+  if (!refresh) return
+  try {
+    fetch(`${API_BASE}/api/logout/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh }),
+      keepalive: true,
+    }).catch(() => {})
+  } catch {
+    // ignore: signing out locally is what matters
+  }
 }
 
 async function previewGuardianInvite(token) {
@@ -185,22 +205,61 @@ async function confirmPasswordReset(token, password) {
   return data
 }
 
-async function refreshAccessToken() {
+// Trades the refresh token for a new access token. The backend may rotate
+// the refresh token (it returns a new one and retires the old one), so a
+// returned `refresh` is always stored.
+//
+// Only one refresh runs at a time: requests that hit an expired token
+// together share it, and a Web Lock does the same across tabs. Reusing a
+// retired refresh token would sign the user out, so before refreshing we
+// check whether another request or tab already got a new access token.
+let refreshInFlight = null
+
+async function refreshAccessToken(staleAccess) {
+  if (!refreshInFlight) {
+    refreshInFlight = withRefreshLock(() => doRefresh(staleAccess)).finally(() => {
+      refreshInFlight = null
+    })
+  }
+  return refreshInFlight
+}
+
+function withRefreshLock(fn) {
+  if (typeof navigator !== 'undefined' && navigator.locks?.request) {
+    return navigator.locks.request('housemaster-token-refresh', fn)
+  }
+  return fn()
+}
+
+async function doRefresh(staleAccess) {
   const tokens = getTokens()
   if (!tokens?.refresh) return null
-  const res = await fetch(`${API_BASE}/api/token/refresh/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh: tokens.refresh }),
-  })
+  // Someone else refreshed while we waited: use their access token.
+  if (staleAccess !== undefined && tokens.access && tokens.access !== staleAccess) {
+    return tokens.access
+  }
+  let res
+  try {
+    res = await fetch(`${API_BASE}/api/token/refresh/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh: tokens.refresh }),
+    })
+  } catch {
+    return null
+  }
   if (!res.ok) {
+    // Another tab may have rotated the token a moment ago (browsers without
+    // Web Locks); only sign out if the stored token is still the one that
+    // was refused.
+    const now = getTokens()
+    if (now?.refresh && now.refresh !== tokens.refresh) return now.access || null
     clearTokens()
     return null
   }
   const data = await res.json()
-  const updated = { ...tokens, access: data.access }
-  setTokens(updated)
-  return updated.access
+  setTokens({ ...tokens, access: data.access, ...(data.refresh ? { refresh: data.refresh } : {}) })
+  return data.access
 }
 
 // Core request wrapper: attaches the access token, retries once via refresh
@@ -236,7 +295,7 @@ async function request(path, { method = 'GET', body, params } = {}) {
   }
 
   if (res.status === 401 && tokens?.refresh) {
-    const newAccess = await refreshAccessToken()
+    const newAccess = await refreshAccessToken(tokens?.access)
     if (newAccess) {
       res = await doFetch(newAccess)
     }
@@ -280,9 +339,10 @@ async function authedFetch(path, options = {}) {
       ...options,
       headers: { ...(options.headers || {}), ...(access ? { Authorization: `Bearer ${access}` } : {}) },
     })
-  let res = await send(getTokens()?.access)
+  const used = getTokens()?.access
+  let res = await send(used)
   if (res.status === 401 && getTokens()?.refresh) {
-    const access = await refreshAccessToken()
+    const access = await refreshAccessToken(used)
     if (access) res = await send(access)
   }
   return res
