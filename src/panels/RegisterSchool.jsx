@@ -68,7 +68,7 @@ export default function RegisterSchool({ onRegistered, onBack }) {
       <section className="register-hero">
         <div className="register-brand">
           <LogoMarkLight />
-          <span>HouseMaster<small>AI-powered school operating system</small></span>
+          <span>HouseMaster</span>
         </div>
         <h1>Run your whole school from one place.</h1>
         <p className="register-lead">

@@ -880,7 +880,6 @@ button.danger-solid:hover { background: #7f2929; }
   gap: 12px;
 }
 .register-brand .logo-mark { height: 46px; width: auto; flex: none; }
-.register-brand small { display: block; font-family: var(--font-body); font-size: 12px; font-weight: 500; letter-spacing: 0.02em; color: rgba(250, 247, 240, 0.7); }
 
 /* The full logo at the top of the sign-in cards */
 .login-card .auth-logo { margin: -8px 0 6px; text-align: center; line-height: 0; }
