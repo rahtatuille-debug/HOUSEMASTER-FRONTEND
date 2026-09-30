@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
 import { api } from '../api.js'
+import { loadDraft, saveDraft } from '../drafts.js'
 
 const STATUSES = [
   { key: 'present', label: 'Present' },
@@ -14,6 +15,20 @@ function todayLocal() {
   const d = new Date()
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// The changes a teacher made that aren't saved yet, kept on the phone so a
+// weak signal or a closed app doesn't lose a register (drafts.js). Only what
+// differs from what's saved (or, for a new register, from "Present").
+function unsavedChanges(marks) {
+  const out = {}
+  for (const [id, m] of Object.entries(marks)) {
+    const changed = m.id === null
+      ? m.status !== 'present' || m.notes !== ''
+      : m.status !== m.savedStatus || m.notes !== m.savedNotes
+    if (changed) out[id] = { status: m.status, notes: m.notes }
+  }
+  return out
 }
 
 // Daily class register. Pick a class and a date; everyone starts as
@@ -33,6 +48,14 @@ export default function Attendance({ me }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [history, setHistory] = useState(null) // { student, records }
+  const draftName = `attendance:${classId}:${date}`
+  const loadedFor = useRef(null) // the register whose marks are on screen
+
+  useEffect(() => {
+    if (loadedFor.current !== draftName) return
+    const changes = unsavedChanges(marks)
+    saveDraft(me?.id, draftName, Object.keys(changes).length ? changes : null)
+  }, [me?.id, draftName, marks])
 
   useEffect(() => {
     api.schoolClasses
@@ -51,6 +74,7 @@ export default function Attendance({ me }) {
     if (!classId || !date) return
     let cancelled = false
     async function load() {
+      loadedFor.current = null
       setLoading(true)
       setError('')
       setNotice('')
@@ -69,8 +93,20 @@ export default function Attendance({ me }) {
             ? { id: r.id, status: r.status, notes: r.notes || '', savedStatus: r.status, savedNotes: r.notes || '' }
             : { id: null, status: 'present', notes: '', savedStatus: null, savedNotes: '' }
         }
+        const draft = loadDraft(me?.id, `attendance:${classId}:${date}`) || {}
+        let restored = 0
+        for (const [id, change] of Object.entries(draft)) {
+          if (next[id]) {
+            next[id] = { ...next[id], status: change.status, notes: change.notes }
+            restored += 1
+          }
+        }
         setStudents(list)
         setMarks(next)
+        loadedFor.current = `attendance:${classId}:${date}`
+        if (restored) {
+          setNotice(`Restored ${restored} unsaved change${restored === 1 ? '' : 's'} from earlier. Tap Save register to save ${restored === 1 ? 'it' : 'them'}.`)
+        }
       } catch (err) {
         if (!cancelled) setError(err.message)
       } finally {
@@ -81,7 +117,7 @@ export default function Attendance({ me }) {
     return () => {
       cancelled = true
     }
-  }, [classId, date])
+  }, [classId, date, me?.id])
 
   function setMark(studentId, change) {
     setMarks((m) => ({ ...m, [studentId]: { ...m[studentId], ...change } }))
@@ -97,33 +133,69 @@ export default function Attendance({ me }) {
     return m && (m.id === null || m.status !== m.savedStatus || m.notes !== m.savedNotes)
   })
 
+  // Each student is saved separately, so on a weak signal some can save and
+  // some not. The saved ones are kept, the rest stay on screen to save again.
+  // A save whose answer was lost may still have reached the server, so after
+  // any failure the screen checks what the server has before offering to
+  // save again (saving a student twice for one day would be refused).
   async function save() {
     setSaving(true)
     setError('')
     setNotice('')
-    try {
-      const results = await Promise.all(
-        unsaved.map((s) => {
-          const m = marks[s.id]
-          const body = { status: m.status, notes: m.notes.trim() }
-          return m.id
-            ? api.attendance.update(m.id, body)
-            : api.attendance.create({ ...body, student: s.id, date })
-        })
-      )
-      setMarks((current) => {
-        const next = { ...current }
-        for (const r of results) {
-          next[r.student] = { id: r.id, status: r.status, notes: r.notes || '', savedStatus: r.status, savedNotes: r.notes || '' }
-        }
-        return next
+    const toSave = unsaved
+    const settled = await Promise.allSettled(
+      toSave.map((s) => {
+        const m = marks[s.id]
+        const body = { status: m.status, notes: m.notes.trim() }
+        return m.id
+          ? api.attendance.update(m.id, body)
+          : api.attendance.create({ ...body, student: s.id, date })
       })
-      setNotice(`Register saved for ${results.length} student${results.length === 1 ? '' : 's'}.`)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setSaving(false)
+    )
+    const saved = {}
+    for (const r of settled) {
+      if (r.status === 'fulfilled') saved[r.value.student] = r.value
     }
+    const failed = settled.filter((r) => r.status === 'rejected')
+    if (failed.length) {
+      try {
+        const records = await api.attendance.list({ date })
+        const ids = new Set(toSave.map((s) => s.id))
+        for (const r of records) {
+          if (ids.has(r.student) && !saved[r.student]) saved[r.student] = r
+        }
+      } catch {
+        // still no signal: the failed ones simply stay unsaved
+      }
+    }
+    // What the server now holds for each student; what the teacher chose
+    // stays on screen, so anything the server doesn't have yet is still
+    // "to save".
+    const next = { ...marks }
+    for (const r of Object.values(saved)) {
+      next[r.student] = { ...next[r.student], id: r.id, savedStatus: r.status, savedNotes: r.notes || '' }
+    }
+    setMarks((current) => {
+      const merged = { ...current }
+      for (const r of Object.values(saved)) {
+        merged[r.student] = { ...current[r.student], id: r.id, savedStatus: r.status, savedNotes: r.notes || '' }
+      }
+      return merged
+    })
+    const remaining = toSave.filter((s) => {
+      const m = next[s.id]
+      return m.id === null || m.status !== m.savedStatus || m.notes.trim() !== m.savedNotes
+    }).length
+    const done = toSave.length - remaining
+    if (remaining === 0) {
+      setNotice(`Register saved for ${toSave.length} student${toSave.length === 1 ? '' : 's'}.`)
+    } else {
+      setError(
+        `Saved ${done} of ${toSave.length}. ${remaining} still to save: ${failed[0]?.reason?.message || 'the connection dropped.'} ` +
+        'They’re kept here: tap Save register again when you have a signal.'
+      )
+    }
+    setSaving(false)
   }
 
   async function showHistory(student) {
