@@ -724,6 +724,9 @@ export const api = {
     reportCard: (id, term) => downloadFile(`/api/guardian-students/${id}/report-card/`, { term }),
     termSummary: (id, term) => request(`/api/guardian-students/${id}/term-summary/`, { params: { term } }),
     profile: (id) => request(`/api/guardian-students/${id}/profile/`),
+    // A parent's suggestion for the health notes, which the school approves.
+    suggestHealthNotes: (id, body) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'POST', body }),
+    withdrawHealthNotes: (id) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'DELETE' }),
     photoUrl: async (id) => {
       const res = await authedFetch(`/api/guardian-students/${id}/photo/`)
       return res.ok ? URL.createObjectURL(await res.blob()) : null
