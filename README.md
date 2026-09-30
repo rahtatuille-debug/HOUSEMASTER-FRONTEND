@@ -46,8 +46,32 @@ setup.
 - No pagination — the students/grades/reports lists fetch everything in one
   request. Fine at pilot-school scale, will need addressing before a school
   with hundreds of students.
-- No offline/optimistic UI — every action is a live request; there's no
-  local caching beyond the current page load.
+- Offline is partial (see "Weak signal and offline" below): the app opens
+  and says what's happening, but data isn't stored for reading offline and
+  changes can't be queued to send later.
+
+## Weak signal and offline
+
+- **Installable app.** `vite.config.js` builds `dist/sw.js`, a service
+  worker that keeps the page, the start-up scripts and styles, the icons,
+  the logos and the body font on the phone, so the app opens with no signal.
+  `public/manifest.webmanifest` and `public/icons/` let phones add it to the
+  home screen. It never touches the API (another site) or anything but GET
+  requests, so data always comes from the server.
+- **Offline banner** (`src/OfflineBanner.jsx`): offline, weak signal, back
+  online. While the server can't be reached it checks `/healthz` every 15
+  seconds. Opening the app with no signal shows "Waiting for a connection"
+  (still signed in) and loads by itself when the signal returns.
+- **Requests** (`src/api.js`, `network`): loading data times out after 20 s
+  and is tried three times (about a minute: long enough for a sleeping
+  Render server). Saves are sent once and never repeated by the app; a save
+  that timed out says it may or may not have been saved. A session renewal
+  that can't get through keeps you signed in.
+- **Nothing typed is lost** (`src/drafts.js`): unsaved register changes and
+  a half-entered mark are kept on the phone per signed-in person, restored
+  on reopening, deleted on sign-out and after a week. The register saves
+  what it can and keeps the rest; after a failure it checks with the server
+  before offering to save again, so nothing is created twice.
 
 ## Deployment (not yet done)
 

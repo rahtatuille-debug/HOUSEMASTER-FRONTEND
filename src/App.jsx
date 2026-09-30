@@ -9,6 +9,8 @@ import Guide from './panels/Guide.jsx'
 import TeacherHome from './panels/TeacherHome.jsx'
 import Tour from './panels/Tour.jsx'
 import { api, countOf } from './api.js'
+import { connection } from './connection.js'
+import { LogoFull } from './panels/Logo.jsx'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
 import AcceptGuardianInvite from './panels/AcceptGuardianInvite.jsx'
@@ -180,8 +182,20 @@ export default function App() {
   const notifRef = useRef(null)
   const profileRef = useRef(null)
 
+  // Opening the app with no signal: the phone is still signed in, so wait for
+  // a connection (and say so) rather than asking for the password again.
+  const [identityOffline, setIdentityOffline] = useState(false)
+  const [identityAttempt, setIdentityAttempt] = useState(0)
+
   useEffect(() => {
     if (!loggedIn) return
+    setIdentityOffline(false)
+    const failed = (err) => {
+      // No signal, or the server itself down: wait. Anything else (an
+      // expired session) goes back to sign-in.
+      if (err?.network || err?.status >= 500) setIdentityOffline(true)
+      else setLoggedIn(false)
+    }
     // A logged-in account is either staff (has a Profile, /api/me/ works)
     // or a guardian (has no Profile, /api/me/ 403s — try /api/guardian-me/
     // instead). Whichever succeeds first tells us which shell to render.
@@ -199,13 +213,23 @@ export default function App() {
               setMe(data)
               setIdentityKind('guardian')
             })
-            .catch(() => setLoggedIn(false))
+            .catch(failed)
         } else {
-          // Any other failure (e.g. expired session) falls back to login.
-          setLoggedIn(false)
+          failed(err)
         }
       })
-  }, [loggedIn])
+  }, [loggedIn, identityAttempt])
+
+  useEffect(() => {
+    if (!identityOffline) return undefined
+    const retry = () => setIdentityAttempt((n) => n + 1)
+    const stop = connection.subscribe((s) => { if (s.reachable) retry() })
+    window.addEventListener('online', retry)
+    return () => {
+      stop()
+      window.removeEventListener('online', retry)
+    }
+  }, [identityOffline])
 
   function refreshWaitingCount() {
     if (identityKind !== 'staff' || me?.role !== 'admin') {
@@ -356,7 +380,27 @@ export default function App() {
 
   // Still resolving which identity type this account is.
   if (!identityKind) {
-    return null
+    if (identityOffline) {
+      return (
+        <div className="login-wrap">
+          <div className="login-card">
+            <LogoFull />
+            <p className="tagline">Waiting for a connection</p>
+            <p>
+              You’re still signed in, but your phone can’t reach HouseMaster right now. Check your
+              signal: this page will load by itself when the connection is back.
+            </p>
+            <button type="button" onClick={() => setIdentityAttempt((n) => n + 1)}>Try again</button>
+            <button type="button" className="link-button" onClick={handleLogout}>Sign out</button>
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div className="login-wrap">
+        <p className="loading-note" role="status">Loading HouseMaster…</p>
+      </div>
+    )
   }
 
   // A new school has to finish setup before anyone can use it.
