@@ -1,8 +1,64 @@
 import { reportApiError } from './sentry.js'
+import { browserOffline, connection } from './connection.js'
+import { clearDrafts } from './drafts.js'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 
 const TOKEN_KEY = 'housemaster_tokens'
+
+// Weak-signal handling. A request that gets no answer is given up after
+// timeoutMs; loading data is then tried again after each retryDelaysMs
+// (together about a minute, long enough for a sleeping Render server to
+// wake). Saves are never sent twice by the app itself: one that reached the
+// server but lost its answer would otherwise be made twice.
+export const network = { timeoutMs: 20000, writeTimeoutMs: 30000, retryDelaysMs: [1000, 3000] }
+
+// Answers from a proxy while the server is starting or overloaded.
+const RETRY_STATUSES = new Set([502, 503, 504])
+
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
+async function fetchWithTimeout(url, init, ms) {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), ms)
+  try {
+    return await fetch(url, { ...init, signal: controller.signal })
+  } catch (err) {
+    if (controller.signal.aborted) {
+      const timedOut = new Error('Request timed out')
+      timedOut.timedOut = true
+      throw timedOut
+    }
+    throw err
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+// The message for a request that never got an answer. For a save it matters
+// whether it might have reached the server, so the person knows whether to
+// check before trying again.
+function networkFailure(cause, isRead) {
+  let message
+  let uncertain = false
+  if (browserOffline()) {
+    message = isRead
+      ? 'You’re offline. This will load when you’re back online.'
+      : 'You’re offline, so this was not saved. Try again when you’re back online.'
+  } else if (isRead) {
+    message = cause?.timedOut
+      ? 'The connection is weak and this took too long to load. Please try again.'
+      : 'Could not reach the server. Please try again.'
+  } else {
+    uncertain = true
+    message = 'The connection dropped before the server answered, so this may not have been saved. ' +
+      'Check before trying again.'
+  }
+  const err = new Error(message)
+  err.network = true
+  err.uncertain = uncertain
+  return err
+}
 
 function getTokens() {
   try {
@@ -22,11 +78,20 @@ function clearTokens() {
 }
 
 async function login(email, password) {
-  const res = await fetch(`${API_BASE}/api/token/`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, password }),
-  })
+  let res
+  try {
+    res = await fetchWithTimeout(`${API_BASE}/api/token/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    }, network.writeTimeoutMs)
+  } catch {
+    connection.report(false)
+    throw new Error(browserOffline()
+      ? 'You’re offline. Connect to the internet to sign in.'
+      : 'Could not reach the server. Check your connection and try again.')
+  }
+  connection.report(true)
   if (!res.ok) {
     throw new Error('Incorrect email or password.')
   }
@@ -43,6 +108,7 @@ function logout() {
   const refresh = getTokens()?.refresh
   clearTokens()
   clearLease()
+  clearDrafts()
   if (!refresh) return
   try {
     fetch(`${API_BASE}/api/logout/`, {
@@ -314,16 +380,13 @@ async function doRefresh(staleAccess) {
   if (staleAccess !== undefined && tokens.access && tokens.access !== staleAccess) {
     return tokens.access
   }
-  let res
-  try {
-    res = await fetch(`${API_BASE}/api/token/refresh/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh: tokens.refresh }),
-    })
-  } catch {
-    return null
-  }
+  // A refresh that never got an answer throws: the session may be fine, so
+  // it must not be treated like a refused token (which signs out).
+  const res = await fetchWithTimeout(`${API_BASE}/api/token/refresh/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ refresh: tokens.refresh }),
+  }, network.timeoutMs)
   if (!res.ok) {
     // Another tab may have rotated the token a moment ago (browsers without
     // Web Locks); only sign out if the stored token is still the one that
@@ -339,7 +402,8 @@ async function doRefresh(staleAccess) {
 }
 
 // Core request wrapper: attaches the access token, retries once via refresh
-// on a 401, and throws a readable Error on any other failure.
+// on a 401, and throws a readable Error on any other failure. Loading data is
+// retried on a weak signal; saves are sent once (see `network`).
 async function request(path, { method = 'GET', body, params } = {}) {
   let tokens = getTokens()
   let url = `${API_BASE}${path}`
@@ -349,31 +413,53 @@ async function request(path, { method = 'GET', body, params } = {}) {
     ).toString()
     if (qs) url += `?${qs}`
   }
+  const isRead = method === 'GET'
 
-  const doFetch = async (accessToken) =>
-    fetch(url, {
+  const send = async (accessToken) => {
+    const init = {
       method,
       headers: {
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
-    })
-
-  let res
-  try {
-    res = await doFetch(tokens?.access)
-  } catch (networkErr) {
-    // fetch() only rejects when the request never got a response (backend
-    // down, Render cold start timing out, user offline).
-    reportApiError(networkErr, { method, path })
-    throw new Error('Could not reach the server. Please try again.')
+    }
+    const delays = isRead ? network.retryDelaysMs : []
+    for (let attempt = 0; ; attempt++) {
+      let res
+      try {
+        res = await fetchWithTimeout(url, init, isRead ? network.timeoutMs : network.writeTimeoutMs)
+      } catch (networkErr) {
+        // No answer at all: offline, a weak signal, or the server asleep.
+        connection.report(false)
+        if (attempt < delays.length) {
+          await wait(delays[attempt])
+          continue
+        }
+        if (!browserOffline()) reportApiError(networkErr, { method, path })
+        throw networkFailure(networkErr, isRead)
+      }
+      connection.report(true)
+      if (RETRY_STATUSES.has(res.status) && attempt < delays.length) {
+        await wait(delays[attempt])
+        continue
+      }
+      return res
+    }
   }
 
+  let res = await send(tokens?.access)
+
   if (res.status === 401 && tokens?.refresh) {
-    const newAccess = await refreshAccessToken(tokens?.access)
+    let newAccess
+    try {
+      newAccess = await refreshAccessToken(tokens?.access)
+    } catch (networkErr) {
+      connection.report(false)
+      throw networkFailure(networkErr, isRead)
+    }
     if (newAccess) {
-      res = await doFetch(newAccess)
+      res = await send(newAccess)
     }
   }
 
@@ -535,7 +621,21 @@ async function postForm(path, form) {
   return data
 }
 
+// Is the server answering at all? Used by the offline banner to notice the
+// signal coming back. /healthz sends no CORS headers, so the answer is read
+// as opaque: any answer counts, only no answer means unreachable.
+async function ping() {
+  try {
+    await fetchWithTimeout(`${API_BASE}/healthz`, { method: 'GET', mode: 'no-cors', cache: 'no-store' }, 8000)
+    connection.report(true)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export const api = {
+  ping,
   login,
   logout,
   isLoggedIn: () => !!getTokens()?.access,
@@ -624,6 +724,9 @@ export const api = {
     reportCard: (id, term) => downloadFile(`/api/guardian-students/${id}/report-card/`, { term }),
     termSummary: (id, term) => request(`/api/guardian-students/${id}/term-summary/`, { params: { term } }),
     profile: (id) => request(`/api/guardian-students/${id}/profile/`),
+    // A parent's suggestion for the health notes, which the school approves.
+    suggestHealthNotes: (id, body) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'POST', body }),
+    withdrawHealthNotes: (id) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'DELETE' }),
     photoUrl: async (id) => {
       const res = await authedFetch(`/api/guardian-students/${id}/photo/`)
       return res.ok ? URL.createObjectURL(await res.blob()) : null

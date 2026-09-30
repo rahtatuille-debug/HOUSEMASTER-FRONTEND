@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { levelFor, levelMidpoint, levelsForScale, useSchool, useVocab } from '../levels.js'
 import { api, isPage } from '../api.js'
+import { loadDraft, saveDraft } from '../drafts.js'
 import ShowMore, { PAGE } from './ShowMore.jsx'
 
 // Teachers can see every subject's grades for students in their classes,
@@ -31,9 +32,16 @@ export default function Grades({ me }) {
   const [limit, setLimit] = useState(PAGE)
   const [filterTerm, setFilterTerm] = useState('')
 
-  const [form, setForm] = useState({ student: '', subject: '', term: '', score: '', max_score: '100', assessment_type: '' })
+  // A mark typed but not saved (a failed save on a weak signal, or the app
+  // closed) is kept on the phone and comes back here (drafts.js).
+  const [form, setForm] = useState(() => loadDraft(me?.id, 'grade-form')?.form
+    || { student: '', subject: '', term: '', score: '', max_score: '100', assessment_type: '' })
   const [types, setTypes] = useState([])
-  const [editingId, setEditingId] = useState(null)
+  const [editingId, setEditingId] = useState(() => loadDraft(me?.id, 'grade-form')?.editingId ?? null)
+  useEffect(() => {
+    const typed = form.student || form.subject || form.term || form.score !== ''
+    saveDraft(me?.id, 'grade-form', typed ? { form, editingId } : null)
+  }, [me?.id, form, editingId])
 
   async function loadOptions() {
     try {

@@ -195,6 +195,14 @@ export default function Approvals({ me, onCountsChanged }) {
                   {isAdmin && <td>{r.requested_by_name}</td>}
                   <td>
                     {r.summary}
+                    {r.kind === 'student' && r.data && 'medical_notes' in r.data && (
+                      <div style={{ marginTop: 6 }}>
+                        <div className="text-muted" style={{ fontSize: 13 }}>Suggested health notes:</div>
+                        {r.data.medical_notes
+                          ? <div className="health-box">{r.data.medical_notes}</div>
+                          : <div className="text-muted" style={{ fontSize: 13 }}>(clear the health notes)</div>}
+                      </div>
+                    )}
                     {r.reason && <div className="text-muted" style={{ fontSize: 13 }}>Reason: {r.reason}</div>}
                     {r.review_note && (
                       <div className="text-muted" style={{ fontSize: 13 }}>

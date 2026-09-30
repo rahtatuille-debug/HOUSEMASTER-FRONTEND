@@ -4,6 +4,7 @@ import { formatDate as localDate } from '../format.js'
 import { useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import PerformanceChart from './PerformanceChart.jsx'
+import HealthNotesCard from './HealthNotesCard.jsx'
 
 const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
 const MODES = { day: 'Day', boarding: 'Boarding' }
@@ -121,11 +122,12 @@ export default function GuardianStudents() {
                     <li><span>Mode of learning</span> {MODES[selected.mode_of_learning] || '—'}</li>
                     <li><span>Admission date</span> {formatDate(selected.enrolled_on)}</li>
                   </ul>
-                  <div>
-                    <h3 style={{ fontSize: 15, marginBottom: 8 }}>Health notes on file</h3>
-                    {selected.medical_notes ? <div className="health-box">{selected.medical_notes}</div> : <p className="text-muted" style={{ marginTop: 0 }}>None recorded.</p>}
-                    <p className="hint">If anything here is wrong or missing, please tell the school.</p>
-                  </div>
+                  <HealthNotesCard
+                    studentId={selected.id}
+                    notes={selected.medical_notes}
+                    request={profile.health_notes_request}
+                    onRequestChange={(r) => setProfile((p) => ({ ...p, health_notes_request: r }))}
+                  />
                 </div>
               </div>
               <div className="card">

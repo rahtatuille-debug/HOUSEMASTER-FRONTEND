@@ -112,7 +112,7 @@ export function guideSections(w, role) {
     {
       key: 'approvals', title: admin ? 'Approvals' : 'My requests', for: 'all',
       tour: admin
-        ? "Changes teachers have asked for (like a new subject) wait here for you to approve or turn down."
+        ? "Changes teachers have asked for (like a new subject), and parents' suggested health notes, wait here for you to approve or turn down."
         : "Some changes (like adding a subject) need an admin's approval. Follow your requests here.",
       steps: admin
         ? ['Approve or reject each request. Approved changes happen straight away.']
