@@ -24,6 +24,9 @@ function noSignal() {
 
 const school = { id: 1, name: 'Alpha Academy', setup_completed: true, education_system: 'cbc' }
 const teacher = { id: 2, name: 'Njeri', role: 'teacher', tour_seen: true, school, assignments: [] }
+// What the teacher's home screen loads once the app gets through (without
+// it the screen throws after the test has passed, depending on timing).
+const teacherHome = { checklist: { system: 'cbc', hidden: false, steps: [], done: 0, total: 0 }, classes: [] }
 
 describe('opening the app without a signal', () => {
   it('shows that it is loading instead of a blank page', () => {
@@ -45,6 +48,7 @@ describe('opening the app without a signal', () => {
     mockApi.current = deepApiMock({
       isLoggedIn: () => true,
       me: () => (online ? Promise.resolve(teacher) : noSignal()),
+      'teacherHome.get': () => Promise.resolve(teacherHome),
     })
     const { container } = render(<App />)
     await screen.findByText(/can’t reach HouseMaster/i)
@@ -61,6 +65,7 @@ describe('opening the app without a signal', () => {
     mockApi.current = deepApiMock({
       isLoggedIn: () => true,
       me: () => (online ? Promise.resolve(teacher) : noSignal()),
+      'teacherHome.get': () => Promise.resolve(teacherHome),
     })
     const { container } = render(<App />)
     await screen.findByText(/can’t reach HouseMaster/i)
