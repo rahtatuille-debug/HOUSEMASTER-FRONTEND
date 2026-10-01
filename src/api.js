@@ -860,6 +860,18 @@ export const api = {
     archive: (id) => request(`/api/announcements/${id}/archive/`, { method: 'POST' }),
     generateText: (body) => request('/api/announcements/generate-text/', { method: 'POST', body }),
   },
+  // Students who need extra support: HouseMaster suggests, staff confirm.
+  support: {
+    suggestions: (term) => request('/api/support/suggestions/', { params: term ? { term } : undefined }),
+    concerns: {
+      list: (params) => listRequest('/api/support/concerns/', { params }),
+      // {student, term, reasons: [codes], note, support_plan, review_date}
+      create: (body) => request('/api/support/concerns/', { method: 'POST', body }),
+      update: (id, body) => request(`/api/support/concerns/${id}/`, { method: 'PATCH', body }),
+      resolve: (id, note) => request(`/api/support/concerns/${id}/resolve/`, { method: 'POST', body: { note } }),
+      dismiss: (student, term) => request('/api/support/concerns/dismiss/', { method: 'POST', body: { student, term } }),
+    },
+  },
   schools: {
     mine: () => request('/api/schools/'),
     update: (id, body) => request(`/api/schools/${id}/`, { method: 'PATCH', body }),

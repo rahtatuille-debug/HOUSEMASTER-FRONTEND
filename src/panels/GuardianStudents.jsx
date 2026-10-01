@@ -5,6 +5,7 @@ import { useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import PerformanceChart from './PerformanceChart.jsx'
 import HealthNotesCard from './HealthNotesCard.jsx'
+import SupportCard from './SupportCard.jsx'
 
 const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
 const MODES = { day: 'Day', boarding: 'Boarding' }
@@ -101,6 +102,7 @@ export default function GuardianStudents() {
           <p className="eyebrow">Student progress</p>
           <h2>{selected.first_name} {selected.last_name}</h2>
           <p className="text-muted">{selected.school_class_name || 'Class not assigned'}{selected.house ? ` · ${selected.house} House` : ''}</p>
+          {profile?.support && <div style={{ margin: '12px 0' }}><SupportCard concern={profile.support} forParents /></div>}
           <div className="guardian-subtabs" role="tablist" aria-label="Student information">
             {TABS.map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
           </div>

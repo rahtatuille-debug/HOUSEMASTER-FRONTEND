@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { ScaleContext, useSchool, useSchoolLevels, useWithLevel, useVocab } from '../levels.js'
+import { ScaleContext, useSchoolLevels, useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, ColumnChart, LineChart } from './charts.jsx'
+import SupportBadge from './SupportBadge.jsx'
 
 const SCOPES = [
   { key: 'student', label: 'Student' },
@@ -68,38 +69,97 @@ function BandsTable({ bands }) {
   )
 }
 
-function StudentTable({ students: given, showClass, onOpenStudent, system }) {
+// Ranked lists of students. Positions come from the server
+// (reporting/rankings.py), the same as on report cards and exports: tied
+// students share a position; 8-4-4 is ranked by mean points; CBC learners
+// are not ranked, so they get an alphabetical list.
+export function StudentTable({ students: given, showClass, showYear, onOpenStudent }) {
   const words = useVocab()
-  // CBC doesn't rank learners, so CBC classes see an alphabetical list without positions.
-  const school = useSchool()
-  const noRanking = (system || school?.education_system) === 'cbc'
-  const students = noRanking && given ? [...given].sort((a, b) => a.name.localeCompare(b.name)) : given
   const fmt = useWithLevel()
+  const [rankBy, setRankBy] = useState('')
   const [showAll, setShowAll] = useState(false)
-  if (!students?.length) return null
+  if (!given?.length) return null
+
+  const ranked = given.some((s) => s.position != null)
+  const subjects = ranked
+    ? [...new Set(given.flatMap((s) => Object.keys(s.subject_positions || {})))].sort((a, b) => a.localeCompare(b))
+    : []
+  const subject = rankBy.startsWith('subject:') ? rankBy.slice(8) : null
+  const mode = !ranked ? 'none' : subject && subjects.includes(subject) ? 'subject' : rankBy === 'improved' ? 'improved' : 'overall'
+  const placeOf = (s) => (mode === 'subject' ? s.subject_positions?.[subject]
+    : mode === 'improved' ? s.improvement_position : s.position) ?? null
+  const ofCount = (s) => (mode === 'subject' ? s.subject_of?.[subject] : mode === 'overall' ? s.of : null)
+
+  let students = mode === 'subject' ? given.filter((s) => s.subjects?.[subject] != null) : [...given]
+  students.sort((a, b) => {
+    const pa = placeOf(a), pb = placeOf(b)
+    if (mode !== 'none' && (pa == null) !== (pb == null)) return pa == null ? 1 : -1
+    if (mode !== 'none' && pa !== pb) return pa - pb
+    return a.name.localeCompare(b.name)
+  })
+
+  const sections = new Set(given.map((s) => s.section).filter(Boolean))
+  const meanGrades = mode !== 'subject' && given.some((s) => s.mean_grade)
+  const title = mode === 'none' ? 'Students'
+    : mode === 'improved' ? `Most improved since last ${words.term.toLowerCase()}`
+      : mode === 'subject' ? `Top in ${subject}` : 'Students, highest first'
+  const hint = mode === 'overall' && meanGrades ? '8-4-4 students are ranked by mean points, then average mark.'
+    : mode === 'improved' ? `By the change in average since the previous ${words.term.toLowerCase()}.` : null
   const LIMIT = 15
   const shown = showAll ? students : students.slice(0, LIMIT)
+  const placeText = (s) => (placeOf(s) == null ? '—' : String(placeOf(s)))
+
   return (
     <div className="card">
-      <h3 style={{ fontSize: 15, marginBottom: 10 }}>{noRanking ? 'Students' : 'Students, highest average first'}</h3>
+      <div className="panel-header" style={{ marginBottom: 6 }}>
+        <h3 style={{ fontSize: 15 }}>{title}</h3>
+        {ranked && (
+          <div className="field" style={{ marginBottom: 0, minWidth: 180 }}>
+            <label htmlFor="perf-rank-by">Rank by</label>
+            <select id="perf-rank-by" value={mode === 'subject' ? `subject:${subject}` : mode === 'improved' ? 'improved' : ''}
+              onChange={(e) => { setRankBy(e.target.value); setShowAll(false) }}>
+              <option value="">Overall</option>
+              <option value="improved">Most improved</option>
+              {subjects.map((name) => <option key={name} value={`subject:${name}`}>{name}</option>)}
+            </select>
+          </div>
+        )}
+      </div>
+      {hint && <p className="hint" style={{ marginTop: 0 }}>{hint}</p>}
       <div className="table-scroll">
       <table className="responsive-table">
         <thead>
-          <tr>{!noRanking && <th>#</th>}<th>Student</th>{showClass && <th>{words.class}</th>}<th>Average</th><th>Previous {words.term.toLowerCase()}</th><th>Change</th></tr>
+          <tr>
+            {ranked && <th>#</th>}
+            <th>Student</th>
+            {showClass && <th>{showYear ? `${words.year_group} · ${words.class}` : words.class}</th>}
+            {sections.size > 1 && <th>Curriculum</th>}
+            {mode === 'subject' && <th>{subject}</th>}
+            {mode === 'improved' && <th>Change</th>}
+            <th>Average</th>
+            {meanGrades && <th>Mean grade</th>}
+            {mode !== 'subject' && <th>Previous {words.term.toLowerCase()}</th>}
+            {(mode === 'overall' || mode === 'none') && <th>Change</th>}
+          </tr>
         </thead>
         <tbody>
-          {shown.map((s, i) => (
+          {shown.map((s) => (
             <tr key={s.id}>
-              {!noRanking && <td className="text-muted">{s.average == null ? '—' : i + 1}</td>}
+              {ranked && <td className="text-muted" title={ofCount(s) ? `${placeText(s)} of ${ofCount(s)}` : undefined}>{placeText(s)}</td>}
               <td>
                 <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: 0 }} onClick={() => onOpenStudent(s.id)}>
                   {s.name}
                 </button>
+                <SupportBadge status={s.support} />
               </td>
-              {showClass && <td>{s.class_name || '—'}</td>}
-              <td><strong>{fmt(s.average, 1)}</strong></td>
-              <td>{fmt(s.previous, 1)}</td>
-              <td><Change value={s.change} /></td>
+              {showClass && <td>{showYear ? [s.year_group_name, s.class_name].filter(Boolean).join(' · ') || '—' : s.class_name || '—'}</td>}
+              {sections.size > 1 && <td>{s.section || '—'}</td>}
+              {mode === 'subject' && <td><strong>{fmt(s.subjects[subject], 1)}</strong></td>}
+              {mode === 'improved' && <td><strong><Change value={s.change} /></strong></td>}
+              <td>{mode === 'overall' || mode === 'none' ? <strong>{fmt(s.average, 1)}</strong> : fmt(s.average, 1)}</td>
+              {meanGrades && <td>{s.mean_grade ? `${s.mean_grade} (${s.mean_points} points)` : '—'}</td>}
+              {mode !== 'subject' && <td>{fmt(s.previous, 1)}</td>}
+              {(mode === 'overall' || mode === 'none') && <td><Change value={s.change} /></td>}
             </tr>
           ))}
         </tbody>
@@ -107,7 +167,7 @@ function StudentTable({ students: given, showClass, onOpenStudent, system }) {
       </div>
       {students.length > LIMIT && (
         <button type="button" className="secondary" style={{ marginTop: 12 }} onClick={() => setShowAll(!showAll)}>
-          {showAll ? `Show ${noRanking ? 'first' : 'top'} ${LIMIT} only` : `Show all ${students.length} students`}
+          {showAll ? `Show ${ranked ? 'top' : 'first'} ${LIMIT} only` : `Show all ${students.length} students`}
         </button>
       )}
     </div>
@@ -333,7 +393,7 @@ function Charts({ data, termName, onOpenStudent }) {
         )}
       </div>
       <div style={{ marginTop: 18 }}>
-        <StudentTable students={data.students} showClass={isYear} onOpenStudent={onOpenStudent} system={data.grading?.system} />
+        <StudentTable students={data.students} showClass={isYear || isSchool} showYear={isSchool} onOpenStudent={onOpenStudent} />
       </div>
     </>
   )

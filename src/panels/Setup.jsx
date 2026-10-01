@@ -3,6 +3,7 @@ import { useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import AddSectionCard from './AddSectionCard.jsx'
 import TimeZoneCard from './TimeZoneCard.jsx'
+import SupportLimitsCard from './SupportLimitsCard.jsx'
 import AssessmentTypesCard from './AssessmentTypesCard.jsx'
 import ImportCard from './ImportCard.jsx'
 import YearEndCard from './YearEndCard.jsx'
@@ -544,6 +545,7 @@ export default function Setup({ me, onUserUpdated }) {
         )}
       </div>
       {isAdmin && school && <TimeZoneCard key={school.id} school={school} me={me} onSaved={(updated) => setSchool(updated)} />}
+      {isAdmin && school && <SupportLimitsCard key={`support-${school.id}`} school={school} me={me} onSaved={(updated) => setSchool(updated)} />}
       {isAdmin && <AddSectionCard school={school} scales={SCALES} onDone={loadAll} />}
 
       {isAdmin && <YearEndCard classes={classes} yearGroups={orderedYearGroups} onDone={loadAll} />}

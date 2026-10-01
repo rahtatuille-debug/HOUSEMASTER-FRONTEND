@@ -4,6 +4,7 @@ import { useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import StudentProfile from './StudentProfile.jsx'
 import ShowMore, { PAGE } from './ShowMore.jsx'
+import SupportBadge from './SupportBadge.jsx'
 
 const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', school_class: '' }
 
@@ -26,6 +27,7 @@ export default function Students({ me }) {
   // The add/edit form opens on demand, so the list comes first (especially on phones).
   const [showForm, setShowForm] = useState(false)
   const [search, setSearch] = useState('')
+  const [supportOnly, setSupportOnly] = useState(false)
   const [classFilter, setClassFilter] = useState('')
   const [limit, setLimit] = useState(PAGE)
 
@@ -124,6 +126,7 @@ export default function Students({ me }) {
 
   const query = search.trim().toLowerCase()
   const filtered = students.filter((s) => (!classFilter || String(s.school_class) === classFilter)
+    && (!supportOnly || s.needs_support)
     && (!query || `${s.first_name} ${s.last_name} ${s.external_id || ''}`.toLowerCase().includes(query)))
 
   const className = (id) => {
@@ -177,6 +180,11 @@ export default function Students({ me }) {
             onChange={(e) => setShowInactive(e.target.checked)}
           />
           Show inactive
+        </label>
+        <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: 8, textTransform: 'none', alignSelf: 'end', marginBottom: 14 }}>
+          <input type="checkbox" style={{ width: 'auto' }} checked={supportOnly}
+            onChange={(e) => { setSupportOnly(e.target.checked); setLimit(PAGE) }} />
+          Needs support only
         </label>
       </div>
 
@@ -291,6 +299,7 @@ export default function Students({ me }) {
                   >
                     {s.first_name} {s.last_name}
                   </button>
+                  {s.needs_support && <SupportBadge status="open" />}
                 </td>
                 <td data-label={words.class}>{className(s.school_class)}</td>
                 <td data-label="House">{s.house || '—'}</td>

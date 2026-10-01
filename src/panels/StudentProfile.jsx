@@ -6,6 +6,7 @@ import { ScaleContext, useWithLevel, useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import { ContactDetails, RELATIONSHIPS } from './ParentContact.jsx'
 import PerformanceChart from './PerformanceChart.jsx'
+import SupportCard from './SupportCard.jsx'
 import { BarChart, COMPARE } from './charts.jsx'
 
 const SECTIONS = [
@@ -302,6 +303,9 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     </ul>
                   </div>
                   <div>
+                    {profile.support?.open && (
+                      <div style={{ marginBottom: 18 }}><SupportCard concern={profile.support.open} formatDate={formatDate} /></div>
+                    )}
                     <h3 style={{ fontSize: 15, marginBottom: 8 }}>Health notes</h3>
                     {s.medical_notes ? (
                       <div className="health-box">{s.medical_notes}</div>
