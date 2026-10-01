@@ -31,6 +31,7 @@ export function LineChart({ data, series, label }) {
   const [hover, setHover] = useState(null)
   const shown = series.filter((s) => data.some((d) => d[s.key] != null))
   if (!data.length || !shown.length) return <p className="text-muted" style={{ margin: 0 }}>No grades recorded yet.</p>
+  const labelEvery = data.length <= 6 ? 1 : Math.ceil(data.length / 3)
 
   const W = 640
   const H = 260
@@ -79,8 +80,12 @@ export function LineChart({ data, series, label }) {
               <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" className="chart-axis">{v}%</text>
             </g>
           ))}
-          {data.map((d, i) => (
-            <text key={i} x={x(i)} y={H - 12} textAnchor="middle" className="chart-axis">{d.term}</text>
+          {data.map((d, i) => (i === data.length - 1 || (i % labelEvery === 0 && data.length - 1 - i >= labelEvery)) && (
+            // Years of terms don't fit: label every few, plus the latest (hovering shows each one).
+            <text key={i} x={x(i)} y={H - 12} className="chart-axis"
+              textAnchor={data.length > 1 && i === 0 ? 'start' : data.length > 1 && i === data.length - 1 ? 'end' : 'middle'}>
+              {d.term}
+            </text>
           ))}
           {hover != null && <line x1={x(hover)} x2={x(hover)} y1={PAD.top} y2={PAD.top + plotH} stroke="#b9b09a" strokeWidth="1" />}
           {shown.map((s) => (
