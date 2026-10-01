@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { ScaleContext, useSchoolLevels, useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, ColumnChart, LineChart } from './charts.jsx'
+import SupportBadge from './SupportBadge.jsx'
 
 const SCOPES = [
   { key: 'student', label: 'Student' },
@@ -149,6 +150,7 @@ export function StudentTable({ students: given, showClass, showYear, onOpenStude
                 <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: 0 }} onClick={() => onOpenStudent(s.id)}>
                   {s.name}
                 </button>
+                <SupportBadge status={s.support} />
               </td>
               {showClass && <td>{showYear ? [s.year_group_name, s.class_name].filter(Boolean).join(' · ') || '—' : s.class_name || '—'}</td>}
               {sections.size > 1 && <td>{s.section || '—'}</td>}

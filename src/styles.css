@@ -1165,3 +1165,15 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .connection-banner.online { color: var(--stamp-green); background: rgba(63, 107, 69, .12); }
 
 .login-wrap .loading-note { color: var(--paper); font-size: 16px; }
+
+/* Needs support */
+.support-list { list-style: none; margin: 8px 0 0; padding: 0; }
+.support-list > li { border-top: 1px solid var(--rule); padding: 12px 0; }
+.support-list > li:first-child { border-top: 0; }
+.support-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+.support-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.support-reasons { margin: 4px 0 0; padding-left: 18px; font-size: 14px; }
+.support-form { margin-top: 10px; display: grid; gap: 8px; max-width: 560px; }
+.badge.support { background: rgba(184, 134, 46, 0.15); color: var(--gold-2); }
+.badge.support-suggested { background: rgba(30, 47, 82, 0.08); color: var(--navy-2); }
+.support-box { border-left: 3px solid var(--gold-2); padding: 8px 12px; background: rgba(184, 134, 46, 0.06); border-radius: 4px; }

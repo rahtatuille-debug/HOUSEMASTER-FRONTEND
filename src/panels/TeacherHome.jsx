@@ -74,6 +74,33 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
         </div>
       )}
 
+      {data.support && (data.support.suggested > 0 || data.support.open > 0) && (
+        <div className="card">
+          <div className="support-row">
+            <div>
+              <h3 style={{ fontSize: 15, margin: 0 }}>Students who need support</h3>
+              <p className="text-muted" style={{ margin: '4px 0 0' }}>
+                {[
+                  data.support.suggested > 0 && `${data.support.suggested} suggested by HouseMaster to look at`,
+                  data.support.open > 0 && `${data.support.open} marked as needing support`,
+                ].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => onNavigate('support')}>Open</button>
+          </div>
+          {data.support.due.length > 0 && (
+            <>
+              <p style={{ margin: '12px 0 4px' }}><strong>Reviews due</strong></p>
+              <ul style={{ margin: 0, paddingLeft: 18 }}>
+                {data.support.due.map((d) => (
+                  <li key={d.id}>{d.student_name} <span className="text-muted">· {formatDate(d.review_date)}</span></li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
+
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 12 }}>Your {words.classes.toLowerCase()}</h3>
         {data.classes.length === 0 ? (

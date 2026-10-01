@@ -77,6 +77,17 @@ export function guideSections(w, role) {
       ],
     },
     {
+      key: 'support', title: 'Needs support', for: 'all',
+      tour: 'Students who are struggling. HouseMaster suggests them; you confirm, add a plan, and parents are told.',
+      steps: [
+        `HouseMaster suggests students with a low average, a big drop since last ${term}, or low attendance. ${admin ? 'You can change these limits on the Setup page.' : 'An admin sets the limits on the Setup page.'}`,
+        'Confirm a suggestion to mark the student, or choose "Not needed" to hide it for this ' + term + '. Use "Mark a student" for anyone HouseMaster has not suggested.',
+        'Add a note and a support plan. Parents see both, with the reasons, and get a short email. Nothing is shared until you confirm.',
+        'Set a review date: it shows on your Home page when it is due. Choose "Resolve" when the student no longer needs support.',
+        'Marked students have a "Needs support" label in the Students list, the Performance tables and their profile.',
+      ],
+    },
+    {
       key: 'announcements', title: 'Communications', for: 'all',
       tour: admin
         ? 'Announcements to parents or staff. Write them yourself or with Assisted Communications, and approve teachers\' drafts.'
