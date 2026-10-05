@@ -83,4 +83,17 @@ describe('student rankings', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ben' }))
     expect(open).toHaveBeenCalledWith(3)
   })
+
+  it('D-1: says why a student is not ranked and what each position is based on', () => {
+    const students = [...ranked.map((s) => ({ ...s, basis: { subjects: 2, marks: 6, usual_subjects: 2 } })),
+      row('Dee', { average: 99, change: null, basis: { subjects: 1, marks: 1, usual_subjects: 2 }, not_ranked: 'incomplete_marks',
+        not_ranked_label: 'Not ranked: incomplete marks (1 of 2 subjects)', improvement_note: 'Not in most improved: incomplete marks this term' })]
+    render(<StudentTable students={students} onOpenStudent={() => {}} />)
+    expect(order()).toEqual(['Ann', 'Ben', 'Cat', 'Dee'])
+    expect(screen.getByText('Not ranked: incomplete marks (1 of 2 subjects)')).toBeInTheDocument()
+    expect(screen.getAllByRole('row')[1].cells[0]).toHaveAttribute('title', '1 of 3 · based on 2 subjects, 6 marks')
+    fireEvent.change(screen.getByLabelText('Rank by'), { target: { value: 'improved' } })
+    expect(screen.getByText('Not in most improved: incomplete marks this term')).toBeInTheDocument()
+  })
 })
+
