@@ -86,6 +86,35 @@ describe('Boarding page', () => {
     expect(await screen.findByText('Roll call finished: 1 missing.')).toBeInTheDocument()
   })
 
+  it('A-2: an admin amends a finished roll call with a reason; staff cannot', async () => {
+    const done = { id: 6, house_name: 'Uhuru House', session_label: 'Night', date: '2026-10-04', completed_at: '2026-10-04T21:00:00Z',
+      counts: { missing: 1 }, amendments: [], entries: [
+        { student: 7, name: 'Amina K', dorm: 'Dorm A', status: 'missing', note: '' },
+        { student: 9, name: 'Cyrus K', dorm: 'Dorm A', status: 'present', note: '' }] }
+    const amend = vi.fn(() => Promise.resolve({ ...done, amendments: [{ by: 'Head', at: '2026-10-05T08:00:00Z', reason: 'Was in the library',
+      changes: [{ student: 7, before: 'missing', after: 'present' }] }] }))
+    mockApi.current = staffApi({ 'boarding.rollCalls.list': () => Promise.resolve([done]),
+      'boarding.rollCalls.get': () => Promise.resolve(done), 'boarding.rollCalls.amend': amend })
+    const { unmount } = render(<Boarding me={{ role: 'admin' }} />)
+    await screen.findByText('Missing: not found yet')
+    tab('Roll call')
+    fireEvent.click(await screen.findByRole('button', { name: 'Amend Uhuru House Night roll call' }))
+    fireEvent.change(await screen.findByLabelText('Amina K'), { target: { value: 'present' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the change' }))
+    expect(await screen.findByText('Say why the roll call is being changed.')).toBeInTheDocument()
+    expect(amend).not.toHaveBeenCalled()
+    fireEvent.change(screen.getByLabelText('Why is it being changed?'), { target: { value: 'Was in the library' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the change' }))
+    await waitFor(() => expect(amend).toHaveBeenCalledWith(6, [{ student: 7, status: 'present' }], 'Was in the library'))
+    expect(await screen.findByText(/Amended by Head/)).toBeInTheDocument()
+    unmount()
+    render(<Boarding me={{ role: 'teacher' }} />)
+    await screen.findByText('Missing: not found yet')
+    tab('Roll call')
+    await screen.findByText(/Uhuru House · Night ·/)
+    expect(screen.queryByRole('button', { name: /^Amend/ })).toBeNull()
+  })
+
   it('approves a parent’s leave request with a note', async () => {
     const act = vi.fn(() => Promise.resolve({}))
     mockApi.current = staffApi({ 'boarding.leave.act': act, 'boarding.leave.list': () => Promise.resolve([

@@ -135,8 +135,66 @@ function Today({ onGo }) {
   )
 }
 
+// A finished roll call is locked. An admin can correct it, giving a reason; the change is kept on the roll call.
+function AmendRollCall({ id, onClose, onSaved }) {
+  const [roll, setRoll] = useState(null)
+  const [statuses, setStatuses] = useState({})
+  const [reason, setReason] = useState('')
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api.boarding.rollCalls.get(id).then((r) => { setRoll(r); setStatuses(Object.fromEntries(r.entries.map((e) => [e.student, e.status]))) })
+      .catch((err) => setError(errorText(err)))
+  }, [id])
+  async function save(e) {
+    e.preventDefault()
+    setError('')
+    const entries = roll.entries.filter((x) => statuses[x.student] !== x.status).map((x) => ({ student: x.student, status: statuses[x.student] }))
+    if (!entries.length) { setError('Change at least one boarder first.'); return }
+    if (!reason.trim()) { setError('Say why the roll call is being changed.'); return }
+    try {
+      const updated = await api.boarding.rollCalls.amend(id, entries, reason.trim())
+      setRoll(updated)
+      setReason('')
+      onSaved()
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+  if (!roll) return error ? <Banner error={error} /> : <p className="text-muted">Loading…</p>
+  return (
+    <form className="card" onSubmit={save}>
+      <h3 style={{ fontSize: 15, margin: '0 0 4px' }}>Amend {roll.house_name} · {roll.session_label} · {formatDate(roll.date)}</h3>
+      <p className="hint" style={{ marginTop: 0 }}>This roll call is finished. Changes are recorded with your name, the reason, and what each boarder was before.</p>
+      <Banner error={error} />
+      <div className="form-row">
+        {roll.entries.map((x) => (
+          <label key={x.student} style={{ flex: '1 1 200px' }}>{x.name}
+            <select value={statuses[x.student] || ''} onChange={(e) => setStatuses({ ...statuses, [x.student]: e.target.value })}>
+              {Object.entries(ROLL_STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+        ))}
+      </div>
+      <label>Why is it being changed?<input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} /></label>
+      <div className="tt-form-actions">
+        <button type="submit" style={{ width: 'auto' }}>Save the change</button>
+        <button type="button" className="secondary" style={{ width: 'auto' }} onClick={onClose}>Close</button>
+      </div>
+      {roll.amendments?.length > 0 && (
+        <ul className="hint" style={{ paddingLeft: 18 }}>
+          {roll.amendments.map((a, i) => (
+            <li key={i}>Amended by {a.by || 'an admin'} on {formatDateTime(a.at, SHORT)}: {a.reason} ({a.changes.length} change{a.changes.length === 1 ? '' : 's'})</li>
+          ))}
+        </ul>
+      )}
+    </form>
+  )
+}
+
 // --- Roll call: start one for a house, mark each boarder, finish.
-function RollCallPanel({ houses }) {
+function RollCallPanel({ houses, me }) {
+  const isAdmin = me?.role === 'admin'
+  const [amending, setAmending] = useState(null)
   const [house, setHouse] = useState(houses[0]?.id || '')
   const [session, setSession] = useState(defaultSession())
   const [roll, setRoll] = useState(null)
@@ -218,15 +276,23 @@ function RollCallPanel({ houses }) {
           </div>
         </div>
       )}
+      {amending && <AmendRollCall key={amending} id={amending} onClose={() => setAmending(null)} onSaved={reloadRecent} />}
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 8 }}>Recent roll calls</h3>
         {!recent ? <p className="text-muted">Loading…</p> : recent.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>None yet.</p> : (
           <ul className="tt-setup-list">
             {recent.slice(0, 12).map((r) => (
               <li key={r.id}>
-                <span>{r.house_name} · {r.session_label} · {formatDate(r.date)}{r.completed_at ? '' : ' · not finished'}</span>
-                <span className={r.counts.missing ? 'badge rejected' : 'text-muted'}>
-                  {r.counts.missing ? `${r.counts.missing} missing` : `${r.counts.present || 0} present`}
+                <span>{r.house_name} · {r.session_label} · {formatDate(r.date)}{r.completed_at ? '' : ' · not finished'}
+                  {r.amendments?.length > 0 && <span className="text-muted"> · amended</span>}</span>
+                <span>
+                  <span className={r.counts.missing ? 'badge rejected' : 'text-muted'}>
+                    {r.counts.missing ? `${r.counts.missing} missing` : `${r.counts.present || 0} present`}
+                  </span>
+                  {isAdmin && r.completed_at && (
+                    <button type="button" className="link-button" style={{ width: 'auto', padding: 0, marginLeft: 8 }}
+                      aria-label={`Amend ${r.house_name} ${r.session_label} roll call`} onClick={() => setAmending(r.id)}>Amend</button>
+                  )}
                 </span>
               </li>
             ))}
@@ -596,7 +662,7 @@ export default function Boarding({ me }) {
       {!houses ? <p className="text-muted">Loading…</p> : (
         <>
           {tab === 'today' && <Today onGo={setTab} />}
-          {tab === 'roll' && (houses.length ? <RollCallPanel houses={houses} /> : <p className="text-muted">Add a boarding house first.</p>)}
+          {tab === 'roll' && (houses.length ? <RollCallPanel houses={houses} me={me} /> : <p className="text-muted">Add a boarding house first.</p>)}
           {tab === 'leave' && <LeavePanel />}
           {tab === 'sick' && <SickBayPanel />}
           {tab === 'houses' && <HousesPanel me={me} houses={houses} reload={loadHouses} />}

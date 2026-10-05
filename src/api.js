@@ -888,6 +888,8 @@ export const api = {
       get: (id) => request(`/api/boarding/roll-calls/${id}/`),
       start: (house, session) => request('/api/boarding/roll-calls/', { method: 'POST', body: { house, session } }),
       mark: (id, entries, complete) => request(`/api/boarding/roll-calls/${id}/mark/`, { method: 'POST', body: { entries, complete } }),
+      // Admins only, for a finished roll call: recorded with the reason and before/after.
+      amend: (id, entries, reason) => request(`/api/boarding/roll-calls/${id}/amend/`, { method: 'POST', body: { entries, reason } }),
     },
     // A boarder marked missing stays open until a person resolves it (a later roll call never closes it).
     absences: {
