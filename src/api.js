@@ -725,6 +725,9 @@ export const api = {
     termSummary: (id, term) => request(`/api/guardian-students/${id}/term-summary/`, { params: { term } }),
     profile: (id) => request(`/api/guardian-students/${id}/profile/`),
     timetable: (id) => request(`/api/guardian-students/${id}/timetable/`),
+    boarding: (id) => request(`/api/guardian-students/${id}/boarding/`),
+    requestLeave: (id, body) => request(`/api/guardian-students/${id}/leave-requests/`, { method: 'POST', body }),
+    cancelLeave: (id, leaveId) => request(`/api/guardian-students/${id}/leave-requests/${leaveId}/cancel/`, { method: 'POST' }),
     // A parent's suggestion for the health notes, which the school approves.
     suggestHealthNotes: (id, body) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'POST', body }),
     withdrawHealthNotes: (id) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'DELETE' }),
@@ -860,6 +863,44 @@ export const api = {
     publish: (id) => request(`/api/announcements/${id}/publish/`, { method: 'POST' }),
     archive: (id) => request(`/api/announcements/${id}/archive/`, { method: 'POST' }),
     generateText: (body) => request('/api/announcements/generate-text/', { method: 'POST', body }),
+  },
+  // Boarding: house staff and admins.
+  boarding: {
+    overview: () => request('/api/boarding/overview/'),
+    boarders: (house) => request('/api/boarding/boarders/', { params: house ? { house } : undefined }),
+    students: (q) => request('/api/boarding/students/', { params: { q } }),
+    houses: {
+      list: () => request('/api/boarding/houses/'),
+      create: (body) => request('/api/boarding/houses/', { method: 'POST', body }),
+      update: (id, body) => request(`/api/boarding/houses/${id}/`, { method: 'PATCH', body }),
+      remove: (id) => request(`/api/boarding/houses/${id}/`, { method: 'DELETE' }),
+    },
+    dorms: {
+      create: (body) => request('/api/boarding/dorms/', { method: 'POST', body }),
+      remove: (id) => request(`/api/boarding/dorms/${id}/`, { method: 'DELETE' }),
+      addBeds: (id, count) => request(`/api/boarding/dorms/${id}/beds/`, { method: 'POST', body: { count } }),
+    },
+    // student: an id to put them in the bed, or null to empty it
+    assignBed: (bed, student) => request(`/api/boarding/beds/${bed}/`, { method: 'POST', body: { student } }),
+    removeBed: (bed) => request(`/api/boarding/beds/${bed}/`, { method: 'DELETE' }),
+    rollCalls: {
+      list: (params) => listRequest('/api/boarding/roll-calls/', { params }),
+      get: (id) => request(`/api/boarding/roll-calls/${id}/`),
+      start: (house, session) => request('/api/boarding/roll-calls/', { method: 'POST', body: { house, session } }),
+      mark: (id, entries, complete) => request(`/api/boarding/roll-calls/${id}/mark/`, { method: 'POST', body: { entries, complete } }),
+    },
+    leave: {
+      list: (params) => listRequest('/api/boarding/leave/', { params }),
+      create: (body) => request('/api/boarding/leave/', { method: 'POST', body }),
+      act: (id, verb, note) => request(`/api/boarding/leave/${id}/${verb}/`, { method: 'POST', body: note ? { note } : {} }),
+    },
+    sickBay: {
+      list: (params) => listRequest('/api/boarding/sick-bay/', { params }),
+      checkIn: (body) => request('/api/boarding/sick-bay/', { method: 'POST', body }),
+      update: (id, body) => request(`/api/boarding/sick-bay/${id}/`, { method: 'PATCH', body }),
+      checkOut: (id, outcome) => request(`/api/boarding/sick-bay/${id}/check-out/`, { method: 'POST', body: { outcome } }),
+      told: (id, body) => request(`/api/boarding/sick-bay/${id}/told/`, { method: 'POST', body }),
+    },
   },
   // The timetable: admins change it, all staff read it.
   timetable: {

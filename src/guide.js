@@ -100,6 +100,17 @@ export function guideSections(w, role) {
       ],
     },
     {
+      key: 'boarding', title: 'Boarding', for: 'all',
+      tour: 'Beds, roll calls, leave and the sick bay for boarders. Only house staff and admins see it.',
+      steps: [
+        admin ? 'Turn boarding on in Setup (Boarding: "Our school has boarders"). Then, on Houses and beds, add the boarding houses, choose each house\'s staff, then add dormitories and beds.' : 'Your houses are set up by an admin, who also makes you house staff.',
+        'Put a student in a bed by typing their name. Moving them to another bed frees the old one.',
+        'Roll call: choose the house and morning, evening or night. Boarders on leave or in the sick bay are filled in; mark the rest present or missing and finish. Anyone missing shows on Today and your Home page.',
+        'Leave: parents ask in HouseMaster and you approve or decline (they get an email). Sign boarders out when they leave and back in when they return. You can also give leave yourself.',
+        'Sick bay: check a boarder in with why they came and what was given, tell parents (email, or note that you phoned), and check them out when they leave.',
+      ],
+    },
+    {
       key: 'announcements', title: 'Communications', for: 'all',
       tour: admin
         ? 'Announcements to parents or staff. Write them yourself or with Assisted Communications, and approve teachers\' drafts.'
