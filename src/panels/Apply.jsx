@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import PrivacyNotice, { PrivacyConsent } from './PrivacyNotice.jsx'
 import { api } from '../api.js'
 import { LogoFull } from './Logo.jsx'
@@ -22,12 +22,16 @@ export default function Apply({ token, onSignIn }) {
   const [error, setError] = useState('')
   const [sent, setSent] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  // Set synchronously, so a double click or Enter pressed twice can't send the form twice before React re-renders.
+  const sending = useRef(false)
 
   useEffect(() => { api.applyInfo(token).then(setInfo).catch((err) => setLoadError(err.message)) }, [token])
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }))
 
   async function submit(e) {
     e.preventDefault()
+    if (sending.current) return
+    sending.current = true
     setError('')
     setSubmitting(true)
     try {
@@ -37,6 +41,7 @@ export default function Apply({ token, onSignIn }) {
     } catch (err) {
       setError(err.message)
     } finally {
+      sending.current = false
       setSubmitting(false)
     }
   }

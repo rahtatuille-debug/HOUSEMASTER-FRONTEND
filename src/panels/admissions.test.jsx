@@ -53,6 +53,23 @@ describe('Public application form', () => {
     expect(submit).toHaveBeenCalledWith('tok', expect.objectContaining({ first_name: 'Zara', year_group: 3, consent: true, website: '' }))
   })
 
+  it('B-2: sends once, however fast it is submitted again', async () => {
+    let finish
+    const submit = vi.fn(() => new Promise((resolve) => { finish = resolve }))
+    mockApi.current = deepApiMock({ applyInfo: () => Promise.resolve(info), submitApplication: submit })
+    const { container } = render(<Apply token="tok" onSignIn={() => {}} />)
+    await screen.findByText('Welcome to Alpha.')
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'priya@example.test' } })
+    fireEvent.click(screen.getByRole('checkbox'))
+    const form = container.querySelector('form')
+    fireEvent.submit(form)
+    fireEvent.submit(form)  // a double click, or Enter pressed twice
+    expect(screen.getByRole('button', { name: 'Sending…' })).toBeDisabled()
+    finish({ detail: 'ok' })
+    expect(await screen.findByText(/Check your email/)).toBeInTheDocument()
+    expect(submit).toHaveBeenCalledTimes(1)
+  })
+
   it('says when the form is closed', async () => {
     mockApi.current = deepApiMock({ applyInfo: () => Promise.reject(new Error("This application form isn't open.")) })
     render(<Apply token="tok" onSignIn={() => {}} />)
@@ -137,5 +154,16 @@ describe('Admissions page', () => {
     expect(await screen.findByText('Omar Patel')).toBeInTheDocument()
     expect(list).toHaveBeenLastCalledWith({ unconfirmed: 1 })
     expect(screen.getByText(/has to apply again/)).toBeInTheDocument()
+  })
+
+  it('B-2: refusing to enrol a child who is already a student says who', async () => {
+    const err = Object.assign(new Error('Bad request'), { data: { detail: 'Zara Patel, born 02 Mar 2015, is already a student here. Open their student page instead of enrolling them again.', existing_student: 41 } })
+    mockApi.current = adminApi({ 'admissions.list': vi.fn(() => Promise.resolve([{ ...app, status: 'offered', status_label: 'Offered a place' }])),
+      'admissions.enrol': () => Promise.reject(err) })
+    render(<Admissions />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Zara Patel' }))
+    fireEvent.change(screen.getByLabelText('Class'), { target: { value: '21' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enrol' }))
+    expect(await screen.findByText(/is already a student here/)).toBeInTheDocument()
   })
 })
