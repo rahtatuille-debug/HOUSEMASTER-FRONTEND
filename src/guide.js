@@ -178,6 +178,16 @@ export function guideSections(w, role) {
         'Or invite a parent directly. Edit contact details and which children a parent is linked to.'],
     },
     {
+      key: 'admissions', title: 'Admissions', for: 'admin',
+      tour: 'Applications for places: share your online form, then move each family from new to enrolled.',
+      steps: [
+        'Tick "Open for applications" and share the link on your website, by WhatsApp or by email. Families don\'t need an account.',
+        'Choose which year groups take applications and write a short welcome for the top of the form.',
+        'Open an application to read it, add staff notes (never sent) and move it on: reviewing, interview or test, offered, waiting list or not offered. Families get an email at each decision, with your note.',
+        'When a place is offered or accepted, choose a class and Enrol: the child becomes a student and the parent is invited to HouseMaster.',
+      ],
+    },
+    {
       key: 'activity', title: 'Activity log', for: 'admin',
       tour: 'A record of who did what and when, for accountability.',
       steps: ['Filter by person or type of action to see what changed.'],

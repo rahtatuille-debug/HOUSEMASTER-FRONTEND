@@ -149,6 +149,25 @@ async function joinClass(token, body) {
   return data
 }
 
+// Admissions: a school's public application form (no account needed).
+async function applyInfo(token) {
+  const res = await fetch(`${API_BASE}/api/admissions/apply/${token}/`)
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(data?.detail || "This application form isn't open.")
+  return data
+}
+
+async function submitApplication(token, body) {
+  const res = await fetch(`${API_BASE}/api/admissions/apply/${token}/`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Sending failed (${res.status})`)
+  }
+  return data
+}
+
 async function acceptGuardianInvite(token, password, acceptPrivacy = false) {
   const res = await fetch(`${API_BASE}/api/guardian-invites/accept/`, {
     method: 'POST',
@@ -687,6 +706,18 @@ export const api = {
   acceptGuardianInvite,
   joinInfo,
   joinClass,
+  applyInfo,
+  submitApplication,
+  admissions: {
+    list: (params) => listRequest('/api/admissions/applications/', { params }),
+    update: (id, body) => request(`/api/admissions/applications/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/admissions/applications/${id}/`, { method: 'DELETE' }),
+    enrol: (id, schoolClass) => request(`/api/admissions/applications/${id}/enrol/`, { method: 'POST', body: { school_class: schoolClass } }),
+    summary: () => request('/api/admissions/applications/summary/'),
+    settings: () => request('/api/admissions/settings/'),
+    saveSettings: (body) => request('/api/admissions/settings/', { method: 'PATCH', body }),
+    newLink: () => request('/api/admissions/settings/', { method: 'POST', body: { new_link: true } }),
+  },
   signupLinks: {
     list: () => request('/api/signup-links/'),
     change: (schoolClass, action) => request('/api/signup-links/', { method: 'POST', body: { school_class: schoolClass, action } }),
