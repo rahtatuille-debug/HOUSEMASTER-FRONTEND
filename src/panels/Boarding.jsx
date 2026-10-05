@@ -92,11 +92,13 @@ function MissingBoarders({ missing, onGo, onResolved }) {
 function Today({ onGo }) {
   const [overview, reloadOverview, error] = useLoader(useCallback(() => api.boarding.overview(), []))
   const [boarders] = useLoader(useCallback(() => api.boarding.boarders(), []))
+  const [unbedded] = useLoader(useCallback(() => api.boarding.unbedded(), []))
   const [query, setQuery] = useState('')
   if (!overview) return error ? <Banner error={error} /> : <p className="text-muted">Loading…</p>
   const shown = (boarders || []).filter((b) => !query || `${b.name} ${b.dorm} ${b.class_name}`.toLowerCase().includes(query.toLowerCase()))
   const tiles = [['Boarders', overview.boarders], ['On leave', overview.on_leave], ['In sick bay', overview.sick_bay],
-    ['Leave to decide', overview.leave_waiting], ['Free beds', overview.beds_free]]
+    ['Leave to decide', overview.leave_waiting], ['Free beds', overview.beds_free],
+    ...(overview.unbedded ? [['Without a bed', overview.unbedded]] : [])]
   return (
     <>
       <div className="stat-row">
@@ -105,6 +107,15 @@ function Today({ onGo }) {
         ))}
       </div>
       <MissingBoarders missing={overview.missing} onGo={onGo} onResolved={reloadOverview} />
+      {unbedded?.length > 0 && (
+        <div className="card support-box" role="region" aria-label="Boarders without a bed">
+          <h3 style={{ fontSize: 15, margin: '0 0 6px' }}>Boarders without a bed</h3>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {unbedded.map((s) => <li key={s.id}><strong>{s.name}</strong>{s.class_name ? ` · ${s.class_name}` : ''}</li>)}
+          </ul>
+          <button type="button" className="secondary" style={{ width: 'auto', marginTop: 8 }} onClick={() => onGo('houses')}>Put them in beds</button>
+        </div>
+      )}
       {overview.leave_waiting > 0 && (
         <p><button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} onClick={() => onGo('leave')}>
           {overview.leave_waiting} leave request{overview.leave_waiting === 1 ? '' : 's'} waiting for a decision

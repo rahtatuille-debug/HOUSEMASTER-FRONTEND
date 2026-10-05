@@ -869,6 +869,8 @@ export const api = {
     overview: () => request('/api/boarding/overview/'),
     boarders: (house) => request('/api/boarding/boarders/', { params: house ? { house } : undefined }),
     students: (q) => request('/api/boarding/students/', { params: { q } }),
+    // Students marked as boarders who have no bed yet.
+    unbedded: () => request('/api/boarding/unbedded/'),
     houses: {
       // params: { archived: 1 } for archived houses (their history stays readable)
       list: (params) => request('/api/boarding/houses/', { params }),

@@ -134,6 +134,23 @@ describe('Boarding page', () => {
     window.confirm.mockRestore()
   })
 
+  it('A-5: lists boarders who have no bed, so staff can place them', async () => {
+    mockApi.current = staffApi({ 'boarding.overview': () => Promise.resolve({ ...overview, unbedded: 1 }),
+      'boarding.unbedded': () => Promise.resolve([{ id: 21, name: 'Wanjiku M', class_name: '1 West' }]) })
+    render(<Boarding me={{ role: 'teacher' }} />)
+    expect(await screen.findByText('Boarders without a bed')).toBeInTheDocument()
+    expect(screen.getByText(/Wanjiku M/)).toBeInTheDocument()
+    expect(screen.getByText('Without a bed')).toBeInTheDocument()  // the tile
+  })
+
+  it('A-5: the student page flags a boarder without a bed, and says nothing otherwise', async () => {
+    const { default: BoarderBedFlag } = await import('./BoarderBedFlag.jsx')
+    const { container } = render(<BoarderBedFlag boarding={null} />)
+    expect(container).toBeEmptyDOMElement()
+    render(<BoarderBedFlag boarding={{ boarder_without_bed: true }} />)
+    expect(screen.getByText(/is a boarder but has no bed yet/)).toBeInTheDocument()
+  })
+
   it('approves a parent’s leave request with a note', async () => {
     const act = vi.fn(() => Promise.resolve({}))
     mockApi.current = staffApi({ 'boarding.leave.act': act, 'boarding.leave.list': () => Promise.resolve([

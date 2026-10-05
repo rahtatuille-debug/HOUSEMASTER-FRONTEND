@@ -7,6 +7,7 @@ import { api, needsApproval } from '../api.js'
 import { ContactDetails, RELATIONSHIPS } from './ParentContact.jsx'
 import PerformanceChart from './PerformanceChart.jsx'
 import SupportCard from './SupportCard.jsx'
+import BoarderBedFlag from './BoarderBedFlag.jsx'
 import { BarChart, COMPARE } from './charts.jsx'
 
 const SECTIONS = [
@@ -303,6 +304,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     </ul>
                   </div>
                   <div>
+                    <BoarderBedFlag boarding={profile.boarding} />
                     {profile.support?.open && (
                       <div style={{ marginBottom: 18 }}><SupportCard concern={profile.support.open} formatDate={formatDate} /></div>
                     )}
