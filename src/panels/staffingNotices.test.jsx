@@ -26,4 +26,21 @@ describe('F: staffing and option notices', () => {
     expect(await screen.findByText(/2 lessons on the timetable now have no teacher/)).toBeInTheDocument()
     window.confirm.mockRestore()
   })
+
+  it('saving options that make lessons clash shows the clashes', async () => {
+    mockApi.current = deepApiMock({
+      'schoolClasses.list': () => Promise.resolve([{ id: 5, name: '10A' }]),
+      'subjectChoices.get': () => Promise.resolve({ system: 'british', pathways: [], timetable_clashes: [],
+        subjects: [{ id: 2, name: 'French', is_elective: true }], students: [{ student: 1, name: 'Ann K', pathway: '', subjects: [] }] }),
+      'subjectChoices.save': () => Promise.resolve({ system: 'british', pathways: [],
+        timetable_clashes: ['1 student in 10A now take both French and Music, which are both on Monday Lesson 1.'],
+        subjects: [{ id: 2, name: 'French', is_elective: true }], students: [{ student: 1, name: 'Ann K', pathway: '', subjects: [{ subject: 2, level: '' }] }] }),
+    })
+    render(<SubjectChoicesCard me={{ role: 'admin' }} />)
+    await waitFor(() => expect(screen.getAllByRole('option', { name: '10A' }).length).toBe(1))
+    fireEvent.change(screen.getByLabelText('Class'), { target: { value: '5' } })
+    fireEvent.click(await screen.findByLabelText('Ann K takes French'))
+    fireEvent.click(screen.getByRole('button', { name: /Save/ }))
+    expect(await screen.findByText(/now take both French and Music/)).toBeInTheDocument()
+  })
 })
