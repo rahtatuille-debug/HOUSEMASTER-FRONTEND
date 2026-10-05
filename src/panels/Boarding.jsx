@@ -533,6 +533,8 @@ function HousesPanel({ me, houses, reload }) {
   const [results, setResults] = useState([])
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [archived, setArchived] = useState(null)
+  const loadArchived = () => api.boarding.houses.list({ archived: 1 }).then(setArchived).catch(() => setArchived([]))
 
   useEffect(() => { if (isAdmin) api.staff.list().then((s) => setStaff(s.filter((x) => x.is_active !== false))).catch(() => {}) }, [isAdmin])
   useEffect(() => {
@@ -553,6 +555,10 @@ function HousesPanel({ me, houses, reload }) {
       return false
     }
   }
+  const archive = (h) => {
+    if (!window.confirm(`Archive ${h.name}? It disappears from roll calls and lists; its history stays readable.`)) return
+    run(() => api.boarding.houses.archive(h.id), `${h.name} is archived. Its history is kept.`).then((ok) => ok && archived && loadArchived())
+  }
   const toggleStaff = (house, id) => {
     const next = house.staff.includes(id) ? house.staff.filter((x) => x !== id) : [...house.staff, id]
     run(() => api.boarding.houses.update(house.id, { staff: next }), 'House staff saved.')
@@ -571,7 +577,13 @@ function HousesPanel({ me, houses, reload }) {
       {houses.length === 0 && <p className="text-muted">No boarding houses yet.</p>}
       {houses.map((h) => (
         <div className="card" key={h.id}>
-          <h3 style={{ fontSize: 15, margin: '0 0 4px' }}>{h.name}</h3>
+          <div className="support-row">
+            <h3 style={{ fontSize: 15, margin: '0 0 4px' }}>{h.name}</h3>
+            {isAdmin && (
+              <button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} aria-label={`Archive ${h.name}`}
+                onClick={() => archive(h)}>Archive</button>
+            )}
+          </div>
           <p className="hint" style={{ marginTop: 0 }}>House staff: {h.staff_names.length ? h.staff_names.join(', ') : 'none yet'}</p>
           {isAdmin && staff.length > 0 && (
             <details style={{ marginBottom: 8 }}>
@@ -633,6 +645,22 @@ function HousesPanel({ me, houses, reload }) {
           )}
         </div>
       ))}
+      {isAdmin && (
+        <details className="card" onToggle={(e) => { if (e.currentTarget.open && archived === null) loadArchived() }}>
+          <summary>Archived houses</summary>
+          <p className="hint">A house with roll call history can't be deleted. Archived houses keep their history.</p>
+          {archived === null ? <p className="text-muted">Loading…</p> : archived.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>None.</p> : (
+            <ul className="tt-setup-list">
+              {archived.map((h) => (
+                <li key={h.id}><span>{h.name}</span>
+                  <button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} aria-label={`Bring back ${h.name}`}
+                    onClick={() => run(() => api.boarding.houses.unarchive(h.id), `${h.name} is back.`).then((ok) => ok && loadArchived())}>Bring back</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+      )}
     </>
   )
 }

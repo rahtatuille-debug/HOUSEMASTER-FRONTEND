@@ -870,10 +870,14 @@ export const api = {
     boarders: (house) => request('/api/boarding/boarders/', { params: house ? { house } : undefined }),
     students: (q) => request('/api/boarding/students/', { params: { q } }),
     houses: {
-      list: () => request('/api/boarding/houses/'),
+      // params: { archived: 1 } for archived houses (their history stays readable)
+      list: (params) => request('/api/boarding/houses/', { params }),
       create: (body) => request('/api/boarding/houses/', { method: 'POST', body }),
       update: (id, body) => request(`/api/boarding/houses/${id}/`, { method: 'PATCH', body }),
       remove: (id) => request(`/api/boarding/houses/${id}/`, { method: 'DELETE' }),
+      // A house with history can't be deleted: archive it instead.
+      archive: (id) => request(`/api/boarding/houses/${id}/archive/`, { method: 'POST' }),
+      unarchive: (id) => request(`/api/boarding/houses/${id}/unarchive/`, { method: 'POST' }),
     },
     dorms: {
       create: (body) => request('/api/boarding/dorms/', { method: 'POST', body }),

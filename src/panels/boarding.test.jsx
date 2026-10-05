@@ -115,6 +115,25 @@ describe('Boarding page', () => {
     expect(screen.queryByRole('button', { name: /^Amend/ })).toBeNull()
   })
 
+  it('A-3: an admin archives a house instead of deleting it, and can bring it back', async () => {
+    const archive = vi.fn(() => Promise.resolve({}))
+    const unarchive = vi.fn(() => Promise.resolve({}))
+    const list = vi.fn((params) => Promise.resolve(params?.archived ? [{ id: 2, name: 'Old House', staff: [], staff_names: [], dorms: [], is_archived: true }] : houses))
+    mockApi.current = staffApi({ 'boarding.houses.list': list, 'boarding.houses.archive': archive, 'boarding.houses.unarchive': unarchive })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<Boarding me={{ role: 'admin' }} />)
+    await screen.findByText('Missing: not found yet')
+    tab('Houses and beds')
+    fireEvent.click(screen.getByRole('button', { name: 'Archive Uhuru House' }))
+    await waitFor(() => expect(archive).toHaveBeenCalledWith(1))
+    expect(await screen.findByText(/Uhuru House is archived/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /^Delete/ })).toBeNull()
+    fireEvent.click(screen.getByText('Archived houses'))
+    fireEvent.click(await screen.findByRole('button', { name: 'Bring back Old House' }))
+    await waitFor(() => expect(unarchive).toHaveBeenCalledWith(2))
+    window.confirm.mockRestore()
+  })
+
   it('approves a parent’s leave request with a note', async () => {
     const act = vi.fn(() => Promise.resolve({}))
     mockApi.current = staffApi({ 'boarding.leave.act': act, 'boarding.leave.list': () => Promise.resolve([
