@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import TermSummary from './TermSummary.jsx'
 import { formatDate as localDate, formatDateTime } from '../format.js'
-import { useWithLevel, useVocab } from '../levels.js'
+import { useSchool, useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import PerformanceChart from './PerformanceChart.jsx'
 import HealthNotesCard from './HealthNotesCard.jsx'
@@ -32,6 +32,7 @@ function ReportResults({ studentId, term }) {
 }
 
 export default function GuardianStudents() {
+  const school = useSchool()
   const words = useVocab()
   const [students, setStudents] = useState([])
   const [selected, setSelected] = useState(null)
@@ -105,7 +106,7 @@ export default function GuardianStudents() {
           <p className="text-muted">{selected.school_class_name || 'Class not assigned'}{selected.house ? ` · ${selected.house} House` : ''}</p>
           {profile?.support && <div style={{ margin: '12px 0' }}><SupportCard concern={profile.support} forParents /></div>}
           <div className="guardian-subtabs" role="tablist" aria-label="Student information">
-            {[...TABS, ...(selected.mode_of_learning === 'boarding' ? ['boarding'] : [])].map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
+            {[...TABS, ...(school?.has_boarding && selected.mode_of_learning === 'boarding' ? ['boarding'] : [])].map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
           </div>
           {tab === 'overview' && profile && (
             <>

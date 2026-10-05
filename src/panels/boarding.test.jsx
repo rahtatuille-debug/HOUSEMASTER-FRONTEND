@@ -125,3 +125,24 @@ describe('Teacher home', () => {
     expect(screen.getByText('1 leave request to decide')).toBeInTheDocument()
   })
 })
+
+describe('Boarding option in Setup', () => {
+  it('admins turn boarding on, and the menu refreshes', async () => {
+    const { default: BoardingOptionCard } = await import('./BoardingOptionCard.jsx')
+    const update = vi.fn(() => Promise.resolve({ id: 4, has_boarding: true }))
+    const onSaved = vi.fn()
+    mockApi.current = deepApiMock({ 'schools.update': update })
+    render(<BoardingOptionCard school={{ id: 4, has_boarding: false }} me={{ role: 'admin' }} onSaved={onSaved} />)
+    fireEvent.click(screen.getByLabelText('Our school has boarders'))
+    expect(await screen.findByText(/Boarding is on/)).toBeInTheDocument()
+    expect(update).toHaveBeenCalledWith(4, { has_boarding: true })
+    expect(onSaved).toHaveBeenCalledWith({ id: 4, has_boarding: true })
+  })
+
+  it('is not shown to teachers', async () => {
+    const { default: BoardingOptionCard } = await import('./BoardingOptionCard.jsx')
+    mockApi.current = deepApiMock()
+    render(<BoardingOptionCard school={{ id: 4, has_boarding: false }} me={{ role: 'teacher' }} />)
+    expect(screen.queryByLabelText('Our school has boarders')).toBeNull()
+  })
+})
