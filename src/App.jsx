@@ -16,6 +16,7 @@ import AcceptInvite from './panels/AcceptInvite.jsx'
 import AcceptGuardianInvite from './panels/AcceptGuardianInvite.jsx'
 import JoinClass from './panels/JoinClass.jsx'
 import Apply from './panels/Apply.jsx'
+import ConfirmApplication from './panels/ConfirmApplication.jsx'
 import ForgotPassword from './panels/ForgotPassword.jsx'
 import ResetPassword from './panels/ResetPassword.jsx'
 import Students from './panels/Students.jsx'
@@ -115,6 +116,11 @@ function getJoinToken() {
   return match ? match[1] : null
 }
 
+function getConfirmApplicationToken() {
+  const match = window.location.pathname.match(/^\/apply\/confirm\/([^/]+)\/?$/)
+  return match ? match[1] : null
+}
+
 function getApplyToken() {
   const match = window.location.pathname.match(/^\/apply\/([^/]+)\/?$/)
   return match ? match[1] : null
@@ -173,6 +179,7 @@ export default function App() {
   const [resetToken, setResetToken] = useState(getResetToken())
   const [joinToken, setJoinToken] = useState(getJoinToken())
   const [applyToken, setApplyToken] = useState(getApplyToken())
+  const [confirmApplicationToken, setConfirmApplicationToken] = useState(getConfirmApplicationToken())
   const [loggedIn, setLoggedIn] = useState(api.isLoggedIn())
   const [me, setMe] = useState(null)
   // 'staff' | 'guardian' | null (unknown until /api/me/ or /api/guardian-me/ resolves)
@@ -345,6 +352,10 @@ export default function App() {
 
   if (guardianInviteToken) {
     return <AcceptGuardianInvite token={guardianInviteToken} onAccepted={handleGuardianInviteAccepted} />
+  }
+
+  if (confirmApplicationToken) {
+    return <ConfirmApplication token={confirmApplicationToken} onDone={() => { window.history.replaceState({}, '', '/'); setConfirmApplicationToken(null) }} />
   }
 
   if (applyToken) {

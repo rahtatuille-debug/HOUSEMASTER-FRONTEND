@@ -207,9 +207,10 @@ export default function Admissions() {
 
   const load = useCallback(async () => {
     const status = filter === 'open' ? OPEN.join(',') : filter === 'closed' ? 'declined,withdrawn,enrolled' : filter
-    const [list, summary] = await Promise.all([api.admissions.list({ status }), api.admissions.summary()])
+    const [list, summary] = await Promise.all([
+      api.admissions.list(filter === 'unconfirmed' ? { unconfirmed: 1 } : { status }), api.admissions.summary()])
     setApps(list)
-    setCounts(summary.counts)
+    setCounts({ ...summary.counts, unconfirmed: summary.unconfirmed || 0 })
   }, [filter])
   useEffect(() => { load().catch((e) => setError(errorText(e))) }, [load])
   useEffect(() => {
@@ -218,7 +219,8 @@ export default function Admissions() {
 
   const total = (keys) => keys.reduce((n, k) => n + (counts[k] || 0), 0)
   const filters = [['open', `In progress (${total(OPEN)})`], ...STAGES.slice(0, 6).map(([k, l]) => [k, `${l} (${counts[k] || 0})`]),
-    ['closed', `Closed (${total(['declined', 'withdrawn', 'enrolled'])})`]]
+    ['closed', `Closed (${total(['declined', 'withdrawn', 'enrolled'])})`],
+    ...(counts.unconfirmed ? [['unconfirmed', `Email not confirmed (${counts.unconfirmed})`]] : [])]
   const shown = (apps || []).filter((a) => !query || `${a.first_name} ${a.last_name} ${a.parent_name} ${a.parent_email}`.toLowerCase().includes(query.toLowerCase()))
   const open = shown.find((a) => a.id === openId) || (apps || []).find((a) => a.id === openId)
 
@@ -249,6 +251,10 @@ export default function Admissions() {
           <input type="search" aria-label="Find an applicant" placeholder="Find an applicant" value={query}
             onChange={(e) => setQuery(e.target.value)} style={{ maxWidth: 240 }} />
         </div>
+        {filter === 'unconfirmed' && (
+          <p className="hint" style={{ marginTop: 0 }}>The family hasn't confirmed their email yet, so these can't be moved on.
+            If the link expires, the family has to apply again.</p>
+        )}
         {!apps ? <p className="text-muted">Loading…</p> : shown.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>No applications here.</p> : (
           <table className="data-table">
             <thead><tr><th>Applicant</th><th>For</th><th>Parent</th><th>Applied</th><th>Stage</th></tr></thead>
@@ -256,8 +262,10 @@ export default function Admissions() {
               {shown.map((a) => (
                 <tr key={a.id}>
                   <td className="row-title">
-                    <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: 0 }}
-                      onClick={() => { setNotice(''); setOpenId(a.id) }}>{a.first_name} {a.last_name}</button>
+                    {filter === 'unconfirmed' ? `${a.first_name} ${a.last_name}` : (
+                      <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: 0 }}
+                        onClick={() => { setNotice(''); setOpenId(a.id) }}>{a.first_name} {a.last_name}</button>
+                    )}
                   </td>
                   <td data-label="For">{a.year_group_name || '—'}</td>
                   <td data-label="Parent">{a.parent_name}</td>

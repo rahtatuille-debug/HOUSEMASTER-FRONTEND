@@ -20,7 +20,7 @@ export default function Apply({ token, onSignIn }) {
   })
   const [agreed, setAgreed] = useState(false)
   const [error, setError] = useState('')
-  const [reference, setReference] = useState('')
+  const [sent, setSent] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => { api.applyInfo(token).then(setInfo).catch((err) => setLoadError(err.message)) }, [token])
@@ -32,8 +32,8 @@ export default function Apply({ token, onSignIn }) {
     setSubmitting(true)
     try {
       const body = { ...form, consent: agreed, year_group: form.year_group ? Number(form.year_group) : null }
-      const result = await api.submitApplication(token, body)
-      setReference(result.reference)
+      await api.submitApplication(token, body)
+      setSent(form.parent_email)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -56,14 +56,14 @@ export default function Apply({ token, onSignIn }) {
         <p className="tagline">Apply for a place</p>
         {loadError && <div className="error-banner">{loadError}</div>}
 
-        {reference && (
+        {sent && (
           <div className="success-banner" role="status">
-            Thank you. Your application has been sent{reference !== 'received' ? ` (reference ${reference})` : ''}.
-            We have emailed you a copy, and {info?.school.name} will be in touch.
+            Thank you. Check your email: we have sent a link to {sent}. Open it to confirm your address and send
+            the application to {info?.school.name}. The link works once and only for a limited time, so please open it soon.
           </div>
         )}
 
-        {info && !reference && (
+        {info && !sent && (
           <>
             <h2 style={{ margin: '0 0 4px' }}>{info.school.name}</h2>
             {info.intro && <p className="hint" style={{ marginTop: 0, whiteSpace: 'pre-line' }}>{info.intro}</p>}

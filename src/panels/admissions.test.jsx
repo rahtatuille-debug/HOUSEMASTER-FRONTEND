@@ -31,8 +31,8 @@ const app = {
 }
 
 describe('Public application form', () => {
-  it('sends an application and shows the reference', async () => {
-    const submit = vi.fn(() => Promise.resolve({ reference: 'A26-0010' }))
+  it('B-1: sends an application and asks the family to confirm their email', async () => {
+    const submit = vi.fn(() => Promise.resolve({ detail: 'Thank you. Check your email and confirm your address to send the application.' }))
     mockApi.current = deepApiMock({ applyInfo: () => Promise.resolve(info), submitApplication: submit })
     render(<Apply token="tok" onSignIn={() => {}} />)
     expect(await screen.findByText('Welcome to Alpha.')).toBeInTheDocument()
@@ -47,7 +47,9 @@ describe('Public application form', () => {
     expect(screen.getByRole('button', { name: 'Send application' })).toBeDisabled()  // privacy not accepted
     fireEvent.click(screen.getByRole('checkbox'))
     fireEvent.click(screen.getByRole('button', { name: 'Send application' }))
-    expect(await screen.findByText(/reference A26-0010/)).toBeInTheDocument()
+    expect(await screen.findByText(/Check your email/)).toBeInTheDocument()
+    expect(screen.getByText(/priya@example.test/)).toBeInTheDocument()
+    expect(screen.queryByText(/reference/)).toBeNull()
     expect(submit).toHaveBeenCalledWith('tok', expect.objectContaining({ first_name: 'Zara', year_group: 3, consent: true, website: '' }))
   })
 
@@ -55,6 +57,26 @@ describe('Public application form', () => {
     mockApi.current = deepApiMock({ applyInfo: () => Promise.reject(new Error("This application form isn't open.")) })
     render(<Apply token="tok" onSignIn={() => {}} />)
     expect(await screen.findByText("This application form isn't open.")).toBeInTheDocument()
+  })
+})
+
+describe('B-1: confirming the email', () => {
+  it('confirms with the link and shows the reference', async () => {
+    const { default: ConfirmApplication } = await import('./ConfirmApplication.jsx')
+    const confirm = vi.fn(() => Promise.resolve({ reference: 'A26-0010', school: 'Alpha Academy' }))
+    mockApi.current = deepApiMock({ confirmApplication: confirm })
+    render(<ConfirmApplication token="tok123" onDone={() => {}} />)
+    expect(await screen.findByText(/sent to Alpha Academy/)).toBeInTheDocument()
+    expect(screen.getByText(/A26-0010/)).toBeInTheDocument()
+    expect(confirm).toHaveBeenCalledTimes(1)
+    expect(confirm).toHaveBeenCalledWith('tok123')
+  })
+
+  it('says when the link has expired or was used', async () => {
+    const { default: ConfirmApplication } = await import('./ConfirmApplication.jsx')
+    mockApi.current = deepApiMock({ confirmApplication: () => Promise.reject(new Error('This link has expired or has already been used.')) })
+    render(<ConfirmApplication token="old" onDone={() => {}} />)
+    expect(await screen.findByText(/expired or has already been used/)).toBeInTheDocument()
   })
 })
 
@@ -102,5 +124,18 @@ describe('Admissions page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Enrol' }))
     await waitFor(() => expect(enrol).toHaveBeenCalledWith(9, 21))
     expect(await screen.findByText(/is enrolled in 7A/)).toBeInTheDocument()
+  })
+
+  it('B-1: lists applications still waiting for the family to confirm, separately', async () => {
+    const list = vi.fn((params) => Promise.resolve(params?.unconfirmed ? [{ ...app, id: 12, first_name: 'Omar' }] : [app]))
+    mockApi.current = adminApi({ 'admissions.list': list,
+      'admissions.summary': () => Promise.resolve({ counts: { new: 1 }, unconfirmed: 1 }) })
+    render(<Admissions />)
+    await screen.findByRole('button', { name: 'Zara Patel' })
+    expect(screen.queryByRole('button', { name: 'Omar Patel' })).toBeNull()
+    fireEvent.click(screen.getByRole('tab', { name: 'Email not confirmed (1)' }))
+    expect(await screen.findByText('Omar Patel')).toBeInTheDocument()
+    expect(list).toHaveBeenLastCalledWith({ unconfirmed: 1 })
+    expect(screen.getByText(/has to apply again/)).toBeInTheDocument()
   })
 })

@@ -168,6 +168,16 @@ async function submitApplication(token, body) {
   return data
 }
 
+// The link in the confirmation email: sends the application to the school (once).
+async function confirmApplication(token) {
+  const res = await fetch(`${API_BASE}/api/admissions/confirm/${token}/`, { method: 'POST' })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Confirming failed (${res.status})`)
+  }
+  return data
+}
+
 async function acceptGuardianInvite(token, password, acceptPrivacy = false) {
   const res = await fetch(`${API_BASE}/api/guardian-invites/accept/`, {
     method: 'POST',
@@ -708,7 +718,9 @@ export const api = {
   joinClass,
   applyInfo,
   submitApplication,
+  confirmApplication,
   admissions: {
+    // params: { status } for confirmed applications, or { unconfirmed: 1 } for those waiting for the family's email
     list: (params) => listRequest('/api/admissions/applications/', { params }),
     update: (id, body) => request(`/api/admissions/applications/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/admissions/applications/${id}/`, { method: 'DELETE' }),
