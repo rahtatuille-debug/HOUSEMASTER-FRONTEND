@@ -26,7 +26,9 @@ function unsavedChanges(marks) {
     const changed = m.id === null
       ? m.status !== 'present' || m.notes !== ''
       : m.status !== m.savedStatus || m.notes !== m.savedNotes
-    if (changed) out[id] = { status: m.status, notes: m.notes }
+    // `base`: what the server had when the change was made, so a register someone else saved in the
+    // meantime is noticed instead of overwritten (G).
+    if (changed) out[id] = { status: m.status, notes: m.notes, base: m.id === null ? null : { status: m.savedStatus, notes: m.savedNotes } }
   }
   return out
 }
@@ -95,18 +97,32 @@ export default function Attendance({ me }) {
         }
         const draft = loadDraft(me?.id, `attendance:${classId}:${date}`) || {}
         let restored = 0
+        const overtaken = []
         for (const [id, change] of Object.entries(draft)) {
-          if (next[id]) {
-            next[id] = { ...next[id], status: change.status, notes: change.notes }
-            restored += 1
+          if (!next[id]) continue
+          const now = next[id].id === null ? null : { status: next[id].savedStatus, notes: next[id].savedNotes }
+          const base = change.base ?? null
+          const same = (base === null && now === null) || (base && now && base.status === now.status && base.notes === now.notes)
+          if (!same) {
+            // Someone else saved this student since the change was kept here: their mark stays.
+            const s = list.find((x) => String(x.id) === String(id))
+            if (s) overtaken.push(`${s.first_name} ${s.last_name}`)
+            continue
           }
+          next[id] = { ...next[id], status: change.status, notes: change.notes }
+          restored += 1
         }
         setStudents(list)
         setMarks(next)
         loadedFor.current = `attendance:${classId}:${date}`
+        const parts = []
         if (restored) {
-          setNotice(`Restored ${restored} unsaved change${restored === 1 ? '' : 's'} from earlier. Tap Save register to save ${restored === 1 ? 'it' : 'them'}.`)
+          parts.push(`Restored ${restored} unsaved change${restored === 1 ? '' : 's'} from earlier. Tap Save register to save ${restored === 1 ? 'it' : 'them'}.`)
         }
+        if (overtaken.length) {
+          parts.push(`${overtaken.join(', ')}: changed by someone else since your unsaved change, so this shows what they saved. Change it again if needed.`)
+        }
+        if (parts.length) setNotice(parts.join(' '))
       } catch (err) {
         if (!cancelled) setError(err.message)
       } finally {
