@@ -101,7 +101,8 @@ export default function Apply({ token, onSignIn }) {
               <h3 style={{ fontSize: 15 }}>You</h3>
               {field('ap-parent', 'Your full name', <input id="ap-parent" value={form.parent_name} onChange={set('parent_name')} required autoComplete="name" />)}
               {field('ap-email', 'Email', <input id="ap-email" type="email" value={form.parent_email} onChange={set('parent_email')} required autoComplete="email" />)}
-              {field('ap-phone', 'Phone', <input id="ap-phone" type="tel" value={form.parent_phone} onChange={set('parent_phone')} required autoComplete="tel" placeholder={info.school.country?.phone_example} />)}
+              {field('ap-phone', 'Phone', <input id="ap-phone" type="tel" value={form.parent_phone} onChange={set('parent_phone')} required autoComplete="tel" placeholder={info.school.country?.phone_example} />,
+                'For example 0712 345 678 or +254 712 345 678. Other countries: start with + and the country code.')}
               {field('ap-rel', 'You are the child’s', (
                 <select id="ap-rel" value={form.relationship} onChange={set('relationship')}>
                   <option value="">Choose…</option>

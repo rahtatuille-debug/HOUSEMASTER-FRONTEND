@@ -19,10 +19,14 @@ function FormSettings({ yearGroups }) {
   const [settings, setSettings] = useState(null)
   const [intro, setIntro] = useState('')
   const [keepDays, setKeepDays] = useState('')
+  const [prefix, setPrefix] = useState('')
+  const [nextNumber, setNextNumber] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   useEffect(() => {
-    api.admissions.settings().then((s) => { setSettings(s); setIntro(s.intro); setKeepDays(s.retention_days ?? '') })
+    api.admissions.settings().then((s) => {
+      setSettings(s); setIntro(s.intro); setKeepDays(s.retention_days ?? ''); setPrefix(s.number_prefix || ''); setNextNumber(s.next_number ?? '')
+    })
       .catch((e) => setError(errorText(e)))
   }, [])
   if (!settings) return error ? <div className="error-banner">{error}</div> : null
@@ -77,6 +81,17 @@ function FormSettings({ yearGroups }) {
             if (days !== (settings.retention_days ?? null)) save({ retention_days: days }, days ? `Closed applications are deleted ${days} days after their last change.` : 'Closed applications are kept until you delete them.')
           }} />
       </label>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+        <label style={{ flex: '1 1 160px' }}>Admission number prefix
+          <input value={prefix} maxLength={40} placeholder="e.g. ADM/2026/" onChange={(e) => setPrefix(e.target.value)}
+            onBlur={() => prefix !== (settings.number_prefix || '') && save({ number_prefix: prefix }, 'Saved.')} />
+        </label>
+        <label style={{ flex: '1 1 160px' }}>Next admission number
+          <input type="number" min="1" value={nextNumber} onChange={(e) => setNextNumber(e.target.value)}
+            onBlur={() => nextNumber !== '' && Number(nextNumber) !== settings.next_number && save({ next_number: Number(nextNumber) }, 'Saved.')} />
+        </label>
+      </div>
+      <p className="hint" style={{ margin: '2px 0 0' }}>Each student enrolled from here gets the next free number (one already in use is skipped). Existing students keep theirs.</p>
       <p className="hint" style={{ margin: '2px 0 0' }}>Declined, withdrawn and enrolled applications, counted from their last change. Empty: kept until you delete them. Takes effect when the school&apos;s data clean-up runs.</p>
       {yearGroups.length > 0 && (
         <>
@@ -145,6 +160,7 @@ function ApplicationDetail({ app, classes, onChanged, onClose }) {
         <button type="button" className="secondary" style={{ width: 'auto' }} onClick={onClose}>Close</button>
       </div>
       {error && <div className="error-banner" role="alert">{error}</div>}
+      {app.age_note && <div className="support-box" role="status" style={{ marginTop: 10 }}>{app.age_note}</div>}
       <ul className="fact-list" style={{ marginTop: 10 }}>
         {row('Applying for', [app.year_group_name, app.start].filter(Boolean).join(' · '))}
         {row('Date of birth', formatDate(app.date_of_birth))}
@@ -157,6 +173,7 @@ function ApplicationDetail({ app, classes, onChanged, onClose }) {
         {row('Email', <a href={`mailto:${app.parent_email}`}>{app.parent_email}</a>)}
         {row('Phone', app.parent_phone && <a href={`tel:${app.parent_phone.replace(/[^+\d]/g, '')}`}>{app.parent_phone}</a>)}
         {enrolled && row('Enrolled in', app.student_class)}
+        {enrolled && row('Admission number', app.student_number)}
       </ul>
       {!enrolled && (
         <div className="tt-form-grid" style={{ marginTop: 12 }}>

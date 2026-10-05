@@ -70,6 +70,12 @@ describe('Public application form', () => {
     expect(submit).toHaveBeenCalledTimes(1)
   })
 
+  it('B-5: the phone field says which formats work', async () => {
+    mockApi.current = deepApiMock({ applyInfo: () => Promise.resolve(info) })
+    render(<Apply token="tok" onSignIn={() => {}} />)
+    expect(await screen.findByText(/0712 345 678 or \+254 712 345 678/)).toBeInTheDocument()
+  })
+
   it('says when the form is closed', async () => {
     mockApi.current = deepApiMock({ applyInfo: () => Promise.reject(new Error("This application form isn't open.")) })
     render(<Apply token="tok" onSignIn={() => {}} />)
@@ -180,5 +186,34 @@ describe('Admissions page', () => {
     fireEvent.change(field, { target: { value: '' } })
     fireEvent.blur(field)
     await waitFor(() => expect(save).toHaveBeenLastCalledWith({ retention_days: null }))
+  })
+
+  it('B-5: flags an age far from the year group without blocking anything', async () => {
+    mockApi.current = adminApi({ 'admissions.list': vi.fn(() => Promise.resolve([{ ...app, status: 'offered', status_label: 'Offered a place',
+      age_note: 'Zara is 5; most students in Year 7 are 11. Check the year group.' }])) })
+    render(<Admissions />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Zara Patel' }))
+    expect(screen.getByText(/most students in Year 7 are 11/)).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Class'), { target: { value: '21' } })
+    expect(screen.getByRole('button', { name: 'Enrol' })).toBeEnabled()
+  })
+
+  it('B-5: sets the admission number prefix and the next number, and shows a new student\'s number', async () => {
+    const save = vi.fn((body) => Promise.resolve({ is_open: true, intro: 'Hi', year_groups: [], link_token: 'abc', number_prefix: 'ADM/', next_number: 1, ...body }))
+    mockApi.current = adminApi({ 'admissions.saveSettings': save,
+      'admissions.settings': () => Promise.resolve({ is_open: true, intro: 'Hi', year_groups: [], link_token: 'abc', number_prefix: '', next_number: 1 }),
+      'admissions.list': vi.fn(() => Promise.resolve([{ ...app, status: 'enrolled', status_label: 'Enrolled', student: 5, student_class: '7A', student_number: 'ADM/41' }])) })
+    render(<Admissions />)
+    const prefix = await screen.findByLabelText('Admission number prefix')
+    fireEvent.change(prefix, { target: { value: 'ADM/' } })
+    fireEvent.blur(prefix)
+    await waitFor(() => expect(save).toHaveBeenCalledWith({ number_prefix: 'ADM/' }))
+    const next = screen.getByLabelText('Next admission number')
+    fireEvent.change(next, { target: { value: '41' } })
+    fireEvent.blur(next)
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith({ next_number: 41 }))
+    fireEvent.click(screen.getByRole('tab', { name: /Closed/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Zara Patel' }))
+    expect(screen.getByText('ADM/41')).toBeInTheDocument()
   })
 })
