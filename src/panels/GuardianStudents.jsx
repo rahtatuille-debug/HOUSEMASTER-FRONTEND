@@ -6,10 +6,11 @@ import { api } from '../api.js'
 import PerformanceChart from './PerformanceChart.jsx'
 import HealthNotesCard from './HealthNotesCard.jsx'
 import SupportCard from './SupportCard.jsx'
+import WeekGrid from './WeekGrid.jsx'
 
 const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
 const MODES = { day: 'Day', boarding: 'Boarding' }
-const TABS = ['overview', 'progress', 'grades', 'attendance', 'reports']
+const TABS = ['overview', 'progress', 'grades', 'timetable', 'attendance', 'reports']
 
 function formatDate(value) {
   return value ? localDate(value) : '—'
@@ -154,6 +155,7 @@ export default function GuardianStudents() {
               )}
             </div>
           )}
+          {tab === 'timetable' && <ChildTimetable studentId={selected.id} />}
           {tab === 'attendance' && profile && (
             <div className="card">
               <div className="stat-row">
@@ -184,5 +186,21 @@ export default function GuardianStudents() {
       {error && <div className="error-banner">{error}<button type="button" className="secondary retry-button" onClick={loadStudents}>Retry</button></div>}
       {loading || detailLoading ? <div className="announcement-skeleton" aria-label="Loading students"><span /><span /></div> : students.length === 0 ? <div className="empty-state"><h3>No students are linked to this account yet.</h3><p>Please contact the school office.</p></div> : <div className="guardian-student-list">{students.map((student) => <article className="card guardian-student-card" key={student.id}><div><p className="eyebrow">{student.school_class_name || 'Student'}</p><h3>{student.first_name} {student.last_name}</h3><p className="text-muted">{student.house ? `${student.house} House` : 'School student'}</p></div><button type="button" onClick={() => openStudent(student.id)}>View progress</button></article>)}</div>}
     </section>
+  )
+}
+
+// The child's week: their class's lessons in the subjects they take.
+function ChildTimetable({ studentId }) {
+  const [week, setWeek] = useState(null)
+  const [error, setError] = useState('')
+  useEffect(() => { api.guardianStudents.timetable(studentId).then(setWeek).catch((err) => setError(err.message)) }, [studentId])
+  if (error) return <div className="error-banner">{error}</div>
+  if (!week) return <p className="text-muted">Loading…</p>
+  return (
+    <div className="card">
+      {week.lessons.length === 0
+        ? <p className="text-muted" style={{ margin: 0 }}>The school hasn&apos;t published a timetable yet.</p>
+        : <WeekGrid week={week} show="teacher" />}
+    </div>
   )
 }

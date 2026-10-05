@@ -74,6 +74,23 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
         </div>
       )}
 
+      {data.today && data.today.length > 0 && (
+        <div className="card">
+          <div className="support-row">
+            <h3 style={{ fontSize: 15, margin: 0 }}>Your lessons today</h3>
+            <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => onNavigate('timetable')}>Timetable</button>
+          </div>
+          <ol className="tt-today-list">
+            {data.today.map((l) => (
+              <li key={l.id}>
+                <span className="tt-time">{l.start_time}–{l.end_time}</span>
+                <span><strong>{l.class_name} {l.label}</strong>{l.room_name ? <span className="text-muted"> · {l.room_name}</span> : null}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       {data.support && (data.support.suggested > 0 || data.support.open > 0) && (
         <div className="card">
           <div className="support-row">
