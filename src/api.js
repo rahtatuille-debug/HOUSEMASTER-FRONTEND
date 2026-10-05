@@ -889,6 +889,12 @@ export const api = {
       start: (house, session) => request('/api/boarding/roll-calls/', { method: 'POST', body: { house, session } }),
       mark: (id, entries, complete) => request(`/api/boarding/roll-calls/${id}/mark/`, { method: 'POST', body: { entries, complete } }),
     },
+    // A boarder marked missing stays open until a person resolves it (a later roll call never closes it).
+    absences: {
+      list: (params) => listRequest('/api/boarding/absences/', { params }),
+      // resolution: found, returned, on_leave or left_school
+      resolve: (id, resolution, note) => request(`/api/boarding/absences/${id}/resolve/`, { method: 'POST', body: { resolution, note } }),
+    },
     leave: {
       list: (params) => listRequest('/api/boarding/leave/', { params }),
       create: (body) => request('/api/boarding/leave/', { method: 'POST', body }),

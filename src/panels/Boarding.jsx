@@ -8,6 +8,7 @@ const WHERE = { in: ['In the house', 'finalized'], on_leave: ['On leave', 'pendi
 const ROLL_STATUS = { present: 'Present', missing: 'Missing', on_leave: 'On leave', sick_bay: 'In sick bay' }
 const LEAVE_KINDS = [['weekend', 'Weekend'], ['half_term', 'Half term'], ['exeat', 'Exeat'], ['appointment', 'Appointment'], ['other', 'Other']]
 const OUTCOMES = [['back', 'Back to lessons or the house'], ['home', 'Sent home'], ['hospital', 'Sent to hospital or a clinic']]
+const RESOLUTIONS = [['found', 'Found'], ['returned', 'Came back'], ['on_leave', 'Was on authorised leave'], ['left_school', 'Has left the school']]
 const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Houses and beds']]
 
 function defaultSession() {
@@ -32,9 +33,64 @@ function Banner({ error, notice }) {
   )
 }
 
+// A boarder marked missing stays on this list, oldest first, until someone records how it was resolved.
+function MissingBoarders({ missing, onGo, onResolved }) {
+  const [open, setOpen] = useState(null)
+  const [resolution, setResolution] = useState('found')
+  const [note, setNote] = useState('')
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  async function save(m) {
+    setError('')
+    try {
+      await api.boarding.absences.resolve(m.id, resolution, note)
+      setNotice(`${m.name}: recorded.`)
+      setOpen(null)
+      onResolved()
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+  return (
+    <>
+      <Banner error={error} notice={notice} />
+      {missing.length > 0 && (
+        <div className="card support-box" style={{ borderLeftColor: 'var(--stamp-red)' }} role="region" aria-label="Missing boarders">
+          <h3 style={{ fontSize: 15, margin: '0 0 6px' }}>Missing: not found yet</h3>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {missing.map((m) => (
+              <li key={m.id} style={{ marginBottom: 6 }}>
+                <strong>{m.name}</strong> · {m.house} · {m.when}{m.note ? ` · ${m.note}` : ''}
+                <span className="text-muted"> · missing since {formatDateTime(m.since, SHORT)}</span>{' '}
+                {open === m.id ? (
+                  <form onSubmit={(e) => { e.preventDefault(); save(m) }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 6 }}>
+                    <label style={{ flex: '1 1 180px' }}>How was it resolved?
+                      <select value={resolution} onChange={(e) => setResolution(e.target.value)}>
+                        {RESOLUTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      </select>
+                    </label>
+                    <label style={{ flex: '2 1 220px' }}>Note (optional)<input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} /></label>
+                    <button type="submit" style={{ width: 'auto' }}>Save</button>
+                    <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => setOpen(null)}>Cancel</button>
+                  </form>
+                ) : (
+                  <button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} aria-label={`Record ${m.name} as found`}
+                    onClick={() => { setOpen(m.id); setResolution('found'); setNote('') }}>Found</button>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="hint" style={{ marginBottom: 0 }}>They stay here until someone records them found, even after the next roll call.</p>
+          <button type="button" className="secondary" style={{ width: 'auto', marginTop: 8 }} onClick={() => onGo('roll')}>Take a roll call</button>
+        </div>
+      )}
+    </>
+  )
+}
+
 // --- Today: numbers, who's missing, and every boarder with where they are now.
 function Today({ onGo }) {
-  const [overview, , error] = useLoader(useCallback(() => api.boarding.overview(), []))
+  const [overview, reloadOverview, error] = useLoader(useCallback(() => api.boarding.overview(), []))
   const [boarders] = useLoader(useCallback(() => api.boarding.boarders(), []))
   const [query, setQuery] = useState('')
   if (!overview) return error ? <Banner error={error} /> : <p className="text-muted">Loading…</p>
@@ -48,17 +104,7 @@ function Today({ onGo }) {
           <div className="stat-tile" key={label}><div className="stat-label">{label}</div><div className="stat-value">{value}</div></div>
         ))}
       </div>
-      {overview.missing.length > 0 && (
-        <div className="card support-box" style={{ borderLeftColor: 'var(--stamp-red)' }} role="region" aria-label="Missing boarders">
-          <h3 style={{ fontSize: 15, margin: '0 0 6px' }}>Missing at the last roll call</h3>
-          <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {overview.missing.map((m) => (
-              <li key={`${m.roll_call}-${m.student}`}><strong>{m.name}</strong> · {m.house} · {m.when}{m.note ? ` · ${m.note}` : ''}</li>
-            ))}
-          </ul>
-          <button type="button" className="secondary" style={{ width: 'auto', marginTop: 8 }} onClick={() => onGo('roll')}>Take a roll call</button>
-        </div>
-      )}
+      <MissingBoarders missing={overview.missing} onGo={onGo} onResolved={reloadOverview} />
       {overview.leave_waiting > 0 && (
         <p><button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} onClick={() => onGo('leave')}>
           {overview.leave_waiting} leave request{overview.leave_waiting === 1 ? '' : 's'} waiting for a decision
