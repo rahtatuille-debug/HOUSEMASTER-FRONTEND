@@ -81,12 +81,14 @@ export default function Staff({ me }) {
     }
   }
 
+  // successMessage may be a function of the server's answer.
   async function run(action, successMessage) {
     setError('')
     setNotice('')
     try {
-      await action()
-      if (successMessage) setNotice(successMessage)
+      const result = await action()
+      const message = typeof successMessage === 'function' ? successMessage(result) : successMessage
+      if (message) setNotice(message)
       load()
     } catch (err) {
       setError(err.message)
@@ -103,7 +105,11 @@ export default function Staff({ me }) {
   function toggleActive(member) {
     if (member.is_active) {
       if (!window.confirm(`Deactivate ${member.name}? They will be signed out and unable to log in until reactivated. Nothing they did is deleted.`)) return
-      run(() => api.staff.deactivate(member.id), `${member.name}'s account is deactivated.`)
+      // Their lessons stay on the timetable with their name; the Timetable page lists them as unstaffed.
+      run(() => api.staff.deactivate(member.id), (result) => {
+        const n = result?.lessons?.length || 0
+        return `${member.name}'s account is deactivated.${n ? ` ${n} lesson${n === 1 ? '' : 's'} on the timetable now have no teacher: see Unstaffed lessons on the Timetable page.` : ''}`
+      })
     } else {
       run(() => api.staff.reactivate(member.id), `${member.name}'s account is active again.`)
     }

@@ -87,6 +87,14 @@ describe('Timetable page', () => {
     expect(create.mock.calls.map((c) => c[0].period)).toEqual([1, 4])
   })
 
+  it('F: admins see lessons with no teacher, or a deactivated one', async () => {
+    mockApi.current = adminApi({ 'timetable.unstaffed': () => Promise.resolve([{ id: 9, day: 1, day_name: 'Monday', period_name: 'Lesson 1',
+      class_name: '10A', label: 'Mathematics', teacher_name: 'Mr Gone (inactive)', room_name: 'Lab 1' }]) })
+    render(<Timetable me={{ role: 'admin' }} />)
+    expect(await screen.findByText('Unstaffed lessons (1)')).toBeInTheDocument()
+    expect(screen.getByText(/Mr Gone \(inactive\)/)).toBeInTheDocument()
+  })
+
   it('has no double option before a break', async () => {
     mockApi.current = adminApi()
     render(<Timetable me={{ role: 'admin' }} />)

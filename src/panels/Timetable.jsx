@@ -260,6 +260,11 @@ export default function Timetable({ me }) {
   const [setupOpen, setSetupOpen] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [unstaffed, setUnstaffed] = useState([])
+  const loadUnstaffed = useCallback(() => {
+    if (isAdmin) api.timetable.unstaffed().then((rows) => setUnstaffed(Array.isArray(rows) ? rows : [])).catch(() => {})
+  }, [isAdmin])
+  useEffect(() => { loadUnstaffed() }, [loadUnstaffed])
 
   const loadOptions = useCallback(async () => {
     const [classes, subjects, rooms, staff] = await Promise.all([
@@ -312,6 +317,17 @@ export default function Timetable({ me }) {
       {error && <div className="error-banner" role="alert">{error}</div>}
       {notice && <div className="success-banner" role="status">{notice}</div>}
       {setupOpen && <SchoolDaySetup onChanged={() => { loadOptions(); loadWeek() }} />}
+      {unstaffed.length > 0 && (
+        <details className="card support-box">
+          <summary>Unstaffed lessons ({unstaffed.length})</summary>
+          <p className="hint">Lessons with no teacher, or a teacher whose account was deactivated. Open the class's timetable and give each one a teacher.</p>
+          <ul style={{ paddingLeft: 18 }}>
+            {unstaffed.map((l) => (
+              <li key={l.id}>{l.day_name} {l.period_name} · {l.class_name} {l.label}{l.teacher_name ? ` · ${l.teacher_name}` : ' · no teacher'}{l.room_name ? ` · ${l.room_name}` : ''}</li>
+            ))}
+          </ul>
+        </details>
+      )}
 
       <div className="card">
         <div className="tt-pickers">
