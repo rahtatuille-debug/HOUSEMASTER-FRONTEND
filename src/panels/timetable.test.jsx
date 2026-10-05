@@ -72,6 +72,29 @@ describe('Timetable page', () => {
     expect(create).toHaveBeenCalledWith({ subject: 4, title: '', room: 3, school_class: 5, day: 2, period: 3 })
   })
 
+  it('adds a double lesson in the next period', async () => {
+    const create = vi.fn(() => Promise.resolve({}))
+    const twoLessons = { ...week, periods: [week.periods[0], { id: 4, name: 'Lesson 1b', start_time: '08:40',
+      end_time: '09:20', is_break: false }], lessons: [] }
+    mockApi.current = adminApi({ 'timetable.lessons.create': create, 'timetable.week': vi.fn(() => Promise.resolve(twoLessons)) })
+    render(<Timetable me={{ role: 'admin' }} />)
+    const table = (await screen.findAllByRole('table'))[0]
+    fireEvent.click(within(table).getByRole('button', { name: 'Add a lesson on Monday Lesson 1' }))
+    fireEvent.change(screen.getByLabelText('Subject'), { target: { value: '2' } })
+    fireEvent.click(screen.getByLabelText(/Double lesson \(also Lesson 1b\)/))
+    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }))
+    expect(await screen.findByText('Double lesson added (Lesson 1 and Lesson 1b).')).toBeInTheDocument()
+    expect(create.mock.calls.map((c) => c[0].period)).toEqual([1, 4])
+  })
+
+  it('has no double option before a break', async () => {
+    mockApi.current = adminApi()
+    render(<Timetable me={{ role: 'admin' }} />)
+    const table = (await screen.findAllByRole('table'))[0]
+    fireEvent.click(within(table).getByRole('button', { name: 'Add a lesson on Tuesday Lesson 1' }))  // then Break
+    expect(screen.queryByLabelText(/Double lesson/)).toBeNull()
+  })
+
   it('shows a clash the server refuses', async () => {
     const create = vi.fn(() => Promise.reject(Object.assign(new Error('Bad request'), {
       data: { non_field_errors: ['Ms Shah already teaches 10B Mathematics on Monday Lesson 1.'] },

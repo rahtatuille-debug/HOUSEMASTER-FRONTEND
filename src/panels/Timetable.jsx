@@ -20,11 +20,11 @@ function LessonForm({ slot, options, schoolClass, onSaved, onCancel }) {
   const lesson = slot.lesson
   const [form, setForm] = useState({
     subject: lesson?.subject ?? '', title: lesson?.title ?? '', teacher: lesson ? (lesson.teacher ?? '') : 'auto',
-    room: lesson?.room ?? '',
+    room: lesson?.room ?? '', double: false,
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
+  const set = (key) => (e) => setForm({ ...form, [key]: key === 'double' ? e.target.checked : e.target.value })
   const when = `${DAY_NAMES[slot.day - 1]} · ${slot.period.name} (${slot.period.start_time}–${slot.period.end_time})`
 
   async function save(e) {
@@ -37,9 +37,23 @@ function LessonForm({ slot, options, schoolClass, onSaved, onCancel }) {
     }
     if (form.teacher !== 'auto') body.teacher = form.teacher ? Number(form.teacher) : null
     try {
-      if (lesson) await api.timetable.lessons.update(lesson.id, body)
-      else await api.timetable.lessons.create({ ...body, school_class: schoolClass, day: slot.day, period: slot.period.id })
-      onSaved(lesson ? 'Lesson changed.' : 'Lesson added.')
+      if (lesson) {
+        await api.timetable.lessons.update(lesson.id, body)
+        onSaved('Lesson changed.')
+        return
+      }
+      const add = (period) => api.timetable.lessons.create({ ...body, school_class: schoolClass, day: slot.day, period: period.id })
+      await add(slot.period)
+      if (form.double && slot.next) {
+        try {
+          await add(slot.next)
+          onSaved(`Double lesson added (${slot.period.name} and ${slot.next.name}).`)
+        } catch (err) {
+          onSaved(`Lesson added in ${slot.period.name}, but not in ${slot.next.name}: ${errorText(err)}`)
+        }
+        return
+      }
+      onSaved('Lesson added.')
     } catch (err) {
       setError(errorText(err))
     } finally {
@@ -88,6 +102,12 @@ function LessonForm({ slot, options, schoolClass, onSaved, onCancel }) {
             {options.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </label>
+        {!lesson && slot.next && (
+          <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontWeight: 400 }}>
+            <input type="checkbox" style={{ width: 'auto' }} checked={form.double} onChange={set('double')} />
+            Double lesson (also {slot.next.name})
+          </label>
+        )}
         <div className="tt-form-actions">
           <button type="submit" disabled={busy} style={{ width: 'auto' }}>{busy ? 'Saving…' : lesson ? 'Save' : 'Add lesson'}</button>
           {lesson && <button type="button" className="secondary" disabled={busy} style={{ width: 'auto' }} onClick={remove}>Remove</button>}
@@ -317,7 +337,11 @@ export default function Timetable({ me }) {
         )}
         {week ? (
           <WeekGrid week={week} show={view === 'class' ? 'teacher' : 'class'} editable={editable}
-            onSlot={(day, period) => { setNotice(''); setSlot({ day, period }) }}
+            onSlot={(day, period) => {
+              setNotice('')
+              const after = week.periods[week.periods.findIndex((p) => p.id === period.id) + 1]
+              setSlot({ day, period, next: after && !after.is_break ? after : null })
+            }}
             onLesson={(lesson) => {
               setNotice('')
               setSlot({ day: lesson.day, period: week.periods.find((p) => p.id === lesson.period), lesson })
