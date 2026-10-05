@@ -199,6 +199,14 @@ export default function Support() {
             <p className="hint" style={{ marginTop: 0 }}>
               Students with warning signs in their marks or attendance. Nothing is shared with parents until you confirm.
             </p>
+            {suggested.not_enough_data?.length > 0 && (
+              <details style={{ marginBottom: 8 }}>
+                <summary>Not enough data yet ({suggested.not_enough_data.length})</summary>
+                <ul className="hint" style={{ paddingLeft: 18 }}>
+                  {suggested.not_enough_data.map((w) => <li key={w.student}><strong>{w.name}</strong>: {w.detail}</li>)}
+                </ul>
+              </details>
+            )}
             {suggested.results.length === 0 ? (
               <p className="text-muted" style={{ margin: 0 }}>No one to look at right now.</p>
             ) : (

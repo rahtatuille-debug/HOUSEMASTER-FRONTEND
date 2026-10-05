@@ -41,6 +41,14 @@ function supportApi(overrides = {}) {
 }
 
 describe('Needs support page', () => {
+  it('C-1: lists students without enough data yet, apart from the suggestions', async () => {
+    mockApi.current = supportApi({ 'support.suggestions': vi.fn(() => Promise.resolve({ term: 2, term_name: 'Term 2', results: [suggestion],
+      not_enough_data: [{ student: 30, name: 'Quinn K', detail: '1 of 3 marks so far in Term 2: not enough data yet' }] })) })
+    render(<Support me={{ role: 'teacher' }} />)
+    expect(await screen.findByText(/Not enough data yet \(1\)/)).toBeInTheDocument()
+    expect(screen.getByText(/Quinn K/)).toBeInTheDocument()
+  })
+
   it('lists suggestions with their reasons and the students already marked', async () => {
     mockApi.current = supportApi()
     render(<Support />)
@@ -174,7 +182,30 @@ describe('Support limits (admins)', () => {
     fireEvent.change(screen.getByLabelText('Average below (%)'), { target: { value: '50' } })
     fireEvent.click(screen.getByRole('button', { name: 'Save limits' }))
     expect(await screen.findByText(/Saved/)).toBeInTheDocument()
-    expect(update).toHaveBeenCalledWith(4, { support_pass_mark: 50, support_drop_points: 10, support_attendance_min: 80 })
+    expect(update).toHaveBeenCalledWith(4, expect.objectContaining({ support_pass_mark: 50, support_drop_points: 10, support_attendance_min: 80 }))
+  })
+
+  it('C-1: saves how much data a sign needs and when a dismissed one comes back', async () => {
+    const update = vi.fn(() => Promise.resolve({}))
+    mockApi.current = deepApiMock({ 'schools.update': update })
+    render(<SupportLimitsCard school={{ ...school, support_min_marks: 3, support_min_days: 10, support_reopen_points: 10 }} me={{ role: 'admin' }} />)
+    fireEvent.change(screen.getByLabelText('Marks needed first'), { target: { value: '4' } })
+    fireEvent.change(screen.getByLabelText('Attendance days needed first'), { target: { value: '150' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save limits' }))
+    await screen.findByText(/Saved/)
+    expect(update).toHaveBeenCalledWith(4, expect.objectContaining({ support_min_marks: 4, support_min_days: 150, support_reopen_points: 10 }))
+  })
+
+  it('C-1: sets a different pass mark for one year group', async () => {
+    const updateYear = vi.fn(() => Promise.resolve({}))
+    mockApi.current = deepApiMock({ 'yearGroups.list': () => Promise.resolve([{ id: 7, name: 'Year 7', support_pass_mark: null }]),
+      'yearGroups.update': updateYear })
+    render(<SupportLimitsCard school={school} me={{ role: 'admin' }} />)
+    const field = await screen.findByLabelText('Pass mark for Year 7 (%)')
+    expect(field).toHaveAttribute('placeholder', "School's (40)")
+    fireEvent.change(field, { target: { value: '50' } })
+    fireEvent.blur(field)
+    await vi.waitFor(() => expect(updateYear).toHaveBeenCalledWith(7, { support_pass_mark: 50 }))
   })
 
   it('refuses numbers out of range, and is hidden from teachers', () => {
