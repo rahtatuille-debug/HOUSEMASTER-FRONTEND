@@ -18,9 +18,9 @@ const { default: Boarding } = await import('./Boarding.jsx')
 
 describe('A-6: house labels', () => {
   it('the Students list and form say "Sports house"', async () => {
-    mockApi.current = deepApiMock({
-      'students.list': () => Promise.resolve([{ id: 1, first_name: 'Amina', last_name: 'K', house: 'Simba', is_active: true, school_class: null }]),
-    })
+    const rows = () => Promise.resolve([{ id: 1, first_name: 'Amina', last_name: 'K', house: 'Simba', is_active: true, school_class: null }])
+    // students.page once the list is paged by the server (E-1); students.list before.
+    mockApi.current = deepApiMock({ 'students.list': rows, 'students.page': rows })
     render(<Students me={{ role: 'admin' }} />)
     expect(await screen.findByRole('columnheader', { name: 'Sports house' })).toBeInTheDocument()
     expect(screen.queryByRole('columnheader', { name: 'House' })).toBeNull()
