@@ -35,6 +35,7 @@ import Exports from './panels/Exports.jsx'
 import Performance from './panels/Performance.jsx'
 import Support from './panels/Support.jsx'
 import Timetable from './panels/Timetable.jsx'
+import Boarding from './panels/Boarding.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
@@ -48,6 +49,7 @@ const TABS = [
   { key: 'reports', label: 'Reports', component: Reports },
   { key: 'performance', label: 'Performance', component: Performance },
   { key: 'support', label: 'Needs support', component: Support },
+  { key: 'boarding', label: 'Boarding', component: Boarding, boardingOnly: true },
   { key: 'announcements', label: 'Communications', component: Announcements },
   { key: 'messages', label: 'Messages', component: Messages },
   { key: 'alerts', label: 'Urgent alerts', component: Alerts },
@@ -439,7 +441,7 @@ export default function App() {
   }
 
   const tabSet = identityKind === 'guardian' ? GUARDIAN_TABS : TABS
-  const visibleTabs = tabSet.filter((t) => !t.adminOnly || me?.role === 'admin')
+  const visibleTabs = tabSet.filter((t) => (!t.adminOnly || me?.role === 'admin') && (!t.boardingOnly || me?.is_boarding_staff))
   const activeKey = visibleTabs.some((t) => t.key === activeTab) ? activeTab : visibleTabs[0]?.key
   const ActivePanel = visibleTabs.find((t) => t.key === activeKey)?.component
   const identityLine = identityKind === 'guardian' ? guardianIdentity(me) : personIdentity(me)

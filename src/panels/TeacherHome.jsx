@@ -74,6 +74,28 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
         </div>
       )}
 
+      {data.boarding && (data.boarding.missing.length > 0 || data.boarding.leave_waiting > 0 || data.boarding.sick_bay > 0) && (
+        <div className="card">
+          <div className="support-row">
+            <div>
+              <h3 style={{ fontSize: 15, margin: 0 }}>Boarding</h3>
+              <p className="text-muted" style={{ margin: '4px 0 0' }}>
+                {[
+                  data.boarding.leave_waiting > 0 && `${data.boarding.leave_waiting} leave request${data.boarding.leave_waiting === 1 ? '' : 's'} to decide`,
+                  data.boarding.sick_bay > 0 && `${data.boarding.sick_bay} in sick bay`,
+                ].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => onNavigate('boarding')}>Open</button>
+          </div>
+          {data.boarding.missing.length > 0 && (
+            <p style={{ margin: '10px 0 0', color: 'var(--stamp-red)' }}>
+              <strong>Missing at the last roll call:</strong> {data.boarding.missing.map((m) => m.name).join(', ')}
+            </p>
+          )}
+        </div>
+      )}
+
       {data.today && data.today.length > 0 && (
         <div className="card">
           <div className="support-row">

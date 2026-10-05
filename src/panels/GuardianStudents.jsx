@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import TermSummary from './TermSummary.jsx'
-import { formatDate as localDate } from '../format.js'
+import { formatDate as localDate, formatDateTime } from '../format.js'
 import { useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import PerformanceChart from './PerformanceChart.jsx'
@@ -105,7 +105,7 @@ export default function GuardianStudents() {
           <p className="text-muted">{selected.school_class_name || 'Class not assigned'}{selected.house ? ` · ${selected.house} House` : ''}</p>
           {profile?.support && <div style={{ margin: '12px 0' }}><SupportCard concern={profile.support} forParents /></div>}
           <div className="guardian-subtabs" role="tablist" aria-label="Student information">
-            {TABS.map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
+            {[...TABS, ...(selected.mode_of_learning === 'boarding' ? ['boarding'] : [])].map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
           </div>
           {tab === 'overview' && profile && (
             <>
@@ -156,6 +156,7 @@ export default function GuardianStudents() {
             </div>
           )}
           {tab === 'timetable' && <ChildTimetable studentId={selected.id} />}
+          {tab === 'boarding' && <ChildBoarding studentId={selected.id} firstName={selected.first_name} />}
           {tab === 'attendance' && profile && (
             <div className="card">
               <div className="stat-row">
@@ -202,5 +203,106 @@ function ChildTimetable({ studentId }) {
         ? <p className="text-muted" style={{ margin: 0 }}>The school hasn&apos;t published a timetable yet.</p>
         : <WeekGrid week={week} show="teacher" />}
     </div>
+  )
+}
+
+const SHORT = { dateStyle: 'medium', timeStyle: 'short' }
+const LEAVE_KINDS = [['weekend', 'Weekend'], ['half_term', 'Half term'], ['exeat', 'Exeat'], ['appointment', 'Appointment'], ['other', 'Other']]
+
+// Boarders: where they sleep, leave (ask for it here) and sick bay visits.
+function ChildBoarding({ studentId, firstName }) {
+  const [data, setData] = useState(null)
+  const [form, setForm] = useState(null)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const load = () => api.guardianStudents.boarding(studentId).then(setData).catch((err) => setError(err.message))
+  useEffect(() => { load() }, [studentId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function ask(e) {
+    e.preventDefault()
+    setError('')
+    try {
+      await api.guardianStudents.requestLeave(studentId, { ...form, leaving_at: new Date(form.leaving_at).toISOString(),
+        returning_at: new Date(form.returning_at).toISOString() })
+      setForm(null)
+      setNotice('Sent. The boarding staff will approve or decline it, and you will get an email.')
+      load()
+    } catch (err) {
+      const first = Object.values(err.data || {}).flat().find((v) => typeof v === 'string')
+      setError(first || err.message)
+    }
+  }
+  async function cancel(id) {
+    try {
+      await api.guardianStudents.cancelLeave(studentId, id)
+      setNotice('Leave cancelled.')
+      load()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+  const set = (key) => (e) => setForm({ ...form, [key]: e.target.value })
+  if (error && !data) return <div className="error-banner">{error}</div>
+  if (!data) return <p className="text-muted">Loading…</p>
+  if (!data.boarder) return <div className="card"><p className="text-muted" style={{ margin: 0 }}>{firstName} doesn&apos;t have a bed in a boarding house yet.</p></div>
+  const where = { in: 'In the boarding house', on_leave: 'On leave', sick_bay: 'In the sick bay' }[data.where]
+  return (
+    <>
+      {error && <div className="error-banner" role="alert">{error}</div>}
+      {notice && <div className="success-banner" role="status">{notice}</div>}
+      <div className="card">
+        <p style={{ margin: 0 }}><strong>{data.house}</strong> · {data.dorm} · {data.bed}</p>
+        <p className="text-muted" style={{ margin: '4px 0 0' }}>Now: {where}</p>
+      </div>
+      <div className="card">
+        <div className="support-row">
+          <h3 style={{ fontSize: 15, margin: 0 }}>Leave</h3>
+          {!form && <button type="button" style={{ width: 'auto' }} onClick={() => setForm({ kind: 'weekend', leaving_at: '', returning_at: '', collected_by: '', reason: '' })}>Ask for leave</button>}
+        </div>
+        {form && (
+          <form onSubmit={ask} className="tt-form-grid" style={{ marginTop: 10 }}>
+            <label>Kind<select value={form.kind} onChange={set('kind')}>{LEAVE_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
+            <label>Leaving<input type="datetime-local" value={form.leaving_at} onChange={set('leaving_at')} required /></label>
+            <label>Back<input type="datetime-local" value={form.returning_at} onChange={set('returning_at')} required /></label>
+            <label>Who will collect {firstName}<input value={form.collected_by} onChange={set('collected_by')} placeholder="e.g. me, or their uncle Peter" required /></label>
+            <label>Reason<input value={form.reason} onChange={set('reason')} /></label>
+            <div className="tt-form-actions">
+              <button type="submit" style={{ width: 'auto' }}>Send request</button>
+              <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => setForm(null)}>Cancel</button>
+            </div>
+          </form>
+        )}
+        {data.leave.length === 0 ? <p className="text-muted" style={{ margin: '8px 0 0' }}>No leave yet.</p> : (
+          <ul className="support-list">
+            {data.leave.map((l) => (
+              <li key={l.id}>
+                <div className="support-row">
+                  <div>
+                    <strong>{l.kind_label}</strong> · {formatDateTime(l.leaving_at, SHORT)} to {formatDateTime(l.returning_at, SHORT)}
+                    <div className="hint" style={{ margin: 0 }}>{[l.status_label, l.decision_note].filter(Boolean).join(' · ')}</div>
+                  </div>
+                  {['requested', 'approved'].includes(l.status) && (
+                    <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => cancel(l.id)}>Cancel</button>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="card">
+        <h3 style={{ fontSize: 15, marginBottom: 4 }}>Sick bay visits</h3>
+        {data.sick_bay.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>None.</p> : (
+          <ul className="support-list">
+            {data.sick_bay.map((v) => (
+              <li key={v.id}>
+                <strong>{formatDateTime(v.checked_in_at, SHORT)}</strong> · {v.complaint}
+                <div className="hint" style={{ margin: 0 }}>{[v.treatment, v.checked_out_at ? v.outcome_label : 'Still in the sick bay'].filter(Boolean).join(' · ')}</div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </>
   )
 }
