@@ -18,9 +18,13 @@ const SHORT = { dateStyle: 'medium', timeStyle: 'short' }
 function FormSettings({ yearGroups }) {
   const [settings, setSettings] = useState(null)
   const [intro, setIntro] = useState('')
+  const [keepDays, setKeepDays] = useState('')
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  useEffect(() => { api.admissions.settings().then((s) => { setSettings(s); setIntro(s.intro) }).catch((e) => setError(errorText(e))) }, [])
+  useEffect(() => {
+    api.admissions.settings().then((s) => { setSettings(s); setIntro(s.intro); setKeepDays(s.retention_days ?? '') })
+      .catch((e) => setError(errorText(e)))
+  }, [])
   if (!settings) return error ? <div className="error-banner">{error}</div> : null
   const link = `${window.location.origin}/apply/${settings.link_token}`
 
@@ -66,6 +70,14 @@ function FormSettings({ yearGroups }) {
       <label style={{ marginTop: 12 }}>Welcome text on the form
         <textarea rows={3} value={intro} onChange={(e) => setIntro(e.target.value)} onBlur={() => intro !== settings.intro && save({ intro }, 'Saved.')} />
       </label>
+      <label style={{ marginTop: 12, maxWidth: 360 }}>Delete closed applications after (days)
+        <input type="number" min="1" value={keepDays} onChange={(e) => setKeepDays(e.target.value)}
+          onBlur={() => {
+            const days = keepDays === '' ? null : Number(keepDays)
+            if (days !== (settings.retention_days ?? null)) save({ retention_days: days }, days ? `Closed applications are deleted ${days} days after their last change.` : 'Closed applications are kept until you delete them.')
+          }} />
+      </label>
+      <p className="hint" style={{ margin: '2px 0 0' }}>Declined, withdrawn and enrolled applications, counted from their last change. Empty: kept until you delete them. Takes effect when the school&apos;s data clean-up runs.</p>
       {yearGroups.length > 0 && (
         <>
           <p style={{ margin: '10px 0 4px' }}>Year groups taking applications <span className="hint">(none ticked: all of them)</span></p>
