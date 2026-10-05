@@ -20,11 +20,13 @@ function LessonForm({ slot, options, schoolClass, onSaved, onCancel }) {
   const lesson = slot.lesson
   const [form, setForm] = useState({
     subject: lesson?.subject ?? '', title: lesson?.title ?? '', teacher: lesson ? (lesson.teacher ?? '') : 'auto',
-    room: lesson?.room ?? '', double: false,
+    room: lesson?.room ?? '', double: false, teacher2: 'same', room2: 'same',
   })
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const set = (key) => (e) => setForm({ ...form, [key]: key === 'double' ? e.target.checked : e.target.value })
+  // The second period of a double lesson can have its own teacher or room ('same': as the first).
+  const pick = (value) => (value ? Number(value) : null)
   const when = `${DAY_NAMES[slot.day - 1]} · ${slot.period.name} (${slot.period.start_time}–${slot.period.end_time})`
 
   async function save(e) {
@@ -42,11 +44,15 @@ function LessonForm({ slot, options, schoolClass, onSaved, onCancel }) {
         onSaved('Lesson changed.')
         return
       }
-      const add = (period) => api.timetable.lessons.create({ ...body, school_class: schoolClass, day: slot.day, period: period.id })
+      const add = (period, extra = {}) => api.timetable.lessons.create({ ...body, ...extra, school_class: schoolClass, day: slot.day, period: period.id })
       await add(slot.period)
       if (form.double && slot.next) {
+        const second = {
+          ...(form.teacher2 !== 'same' ? { teacher: pick(form.teacher2) } : {}),
+          ...(form.room2 !== 'same' ? { room: pick(form.room2) } : {}),
+        }
         try {
-          await add(slot.next)
+          await add(slot.next, second)
           onSaved(`Double lesson added (${slot.period.name} and ${slot.next.name}).`)
         } catch (err) {
           onSaved(`Lesson added in ${slot.period.name}, but not in ${slot.next.name}: ${errorText(err)}`)
@@ -107,6 +113,24 @@ function LessonForm({ slot, options, schoolClass, onSaved, onCancel }) {
             <input type="checkbox" style={{ width: 'auto' }} checked={form.double} onChange={set('double')} />
             Double lesson (also {slot.next.name})
           </label>
+        )}
+        {!lesson && slot.next && form.double && (
+          <>
+            <label>Teacher in {slot.next.name}
+              <select value={form.teacher2} onChange={set('teacher2')}>
+                <option value="same">The same</option>
+                <option value="">No teacher</option>
+                {options.staff.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </label>
+            <label>Room in {slot.next.name}
+              <select value={form.room2} onChange={set('room2')}>
+                <option value="same">The same</option>
+                <option value="">No room</option>
+                {options.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </label>
+          </>
         )}
         <div className="tt-form-actions">
           <button type="submit" disabled={busy} style={{ width: 'auto' }}>{busy ? 'Saving…' : lesson ? 'Save' : 'Add lesson'}</button>
