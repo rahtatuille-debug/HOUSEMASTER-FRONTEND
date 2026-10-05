@@ -166,3 +166,32 @@ describe('list shapes', () => {
     expect(listFrom(null)).toEqual([])
   })
 })
+
+describe('E-1: students', () => {
+  it('list() follows the pages, so pickers still get every student from a paging server', async () => {
+    store({ access: 'a', refresh: 'r' })
+    const calls = []
+    globalThis.fetch = routeFetch({
+      '/api/students/': (url) => {
+        const params = new URL(url).searchParams
+        calls.push(Object.fromEntries(params))
+        const page = Number(params.get('page') || 1)
+        return json(200, { count: 3, next: page === 1 ? 'http://localhost/api/students/?page=2&page_size=500' : null, previous: null,
+          results: page === 1 ? [{ id: 1 }, { id: 2 }] : [{ id: 3 }] })
+      },
+    })
+    const rows = await api.students.list({ is_active: true })
+    expect(rows.map((r) => r.id)).toEqual([1, 2, 3])
+    expect(calls[0].is_active).toBe('true')
+  })
+
+  it('page() asks for one page with the filters', async () => {
+    store({ access: 'a', refresh: 'r' })
+    let seen = null
+    globalThis.fetch = routeFetch({
+      '/api/students/': (url) => { seen = Object.fromEntries(new URL(url).searchParams); return json(200, { count: 0, next: null, previous: null, results: [] }) },
+    })
+    await api.students.page({ page: 2, page_size: 50, q: 'ann' })
+    expect(seen).toEqual({ page: '2', page_size: '50', q: 'ann' })
+  })
+})

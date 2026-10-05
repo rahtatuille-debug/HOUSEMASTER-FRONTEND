@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { usePagedList } from '../usePagedList.js'
 import SubjectChoicesCard from './SubjectChoicesCard.jsx'
 import { useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
@@ -17,10 +18,8 @@ export default function Students({ me }) {
   const [notice, setNotice] = useState('')
   // The student whose profile is open, if any.
   const [openStudentId, setOpenStudentId] = useState(null)
-  const [students, setStudents] = useState([])
   const [allClasses, setAllClasses] = useState([])
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
   const [form, setForm] = useState(emptyForm)
   const [editingId, setEditingId] = useState(null)
   const [showInactive, setShowInactive] = useState(false)
@@ -31,25 +30,24 @@ export default function Students({ me }) {
   const [classFilter, setClassFilter] = useState('')
   const [limit, setLimit] = useState(PAGE)
 
-  async function load() {
-    setLoading(true)
-    setError('')
-    try {
-      const params = showInactive ? {} : { is_active: true }
-      const [data, cls] = await Promise.all([api.students.list(params), api.schoolClasses.list()])
-      setStudents(data)
-      setAllClasses(cls)
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
-  }
+  // What the server is asked to filter by. The search waits for a pause in typing.
+  const [query, setQuery] = useState('')
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(search.trim()), 300)
+    return () => clearTimeout(t)
+  }, [search])
+  // One page at a time from the server, searched and filtered there (E-1).
+  const list = usePagedList((page) => api.students.page({
+    ...(showInactive ? {} : { is_active: true }), ...(query ? { q: query } : {}),
+    ...(classFilter ? { school_class: classFilter } : {}), ...(supportOnly ? { needs_support: 1 } : {}), ...page,
+  }), [showInactive, query, classFilter, supportOnly])
+  const loading = list.loading
+  const load = list.reload
 
   useEffect(() => {
-    load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showInactive])
+    api.schoolClasses.list().then(setAllClasses).catch((err) => setError(err.message))
+  }, [])
+  useEffect(() => { if (list.error) setError(list.error) }, [list.error])
 
   function startEdit(student) {
     setShowForm(true)
@@ -124,10 +122,14 @@ export default function Students({ me }) {
     ? allClasses
     : allClasses.filter((c) => (me?.assignments || []).some((a) => a.school_class === c.id))
 
-  const query = search.trim().toLowerCase()
-  const filtered = students.filter((s) => (!classFilter || String(s.school_class) === classFilter)
+  // An older server sends the whole list and ignores the filters, so they are applied here instead.
+  const needle = query.toLowerCase()
+  const filtered = list.serverPaged ? list.rows : list.allRows.filter((s) => (!classFilter || String(s.school_class) === classFilter)
     && (!supportOnly || s.needs_support)
-    && (!query || `${s.first_name} ${s.last_name} ${s.external_id || ''}`.toLowerCase().includes(query)))
+    && (!needle || `${s.first_name} ${s.last_name} ${s.external_id || ''}`.toLowerCase().includes(needle)))
+  const total = list.serverPaged ? list.total : filtered.length
+  const shown = list.serverPaged ? filtered : filtered.slice(0, limit)
+  const anyStudents = total > 0 || query || classFilter || supportOnly
 
   const className = (id) => {
     if (!id) return '—'
@@ -267,7 +269,7 @@ export default function Students({ me }) {
 
       {loading ? (
         <p className="text-muted">Loading…</p>
-      ) : students.length === 0 ? (
+      ) : !anyStudents ? (
         <div className="empty-state">
           <h3>No students yet</h3>
           <p>Add your first student with the button above, or import them from Excel in Setup.</p>
@@ -288,7 +290,7 @@ export default function Students({ me }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, limit).map((s) => (
+            {shown.map((s) => (
               <tr key={s.id}>
                 <td className="row-title">
                   <button
@@ -326,7 +328,8 @@ export default function Students({ me }) {
             ))}
           </tbody>
         </table>
-        <ShowMore shown={limit} total={filtered.length} onMore={() => setLimit(limit + PAGE)} noun="students" />
+        <ShowMore shown={list.serverPaged ? shown.length : limit} total={total} noun="students"
+          onMore={() => (list.serverPaged ? list.loadMore() : setLimit(limit + PAGE))} />
         </>
       )}
       <SubjectChoicesCard me={me} />
