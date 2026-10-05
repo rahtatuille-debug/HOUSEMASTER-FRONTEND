@@ -37,6 +37,18 @@ export function guideSections(w, role) {
       ],
     },
     {
+      key: 'timetable', title: 'Timetable', for: 'all',
+      tour: `Who is teaching what, where and when: your week, any ${cls}'s, and ${admin ? 'every teacher\'s and room\'s' : 'each room\'s'}.`,
+      steps: [
+        admin ? 'Open "School day and rooms" once: choose the teaching days, set up the periods (a standard day is a click) and add the rooms.'
+          : 'Your own week opens first. Your lessons for today are also on your Home page.',
+        admin ? `Choose a ${cls}, then click + in a slot to add a lesson. The teacher fills in from the Staff page; change it if you need to.`
+          : `Choose any ${cls} or a room to see its week.`,
+        'HouseMaster refuses clashes: a teacher or room booked twice, or two lessons at once for the same students. Options (electives) taken by different students can run side by side.',
+        'Parents see their child\'s week on their child\'s page, with only the subjects their child takes.',
+      ],
+    },
+    {
       key: 'attendance', title: 'Attendance', for: 'all',
       tour: `Take the register: choose a ${cls} and a date, mark everyone, and save.`,
       steps: [

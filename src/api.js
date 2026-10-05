@@ -724,6 +724,7 @@ export const api = {
     reportCard: (id, term) => downloadFile(`/api/guardian-students/${id}/report-card/`, { term }),
     termSummary: (id, term) => request(`/api/guardian-students/${id}/term-summary/`, { params: { term } }),
     profile: (id) => request(`/api/guardian-students/${id}/profile/`),
+    timetable: (id) => request(`/api/guardian-students/${id}/timetable/`),
     // A parent's suggestion for the health notes, which the school approves.
     suggestHealthNotes: (id, body) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'POST', body }),
     withdrawHealthNotes: (id) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'DELETE' }),
@@ -859,6 +860,32 @@ export const api = {
     publish: (id) => request(`/api/announcements/${id}/publish/`, { method: 'POST' }),
     archive: (id) => request(`/api/announcements/${id}/archive/`, { method: 'POST' }),
     generateText: (body) => request('/api/announcements/generate-text/', { method: 'POST', body }),
+  },
+  // The timetable: admins change it, all staff read it.
+  timetable: {
+    week: (params) => request('/api/timetable/week/', { params }),
+    schoolWeek: {
+      get: () => request('/api/timetable/school-week/'),
+      update: (days) => request('/api/timetable/school-week/', { method: 'PATCH', body: { days } }),
+    },
+    periods: {
+      list: () => request('/api/timetable/periods/'),
+      create: (body) => request('/api/timetable/periods/', { method: 'POST', body }),
+      update: (id, body) => request(`/api/timetable/periods/${id}/`, { method: 'PATCH', body }),
+      remove: (id) => request(`/api/timetable/periods/${id}/`, { method: 'DELETE' }),
+      // {start: "08:00", lesson_minutes, lessons, breaks: [{after, minutes, name}]}
+      standard: (body) => request('/api/timetable/periods/standard/', { method: 'POST', body }),
+    },
+    rooms: {
+      list: () => request('/api/timetable/rooms/'),
+      create: (body) => request('/api/timetable/rooms/', { method: 'POST', body }),
+      remove: (id) => request(`/api/timetable/rooms/${id}/`, { method: 'DELETE' }),
+    },
+    lessons: {
+      create: (body) => request('/api/timetable/lessons/', { method: 'POST', body }),
+      update: (id, body) => request(`/api/timetable/lessons/${id}/`, { method: 'PATCH', body }),
+      remove: (id) => request(`/api/timetable/lessons/${id}/`, { method: 'DELETE' }),
+    },
   },
   // Students who need extra support: HouseMaster suggests, staff confirm.
   support: {

@@ -34,6 +34,7 @@ import Home from './panels/Home.jsx'
 import Exports from './panels/Exports.jsx'
 import Performance from './panels/Performance.jsx'
 import Support from './panels/Support.jsx'
+import Timetable from './panels/Timetable.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
@@ -41,6 +42,7 @@ import { personIdentity, guardianIdentity } from './user.js'
 const TABS = [
   { key: 'home', label: 'Home', component: StaffHome },
   { key: 'students', label: 'Students', component: Students },
+  { key: 'timetable', label: 'Timetable', component: Timetable },
   { key: 'attendance', label: 'Attendance', component: Attendance },
   { key: 'grades', label: 'Grades', component: Grades },
   { key: 'reports', label: 'Reports', component: Reports },
