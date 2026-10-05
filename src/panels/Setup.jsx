@@ -504,7 +504,7 @@ export default function Setup({ me, onUserUpdated }) {
                 />
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="class-house">House</label>
+                <label htmlFor="class-house">Sports house</label>
                 <input
                   id="class-house"
                   value={classHouse}
@@ -522,7 +522,7 @@ export default function Setup({ me, onUserUpdated }) {
                   <tr>
                     <th>{words.class}</th>
                     <th>{words.year_group}</th>
-                    <th>House</th>
+                    <th>Sports house</th>
                     <th></th>
                   </tr>
                 </thead>

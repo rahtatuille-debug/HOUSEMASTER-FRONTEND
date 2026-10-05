@@ -9,7 +9,7 @@ const ROLL_STATUS = { present: 'Present', missing: 'Missing', on_leave: 'On leav
 const LEAVE_KINDS = [['weekend', 'Weekend'], ['half_term', 'Half term'], ['exeat', 'Exeat'], ['appointment', 'Appointment'], ['other', 'Other']]
 const OUTCOMES = [['back', 'Back to lessons or the house'], ['home', 'Sent home'], ['hospital', 'Sent to hospital or a clinic']]
 const RESOLUTIONS = [['found', 'Found'], ['returned', 'Came back'], ['on_leave', 'Was on authorised leave'], ['left_school', 'Has left the school']]
-const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Houses and beds']]
+const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Boarding houses and beds']]
 
 function defaultSession() {
   const hour = new Date().getHours()
@@ -127,14 +127,14 @@ function Today({ onGo }) {
           <input type="search" aria-label="Find a boarder" placeholder="Find a boarder" value={query}
             onChange={(e) => setQuery(e.target.value)} style={{ maxWidth: 260 }} />
         </div>
-        {!boarders ? <p className="text-muted">Loading…</p> : shown.length === 0 ? <p className="text-muted">No boarders yet. Put students in beds on Houses and beds.</p> : (
+        {!boarders ? <p className="text-muted">Loading…</p> : shown.length === 0 ? <p className="text-muted">No boarders yet. Put students in beds on Boarding houses and beds.</p> : (
           <table className="data-table" style={{ marginTop: 8 }}>
-            <thead><tr><th>Name</th><th>Class</th><th>House</th><th>Dorm and bed</th><th>Now</th></tr></thead>
+            <thead><tr><th>Name</th><th>Class</th><th>Boarding house</th><th>Dorm and bed</th><th>Now</th></tr></thead>
             <tbody>
               {shown.map((b) => (
                 <tr key={b.id}>
                   <td className="row-title">{b.name}</td><td data-label="Class">{b.class_name || '—'}</td>
-                  <td data-label="House">{b.house}</td><td data-label="Dorm">{b.dorm} · {b.bed}</td>
+                  <td data-label="Boarding house">{b.house}</td><td data-label="Dorm">{b.dorm} · {b.bed}</td>
                   <td data-label="Now"><span className={`badge ${WHERE[b.where][1]}`}>{WHERE[b.where][0]}</span></td>
                 </tr>
               ))}
@@ -241,7 +241,7 @@ function RollCallPanel({ houses, me }) {
       {!roll ? (
         <div className="card">
           <div className="tt-form-grid">
-            <label>House
+            <label>Boarding house
               <select value={house} onChange={(e) => setHouse(e.target.value)}>
                 {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
               </select>
@@ -533,7 +533,7 @@ function SickBayPanel() {
   )
 }
 
-// --- Houses and beds: admins add houses, dorms and beds; boarding staff put students in beds.
+// --- Boarding houses and beds: admins add houses, dorms and beds; boarding staff put students in beds.
 function HousesPanel({ me, houses, reload }) {
   const isAdmin = me?.role === 'admin'
   const [staff, setStaff] = useState([])

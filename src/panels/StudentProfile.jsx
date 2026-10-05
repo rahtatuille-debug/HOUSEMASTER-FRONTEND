@@ -294,7 +294,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                         </span>
                       </li>
                       <li><span>{words.class}</span> {profile.class_name ? `${profile.year_group_name} · ${profile.class_name}` : 'Not in a class'}</li>
-                      <li><span>House</span> {s.house || '—'}</li>
+                      <li><span>Sports house</span> {s.house || '—'}</li>
                       <li><span>Gender</span> {GENDERS[s.gender] || '—'}</li>
                       <li><span>Date of birth</span> {formatDate(s.date_of_birth)}{profile.age !== null && ` (age ${profile.age})`}</li>
                       <li><span>Nationality</span> {s.nationality || '—'}</li>
@@ -365,7 +365,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
                         ['first_name', 'First name', 'text', true],
                         ['last_name', 'Last name', 'text', true],
                         ['external_id', words.student_id, 'text'],
-                        ['house', 'House', 'text'],
+                        ['house', 'Sports house', 'text'],
                         ['nationality', 'Nationality', 'text'],
                         ['date_of_birth', 'Date of birth', 'date'],
                         ['enrolled_on', 'Admission date', 'date'],
