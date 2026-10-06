@@ -75,6 +75,9 @@ export function usePagedList(fetchPage, deps, pageSize = PAGE) {
 
   return {
     rows: serverPaged ? rows : rows.slice(0, limit),
+    // Whether the server paged (and filtered) the list; with an older server everything is in allRows.
+    serverPaged,
+    allRows: rows,
     total,
     loading,
     loadingMore,

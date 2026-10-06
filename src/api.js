@@ -803,7 +803,10 @@ export const api = {
   },
 
   students: {
-    list: (params) => request('/api/students/', { params }),
+    // Every student matching the filters (follows the pages when the server pages; E-1).
+    list: (params) => listRequest('/api/students/', { params }),
+    // One page: { page, page_size, q, school_class, is_active, needs_support }. An older server sends the whole list.
+    page: (params) => request('/api/students/', { params }),
     create: (body) => request('/api/students/', { method: 'POST', body }),
     update: (id, body) => request(`/api/students/${id}/`, { method: 'PATCH', body }),
     // Permanent. For a teacher this only sends a request for an admin to approve.
