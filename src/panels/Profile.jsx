@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { getRoleLabel } from '../user.js'
 import { ContactForm } from './ParentContact.jsx'
 import PrivacyNotice from './PrivacyNotice.jsx'
+import { NotificationsBlocked, currentSubscription, pushRegistration, turnOff, turnOn } from '../push.js'
 
 export default function Profile({ me, identityKind, onUserUpdated }) {
   const [name, setName] = useState(me?.name || '')
@@ -110,6 +111,57 @@ function GuardianContactCard({ me, onUserUpdated }) {
           Email me when the school publishes an announcement or a report for my children
         </label>
       </div>
+      <PushToggle />
+    </div>
+  )
+}
+
+// Notices on this phone or browser, as well as (or instead of) email. Shown only
+// when the school's server is set up for it and this browser can do it.
+function PushToggle() {
+  const [state, setState] = useState(null) // {registration, publicKey, on}
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    let live = true
+    ;(async () => {
+      const registration = await pushRegistration()
+      if (!registration) return
+      const sub = await currentSubscription(registration)
+      const settings = await api.push.settings(sub?.endpoint).catch(() => null)
+      if (live && settings?.enabled) setState({ registration, publicKey: settings.public_key, on: !!sub && settings.subscribed })
+    })()
+    return () => { live = false }
+  }, [])
+
+  if (!state) return null
+  async function toggle(on) {
+    setBusy(true)
+    setError('')
+    try {
+      if (on) await turnOn(state.registration, state.publicKey)
+      else await turnOff(state.registration)
+      setState({ ...state, on })
+    } catch (err) {
+      setError(err instanceof NotificationsBlocked
+        ? 'This browser has blocked notifications from HouseMaster. Allow them in the browser or phone settings, then try again.'
+        : (err.message || 'Could not change notifications.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="field" style={{ marginTop: 10, marginBottom: 0 }}>
+      {error && <div className="error-banner" role="alert">{error}</div>}
+      <label className="checkbox-label">
+        <input type="checkbox" checked={state.on} disabled={busy} onChange={(e) => toggle(e.target.checked)} />
+        Notify me on this phone or browser too
+      </label>
+      <p className="hint" style={{ margin: '4px 0 0' }}>
+        A short notice, with no names, when there is a new announcement or report. Turn it on separately on each device.
+        On an iPhone, add HouseMaster to your home screen first.
+      </p>
     </div>
   )
 }
