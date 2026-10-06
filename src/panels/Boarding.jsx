@@ -8,7 +8,8 @@ const WHERE = { in: ['In the house', 'finalized'], on_leave: ['On leave', 'pendi
 const ROLL_STATUS = { present: 'Present', missing: 'Missing', on_leave: 'On leave', sick_bay: 'In sick bay' }
 const LEAVE_KINDS = [['weekend', 'Weekend'], ['half_term', 'Half term'], ['exeat', 'Exeat'], ['appointment', 'Appointment'], ['other', 'Other']]
 const OUTCOMES = [['back', 'Back to lessons or the house'], ['home', 'Sent home'], ['hospital', 'Sent to hospital or a clinic']]
-const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Houses and beds']]
+const RESOLUTIONS = [['found', 'Found'], ['returned', 'Came back'], ['on_leave', 'Was on authorised leave'], ['left_school', 'Has left the school']]
+const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Boarding houses and beds']]
 
 function defaultSession() {
   const hour = new Date().getHours()
@@ -32,15 +33,72 @@ function Banner({ error, notice }) {
   )
 }
 
+// A boarder marked missing stays on this list, oldest first, until someone records how it was resolved.
+function MissingBoarders({ missing, onGo, onResolved }) {
+  const [open, setOpen] = useState(null)
+  const [resolution, setResolution] = useState('found')
+  const [note, setNote] = useState('')
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  async function save(m) {
+    setError('')
+    try {
+      await api.boarding.absences.resolve(m.id, resolution, note)
+      setNotice(`${m.name}: recorded.`)
+      setOpen(null)
+      onResolved()
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+  return (
+    <>
+      <Banner error={error} notice={notice} />
+      {missing.length > 0 && (
+        <div className="card support-box" style={{ borderLeftColor: 'var(--stamp-red)' }} role="region" aria-label="Missing boarders">
+          <h3 style={{ fontSize: 15, margin: '0 0 6px' }}>Missing: not found yet</h3>
+          <ul style={{ margin: 0, paddingLeft: 18 }}>
+            {missing.map((m) => (
+              <li key={m.id} style={{ marginBottom: 6 }}>
+                <strong>{m.name}</strong> · {m.house} · {m.when}{m.note ? ` · ${m.note}` : ''}
+                <span className="text-muted"> · missing since {formatDateTime(m.since, SHORT)}</span>{' '}
+                {open === m.id ? (
+                  <form onSubmit={(e) => { e.preventDefault(); save(m) }} style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 6 }}>
+                    <label style={{ flex: '1 1 180px' }}>How was it resolved?
+                      <select value={resolution} onChange={(e) => setResolution(e.target.value)}>
+                        {RESOLUTIONS.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                      </select>
+                    </label>
+                    <label style={{ flex: '2 1 220px' }}>Note (optional)<input value={note} maxLength={500} onChange={(e) => setNote(e.target.value)} /></label>
+                    <button type="submit" style={{ width: 'auto' }}>Save</button>
+                    <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => setOpen(null)}>Cancel</button>
+                  </form>
+                ) : (
+                  <button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} aria-label={`Record ${m.name} as found`}
+                    onClick={() => { setOpen(m.id); setResolution('found'); setNote('') }}>Found</button>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="hint" style={{ marginBottom: 0 }}>They stay here until someone records them found, even after the next roll call.</p>
+          <button type="button" className="secondary" style={{ width: 'auto', marginTop: 8 }} onClick={() => onGo('roll')}>Take a roll call</button>
+        </div>
+      )}
+    </>
+  )
+}
+
 // --- Today: numbers, who's missing, and every boarder with where they are now.
 function Today({ onGo }) {
-  const [overview, , error] = useLoader(useCallback(() => api.boarding.overview(), []))
+  const [overview, reloadOverview, error] = useLoader(useCallback(() => api.boarding.overview(), []))
   const [boarders] = useLoader(useCallback(() => api.boarding.boarders(), []))
+  const [unbedded] = useLoader(useCallback(() => api.boarding.unbedded(), []))
   const [query, setQuery] = useState('')
   if (!overview) return error ? <Banner error={error} /> : <p className="text-muted">Loading…</p>
   const shown = (boarders || []).filter((b) => !query || `${b.name} ${b.dorm} ${b.class_name}`.toLowerCase().includes(query.toLowerCase()))
   const tiles = [['Boarders', overview.boarders], ['On leave', overview.on_leave], ['In sick bay', overview.sick_bay],
-    ['Leave to decide', overview.leave_waiting], ['Free beds', overview.beds_free]]
+    ['Leave to decide', overview.leave_waiting], ['Free beds', overview.beds_free],
+    ...(overview.unbedded ? [['Without a bed', overview.unbedded]] : [])]
   return (
     <>
       <div className="stat-row">
@@ -48,15 +106,14 @@ function Today({ onGo }) {
           <div className="stat-tile" key={label}><div className="stat-label">{label}</div><div className="stat-value">{value}</div></div>
         ))}
       </div>
-      {overview.missing.length > 0 && (
-        <div className="card support-box" style={{ borderLeftColor: 'var(--stamp-red)' }} role="region" aria-label="Missing boarders">
-          <h3 style={{ fontSize: 15, margin: '0 0 6px' }}>Missing at the last roll call</h3>
+      <MissingBoarders missing={overview.missing} onGo={onGo} onResolved={reloadOverview} />
+      {unbedded?.length > 0 && (
+        <div className="card support-box" role="region" aria-label="Boarders without a bed">
+          <h3 style={{ fontSize: 15, margin: '0 0 6px' }}>Boarders without a bed</h3>
           <ul style={{ margin: 0, paddingLeft: 18 }}>
-            {overview.missing.map((m) => (
-              <li key={`${m.roll_call}-${m.student}`}><strong>{m.name}</strong> · {m.house} · {m.when}{m.note ? ` · ${m.note}` : ''}</li>
-            ))}
+            {unbedded.map((s) => <li key={s.id}><strong>{s.name}</strong>{s.class_name ? ` · ${s.class_name}` : ''}</li>)}
           </ul>
-          <button type="button" className="secondary" style={{ width: 'auto', marginTop: 8 }} onClick={() => onGo('roll')}>Take a roll call</button>
+          <button type="button" className="secondary" style={{ width: 'auto', marginTop: 8 }} onClick={() => onGo('houses')}>Put them in beds</button>
         </div>
       )}
       {overview.leave_waiting > 0 && (
@@ -70,14 +127,14 @@ function Today({ onGo }) {
           <input type="search" aria-label="Find a boarder" placeholder="Find a boarder" value={query}
             onChange={(e) => setQuery(e.target.value)} style={{ maxWidth: 260 }} />
         </div>
-        {!boarders ? <p className="text-muted">Loading…</p> : shown.length === 0 ? <p className="text-muted">No boarders yet. Put students in beds on Houses and beds.</p> : (
+        {!boarders ? <p className="text-muted">Loading…</p> : shown.length === 0 ? <p className="text-muted">No boarders yet. Put students in beds on Boarding houses and beds.</p> : (
           <table className="data-table" style={{ marginTop: 8 }}>
-            <thead><tr><th>Name</th><th>Class</th><th>House</th><th>Dorm and bed</th><th>Now</th></tr></thead>
+            <thead><tr><th>Name</th><th>Class</th><th>Boarding house</th><th>Dorm and bed</th><th>Now</th></tr></thead>
             <tbody>
               {shown.map((b) => (
                 <tr key={b.id}>
                   <td className="row-title">{b.name}</td><td data-label="Class">{b.class_name || '—'}</td>
-                  <td data-label="House">{b.house}</td><td data-label="Dorm">{b.dorm} · {b.bed}</td>
+                  <td data-label="Boarding house">{b.house}</td><td data-label="Dorm">{b.dorm} · {b.bed}</td>
                   <td data-label="Now"><span className={`badge ${WHERE[b.where][1]}`}>{WHERE[b.where][0]}</span></td>
                 </tr>
               ))}
@@ -89,8 +146,66 @@ function Today({ onGo }) {
   )
 }
 
+// A finished roll call is locked. An admin can correct it, giving a reason; the change is kept on the roll call.
+function AmendRollCall({ id, onClose, onSaved }) {
+  const [roll, setRoll] = useState(null)
+  const [statuses, setStatuses] = useState({})
+  const [reason, setReason] = useState('')
+  const [error, setError] = useState('')
+  useEffect(() => {
+    api.boarding.rollCalls.get(id).then((r) => { setRoll(r); setStatuses(Object.fromEntries(r.entries.map((e) => [e.student, e.status]))) })
+      .catch((err) => setError(errorText(err)))
+  }, [id])
+  async function save(e) {
+    e.preventDefault()
+    setError('')
+    const entries = roll.entries.filter((x) => statuses[x.student] !== x.status).map((x) => ({ student: x.student, status: statuses[x.student] }))
+    if (!entries.length) { setError('Change at least one boarder first.'); return }
+    if (!reason.trim()) { setError('Say why the roll call is being changed.'); return }
+    try {
+      const updated = await api.boarding.rollCalls.amend(id, entries, reason.trim())
+      setRoll(updated)
+      setReason('')
+      onSaved()
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+  if (!roll) return error ? <Banner error={error} /> : <p className="text-muted">Loading…</p>
+  return (
+    <form className="card" onSubmit={save}>
+      <h3 style={{ fontSize: 15, margin: '0 0 4px' }}>Amend {roll.house_name} · {roll.session_label} · {formatDate(roll.date)}</h3>
+      <p className="hint" style={{ marginTop: 0 }}>This roll call is finished. Changes are recorded with your name, the reason, and what each boarder was before.</p>
+      <Banner error={error} />
+      <div className="form-row">
+        {roll.entries.map((x) => (
+          <label key={x.student} style={{ flex: '1 1 200px' }}>{x.name}
+            <select value={statuses[x.student] || ''} onChange={(e) => setStatuses({ ...statuses, [x.student]: e.target.value })}>
+              {Object.entries(ROLL_STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+            </select>
+          </label>
+        ))}
+      </div>
+      <label>Why is it being changed?<input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} /></label>
+      <div className="tt-form-actions">
+        <button type="submit" style={{ width: 'auto' }}>Save the change</button>
+        <button type="button" className="secondary" style={{ width: 'auto' }} onClick={onClose}>Close</button>
+      </div>
+      {roll.amendments?.length > 0 && (
+        <ul className="hint" style={{ paddingLeft: 18 }}>
+          {roll.amendments.map((a, i) => (
+            <li key={i}>Amended by {a.by || 'an admin'} on {formatDateTime(a.at, SHORT)}: {a.reason} ({a.changes.length} change{a.changes.length === 1 ? '' : 's'})</li>
+          ))}
+        </ul>
+      )}
+    </form>
+  )
+}
+
 // --- Roll call: start one for a house, mark each boarder, finish.
-function RollCallPanel({ houses }) {
+function RollCallPanel({ houses, me }) {
+  const isAdmin = me?.role === 'admin'
+  const [amending, setAmending] = useState(null)
   const [house, setHouse] = useState(houses[0]?.id || '')
   const [session, setSession] = useState(defaultSession())
   const [roll, setRoll] = useState(null)
@@ -126,7 +241,7 @@ function RollCallPanel({ houses }) {
       {!roll ? (
         <div className="card">
           <div className="tt-form-grid">
-            <label>House
+            <label>Boarding house
               <select value={house} onChange={(e) => setHouse(e.target.value)}>
                 {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
               </select>
@@ -172,15 +287,23 @@ function RollCallPanel({ houses }) {
           </div>
         </div>
       )}
+      {amending && <AmendRollCall key={amending} id={amending} onClose={() => setAmending(null)} onSaved={reloadRecent} />}
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 8 }}>Recent roll calls</h3>
         {!recent ? <p className="text-muted">Loading…</p> : recent.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>None yet.</p> : (
           <ul className="tt-setup-list">
             {recent.slice(0, 12).map((r) => (
               <li key={r.id}>
-                <span>{r.house_name} · {r.session_label} · {formatDate(r.date)}{r.completed_at ? '' : ' · not finished'}</span>
-                <span className={r.counts.missing ? 'badge rejected' : 'text-muted'}>
-                  {r.counts.missing ? `${r.counts.missing} missing` : `${r.counts.present || 0} present`}
+                <span>{r.house_name} · {r.session_label} · {formatDate(r.date)}{r.completed_at ? '' : ' · not finished'}
+                  {r.amendments?.length > 0 && <span className="text-muted"> · amended</span>}</span>
+                <span>
+                  <span className={r.counts.missing ? 'badge rejected' : 'text-muted'}>
+                    {r.counts.missing ? `${r.counts.missing} missing` : `${r.counts.present || 0} present`}
+                  </span>
+                  {isAdmin && r.completed_at && (
+                    <button type="button" className="link-button" style={{ width: 'auto', padding: 0, marginLeft: 8 }}
+                      aria-label={`Amend ${r.house_name} ${r.session_label} roll call`} onClick={() => setAmending(r.id)}>Amend</button>
+                  )}
                 </span>
               </li>
             ))}
@@ -192,7 +315,61 @@ function RollCallPanel({ houses }) {
 }
 
 // --- Leave: decide on requests, sign boarders out and in, give leave directly.
-function LeavePanel() {
+// Boarders whose leave only an admin may give, approve or sign out (e.g. a custody order). House staff see the
+// list; admins add and remove. The note is for staff only and never goes to parents or the change log.
+function LeaveRules({ isAdmin, boarders }) {
+  const [rules, reload, loadError] = useLoader(useCallback(() => api.boarding.restrictions.list(), []))
+  const [student, setStudent] = useState('')
+  const [note, setNote] = useState('')
+  const [error, setError] = useState('')
+  async function save(body, done) {
+    setError('')
+    try {
+      await api.boarding.restrictions.set(body)
+      done?.()
+      reload()
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+  const active = (rules || []).filter((r) => r.leave_admin_only)
+  if (!isAdmin && active.length === 0) return null
+  return (
+    <div className="card">
+      <h3 style={{ fontSize: 15, marginBottom: 4 }}>Leave only with admin approval</h3>
+      <Banner error={error || loadError} />
+      {active.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>None.</p> : (
+        <ul className="support-list">
+          {active.map((r) => (
+            <li key={r.student} className="support-row">
+              <span className="leave-rule"><strong>{r.name}</strong>{r.note ? ` · ${r.note}` : ''} <span className="text-muted">· set by {r.set_by_name}</span></span>
+              {isAdmin && (
+                <button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} aria-label={`Remove the rule for ${r.name}`}
+                  onClick={() => save({ student: r.student, leave_admin_only: false, note: '' })}>Remove</button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {isAdmin && (
+        <form onSubmit={(e) => { e.preventDefault(); save({ student: Number(student), leave_admin_only: true, note }, () => { setStudent(''); setNote('') }) }}
+          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 8 }}>
+          <label style={{ flex: '1 1 200px' }}>Boarder needing admin approval
+            <select value={student} onChange={(e) => setStudent(e.target.value)} required>
+              <option value="">Choose…</option>
+              {(boarders || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.house})</option>)}
+            </select>
+          </label>
+          <label style={{ flex: '1 1 200px' }}>Why (staff only)<input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} placeholder="e.g. Court order" /></label>
+          <button type="submit" className="secondary" style={{ width: 'auto' }}>Add rule</button>
+        </form>
+      )}
+      <p className="hint" style={{ marginBottom: 0 }}>House staff can't give, approve or sign out leave for these boarders. Every parent is emailed about their leave.</p>
+    </div>
+  )
+}
+
+function LeavePanel({ me }) {
   const [leave, reload, loadError] = useLoader(useCallback(() => api.boarding.leave.list(), []))
   const [boarders] = useLoader(useCallback(() => api.boarding.boarders(), []))
   const [form, setForm] = useState(null)
@@ -242,7 +419,7 @@ function LeavePanel() {
             <label>Boarder
               <select value={form.student} onChange={set('student')} required>
                 <option value="">Choose…</option>
-                {(boarders || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.house})</option>)}
+                {(boarders || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.house}){b.leave_admin_only ? ' · admin approval only' : ''}</option>)}
               </select>
             </label>
             <label>Kind<select value={form.kind} onChange={set('kind')}>{LEAVE_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
@@ -260,6 +437,7 @@ function LeavePanel() {
         <button type="button" className="secondary" style={{ width: 'auto', marginBottom: 12 }}
           onClick={() => setForm({ student: '', kind: 'weekend', leaving_at: '', returning_at: '', collected_by: '', reason: '' })}>Give leave</button>
       )}
+      <LeaveRules isAdmin={me?.role === 'admin'} boarders={boarders} />
       {groups.map(([title, items]) => (
         <div className="card" key={title}>
           <h3 style={{ fontSize: 15, marginBottom: 4 }}>{title}</h3>
@@ -410,7 +588,7 @@ function SickBayPanel() {
   )
 }
 
-// --- Houses and beds: admins add houses, dorms and beds; boarding staff put students in beds.
+// --- Boarding houses and beds: admins add houses, dorms and beds; boarding staff put students in beds.
 function HousesPanel({ me, houses, reload }) {
   const isAdmin = me?.role === 'admin'
   const [staff, setStaff] = useState([])
@@ -421,6 +599,8 @@ function HousesPanel({ me, houses, reload }) {
   const [results, setResults] = useState([])
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [archived, setArchived] = useState(null)
+  const loadArchived = () => api.boarding.houses.list({ archived: 1 }).then(setArchived).catch(() => setArchived([]))
 
   useEffect(() => { if (isAdmin) api.staff.list().then((s) => setStaff(s.filter((x) => x.is_active !== false))).catch(() => {}) }, [isAdmin])
   useEffect(() => {
@@ -441,6 +621,20 @@ function HousesPanel({ me, houses, reload }) {
       return false
     }
   }
+  // The bed may have been taken since the page loaded: the server says so, and the admin chooses whether to replace.
+  async function assignBed(bed, student) {
+    try {
+      return await api.boarding.assignBed(bed, student)
+    } catch (err) {
+      const text = errorText(err)
+      if (!/is in this bed/.test(text) || !window.confirm(`${text}\n\nReplace them?`)) throw err
+      return api.boarding.assignBed(bed, student, { replace: true })
+    }
+  }
+  const archive = (h) => {
+    if (!window.confirm(`Archive ${h.name}? It disappears from roll calls and lists; its history stays readable.`)) return
+    run(() => api.boarding.houses.archive(h.id), `${h.name} is archived. Its history is kept.`).then((ok) => ok && archived && loadArchived())
+  }
   const toggleStaff = (house, id) => {
     const next = house.staff.includes(id) ? house.staff.filter((x) => x !== id) : [...house.staff, id]
     run(() => api.boarding.houses.update(house.id, { staff: next }), 'House staff saved.')
@@ -459,7 +653,13 @@ function HousesPanel({ me, houses, reload }) {
       {houses.length === 0 && <p className="text-muted">No boarding houses yet.</p>}
       {houses.map((h) => (
         <div className="card" key={h.id}>
-          <h3 style={{ fontSize: 15, margin: '0 0 4px' }}>{h.name}</h3>
+          <div className="support-row">
+            <h3 style={{ fontSize: 15, margin: '0 0 4px' }}>{h.name}</h3>
+            {isAdmin && (
+              <button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} aria-label={`Archive ${h.name}`}
+                onClick={() => archive(h)}>Archive</button>
+            )}
+          </div>
           <p className="hint" style={{ marginTop: 0 }}>House staff: {h.staff_names.length ? h.staff_names.join(', ') : 'none yet'}</p>
           {isAdmin && staff.length > 0 && (
             <details style={{ marginBottom: 8 }}>
@@ -493,7 +693,7 @@ function HousesPanel({ me, houses, reload }) {
                         <ul className="bed-results">
                           {results.map((s) => (
                             <li key={s.id}><button type="button" className="link-button" style={{ width: 'auto', padding: 0 }}
-                              onClick={() => run(() => api.boarding.assignBed(b.id, s.id), `${s.name} is in ${d.name} ${b.name}.`).then(() => { setAssigning(null); setQuery('') })}>
+                              onClick={() => run(() => assignBed(b.id, s.id), `${s.name} is in ${d.name} ${b.name}.`).then(() => { setAssigning(null); setQuery('') })}>
                               {s.name}{s.class_name ? ` · ${s.class_name}` : ''}{s.bed ? ` (now ${s.bed})` : ''}
                             </button></li>
                           ))}
@@ -521,6 +721,22 @@ function HousesPanel({ me, houses, reload }) {
           )}
         </div>
       ))}
+      {isAdmin && (
+        <details className="card" onToggle={(e) => { if (e.currentTarget.open && archived === null) loadArchived() }}>
+          <summary>Archived houses</summary>
+          <p className="hint">A house with roll call history can't be deleted. Archived houses keep their history.</p>
+          {archived === null ? <p className="text-muted">Loading…</p> : archived.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>None.</p> : (
+            <ul className="tt-setup-list">
+              {archived.map((h) => (
+                <li key={h.id}><span>{h.name}</span>
+                  <button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} aria-label={`Bring back ${h.name}`}
+                    onClick={() => run(() => api.boarding.houses.unarchive(h.id), `${h.name} is back.`).then((ok) => ok && loadArchived())}>Bring back</button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+      )}
     </>
   )
 }
@@ -550,8 +766,8 @@ export default function Boarding({ me }) {
       {!houses ? <p className="text-muted">Loading…</p> : (
         <>
           {tab === 'today' && <Today onGo={setTab} />}
-          {tab === 'roll' && (houses.length ? <RollCallPanel houses={houses} /> : <p className="text-muted">Add a boarding house first.</p>)}
-          {tab === 'leave' && <LeavePanel />}
+          {tab === 'roll' && (houses.length ? <RollCallPanel houses={houses} me={me} /> : <p className="text-muted">Add a boarding house first.</p>)}
+          {tab === 'leave' && <LeavePanel me={me} />}
           {tab === 'sick' && <SickBayPanel />}
           {tab === 'houses' && <HousesPanel me={me} houses={houses} reload={loadHouses} />}
         </>

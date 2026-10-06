@@ -90,7 +90,7 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
           </div>
           {data.boarding.missing.length > 0 && (
             <p style={{ margin: '10px 0 0', color: 'var(--stamp-red)' }}>
-              <strong>Missing at the last roll call:</strong> {data.boarding.missing.map((m) => m.name).join(', ')}
+              <strong>Missing, not found yet:</strong> {data.boarding.missing.map((m) => m.name).join(', ')}
             </p>
           )}
         </div>

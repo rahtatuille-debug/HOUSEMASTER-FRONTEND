@@ -238,7 +238,7 @@ export default function Students({ me }) {
               </select>
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
-              <label htmlFor="house">House</label>
+              <label htmlFor="house">Sports house</label>
               <input
                 id="house"
                 value={form.house}
@@ -281,7 +281,7 @@ export default function Students({ me }) {
             <tr>
               <th>Name</th>
               <th>{words.class}</th>
-              <th>House</th>
+              <th>Sports house</th>
               <th>{words.student_id}</th>
               <th>Status</th>
               <th></th>
@@ -302,7 +302,7 @@ export default function Students({ me }) {
                   {s.needs_support && <SupportBadge status="open" />}
                 </td>
                 <td data-label={words.class}>{className(s.school_class)}</td>
-                <td data-label="House">{s.house || '—'}</td>
+                <td data-label="Sports house">{s.house || '—'}</td>
                 <td data-label={words.student_id} className="mono">{s.external_id || '—'}</td>
                 <td data-label="Status">
                   <span className={`badge ${s.is_active ? 'finalized' : 'draft'}`}>

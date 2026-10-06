@@ -103,7 +103,7 @@ export default function GuardianStudents() {
         <article className="card guardian-student-detail">
           <p className="eyebrow">Student progress</p>
           <h2>{selected.first_name} {selected.last_name}</h2>
-          <p className="text-muted">{selected.school_class_name || 'Class not assigned'}{selected.house ? ` · ${selected.house} House` : ''}</p>
+          <p className="text-muted">{selected.school_class_name || 'Class not assigned'}{selected.house ? ` · Sports house: ${selected.house}` : ''}</p>
           {profile?.support && <div style={{ margin: '12px 0' }}><SupportCard concern={profile.support} forParents /></div>}
           <div className="guardian-subtabs" role="tablist" aria-label="Student information">
             {[...TABS, ...(school?.has_boarding && selected.mode_of_learning === 'boarding' ? ['boarding'] : [])].map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
@@ -120,7 +120,7 @@ export default function GuardianStudents() {
                   <ul className="fact-list">
                     <li><span>{words.class}</span> {selected.school_class_name || '—'}</li>
                     <li><span>{words.student_id}</span> {selected.external_id || '—'}</li>
-                    <li><span>House</span> {selected.house || '—'}</li>
+                    <li><span>Sports house</span> {selected.house || '—'}</li>
                     <li><span>Date of birth</span> {formatDate(selected.date_of_birth)}{profile.age != null && ` (age ${profile.age})`}</li>
                     <li><span>Gender</span> {GENDERS[selected.gender] || '—'}</li>
                     <li><span>Mode of learning</span> {MODES[selected.mode_of_learning] || '—'}</li>
@@ -186,7 +186,7 @@ export default function GuardianStudents() {
     <section>
       <div className="panel-header"><div><h2>Students</h2><p className="text-muted">View your children's school progress.</p></div></div>
       {error && <div className="error-banner">{error}<button type="button" className="secondary retry-button" onClick={loadStudents}>Retry</button></div>}
-      {loading || detailLoading ? <div className="announcement-skeleton" aria-label="Loading students"><span /><span /></div> : students.length === 0 ? <div className="empty-state"><h3>No students are linked to this account yet.</h3><p>Please contact the school office.</p></div> : <div className="guardian-student-list">{students.map((student) => <article className="card guardian-student-card" key={student.id}><div><p className="eyebrow">{student.school_class_name || 'Student'}</p><h3>{student.first_name} {student.last_name}</h3><p className="text-muted">{student.house ? `${student.house} House` : 'School student'}</p></div><button type="button" onClick={() => openStudent(student.id)}>View progress</button></article>)}</div>}
+      {loading || detailLoading ? <div className="announcement-skeleton" aria-label="Loading students"><span /><span /></div> : students.length === 0 ? <div className="empty-state"><h3>No students are linked to this account yet.</h3><p>Please contact the school office.</p></div> : <div className="guardian-student-list">{students.map((student) => <article className="card guardian-student-card" key={student.id}><div><p className="eyebrow">{student.school_class_name || 'Student'}</p><h3>{student.first_name} {student.last_name}</h3><p className="text-muted">{student.house ? `Sports house: ${student.house}` : 'School student'}</p></div><button type="button" onClick={() => openStudent(student.id)}>View progress</button></article>)}</div>}
     </section>
   )
 }

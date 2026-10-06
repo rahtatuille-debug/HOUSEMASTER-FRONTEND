@@ -914,11 +914,17 @@ export const api = {
     overview: () => request('/api/boarding/overview/'),
     boarders: (house) => request('/api/boarding/boarders/', { params: house ? { house } : undefined }),
     students: (q) => request('/api/boarding/students/', { params: { q } }),
+    // Students marked as boarders who have no bed yet.
+    unbedded: () => request('/api/boarding/unbedded/'),
     houses: {
-      list: () => request('/api/boarding/houses/'),
+      // params: { archived: 1 } for archived houses (their history stays readable)
+      list: (params) => request('/api/boarding/houses/', { params }),
       create: (body) => request('/api/boarding/houses/', { method: 'POST', body }),
       update: (id, body) => request(`/api/boarding/houses/${id}/`, { method: 'PATCH', body }),
       remove: (id) => request(`/api/boarding/houses/${id}/`, { method: 'DELETE' }),
+      // A house with history can't be deleted: archive it instead.
+      archive: (id) => request(`/api/boarding/houses/${id}/archive/`, { method: 'POST' }),
+      unarchive: (id) => request(`/api/boarding/houses/${id}/unarchive/`, { method: 'POST' }),
     },
     dorms: {
       create: (body) => request('/api/boarding/dorms/', { method: 'POST', body }),
@@ -926,13 +932,27 @@ export const api = {
       addBeds: (id, count) => request(`/api/boarding/dorms/${id}/beds/`, { method: 'POST', body: { count } }),
     },
     // student: an id to put them in the bed, or null to empty it
-    assignBed: (bed, student) => request(`/api/boarding/beds/${bed}/`, { method: 'POST', body: { student } }),
+    // opts.replace: the bed is taken and the admin chose to move its occupant out (they then need a bed).
+    assignBed: (bed, student, opts) => request(`/api/boarding/beds/${bed}/`, { method: 'POST', body: { student, ...(opts?.replace ? { replace: true } : {}) } }),
     removeBed: (bed) => request(`/api/boarding/beds/${bed}/`, { method: 'DELETE' }),
     rollCalls: {
       list: (params) => listRequest('/api/boarding/roll-calls/', { params }),
       get: (id) => request(`/api/boarding/roll-calls/${id}/`),
       start: (house, session) => request('/api/boarding/roll-calls/', { method: 'POST', body: { house, session } }),
       mark: (id, entries, complete) => request(`/api/boarding/roll-calls/${id}/mark/`, { method: 'POST', body: { entries, complete } }),
+      // Admins only, for a finished roll call: recorded with the reason and before/after.
+      amend: (id, entries, reason) => request(`/api/boarding/roll-calls/${id}/amend/`, { method: 'POST', body: { entries, reason } }),
+    },
+    // A boarder marked missing stays open until a person resolves it (a later roll call never closes it).
+    absences: {
+      list: (params) => listRequest('/api/boarding/absences/', { params }),
+      // resolution: found, returned, on_leave or left_school
+      resolve: (id, resolution, note) => request(`/api/boarding/absences/${id}/resolve/`, { method: 'POST', body: { resolution, note } }),
+    },
+    // Boarders whose leave only an admin may give, approve or sign out. Staff read; admins set {student, leave_admin_only, note}.
+    restrictions: {
+      list: () => request('/api/boarding/restrictions/'),
+      set: (body) => request('/api/boarding/restrictions/', { method: 'POST', body }),
     },
     leave: {
       list: (params) => listRequest('/api/boarding/leave/', { params }),
