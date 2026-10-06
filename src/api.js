@@ -973,6 +973,8 @@ export const api = {
   // The timetable: admins change it, all staff read it.
   timetable: {
     week: (params) => request('/api/timetable/week/', { params }),
+    // Lessons with no teacher, or a teacher whose account was deactivated.
+    unstaffed: () => request('/api/timetable/unstaffed/'),
     schoolWeek: {
       get: () => request('/api/timetable/school-week/'),
       update: (days) => request('/api/timetable/school-week/', { method: 'PATCH', body: { days } }),

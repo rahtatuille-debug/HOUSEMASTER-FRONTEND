@@ -69,6 +69,8 @@ export default function SubjectChoicesCard({ me }) {
       setData(d)
       setDirty(false)
       setNotice('Subject choices saved.')
+      // The options may now put lessons that share a slot in front of the same students.
+      if (d?.timetable_clashes?.length) setError(`Saved, but the timetable now clashes: ${d.timetable_clashes.join(' ')} Move one of the lessons on the Timetable page.`)
     } catch (err) {
       setError(err.message)
     } finally {

@@ -87,6 +87,32 @@ describe('Timetable page', () => {
     expect(create.mock.calls.map((c) => c[0].period)).toEqual([1, 4])
   })
 
+  it('F: a double lesson can give the second period its own teacher and room', async () => {
+    const create = vi.fn(() => Promise.resolve({}))
+    const twoLessons = { ...week, periods: [week.periods[0], { id: 4, name: 'Lesson 1b', start_time: '08:40',
+      end_time: '09:20', is_break: false }], lessons: [] }
+    mockApi.current = adminApi({ 'timetable.lessons.create': create, 'timetable.week': vi.fn(() => Promise.resolve(twoLessons)) })
+    render(<Timetable me={{ role: 'admin' }} />)
+    const table = (await screen.findAllByRole('table'))[0]
+    fireEvent.click(within(table).getByRole('button', { name: 'Add a lesson on Monday Lesson 1' }))
+    fireEvent.change(screen.getByLabelText('Subject'), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('Teacher'), { target: { value: '7' } })
+    fireEvent.click(screen.getByLabelText(/Double lesson \(also Lesson 1b\)/))
+    fireEvent.change(screen.getByLabelText('Teacher in Lesson 1b'), { target: { value: '8' } })
+    fireEvent.change(screen.getByLabelText('Room in Lesson 1b'), { target: { value: '3' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add lesson' }))
+    expect(await screen.findByText('Double lesson added (Lesson 1 and Lesson 1b).')).toBeInTheDocument()
+    expect(create.mock.calls.map((c) => [c[0].period, c[0].teacher, c[0].room])).toEqual([[1, 7, null], [4, 8, 3]])
+  })
+
+  it('F: admins see lessons with no teacher, or a deactivated one', async () => {
+    mockApi.current = adminApi({ 'timetable.unstaffed': () => Promise.resolve([{ id: 9, day: 1, day_name: 'Monday', period_name: 'Lesson 1',
+      class_name: '10A', label: 'Mathematics', teacher_name: 'Mr Gone (inactive)', room_name: 'Lab 1' }]) })
+    render(<Timetable me={{ role: 'admin' }} />)
+    expect(await screen.findByText('Unstaffed lessons (1)')).toBeInTheDocument()
+    expect(screen.getByText(/Mr Gone \(inactive\)/)).toBeInTheDocument()
+  })
+
   it('has no double option before a break', async () => {
     mockApi.current = adminApi()
     render(<Timetable me={{ role: 'admin' }} />)
