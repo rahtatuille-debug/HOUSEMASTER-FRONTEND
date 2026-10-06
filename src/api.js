@@ -724,7 +724,9 @@ export const api = {
     list: (params) => listRequest('/api/admissions/applications/', { params }),
     update: (id, body) => request(`/api/admissions/applications/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/admissions/applications/${id}/`, { method: 'DELETE' }),
-    enrol: (id, schoolClass) => request(`/api/admissions/applications/${id}/enrol/`, { method: 'POST', body: { school_class: schoolClass } }),
+    // opts.differentChild: the admin confirmed that a student with the same name and birthday is someone else.
+    enrol: (id, schoolClass, opts) => request(`/api/admissions/applications/${id}/enrol/`, { method: 'POST',
+      body: { school_class: schoolClass, ...(opts?.differentChild ? { different_child: true } : {}) } }),
     summary: () => request('/api/admissions/applications/summary/'),
     settings: () => request('/api/admissions/settings/'),
     saveSettings: (body) => request('/api/admissions/settings/', { method: 'PATCH', body }),

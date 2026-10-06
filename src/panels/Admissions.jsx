@@ -139,9 +139,17 @@ function ApplicationDetail({ app, classes, onChanged, onClose }) {
     const told = body.status && TOLD[body.status] && form.tell_family ? ` The family has been emailed (${TOLD[body.status]}).` : ''
     onChanged(`Saved ${app.first_name} ${app.last_name}.${told}`)
   })
-  const enrol = () => run(async () => {
-    const result = await api.admissions.enrol(app.id, Number(schoolClass))
-    onChanged(result.message)
+  // A child with the same name and date of birth as a student is refused unless the admin says it's someone else.
+  const [match, setMatch] = useState(null)
+  const enrol = (differentChild = false) => run(async () => {
+    setMatch(null)
+    try {
+      const result = await api.admissions.enrol(app.id, Number(schoolClass), differentChild ? { differentChild: true } : undefined)
+      onChanged(result.message)
+    } catch (err) {
+      if (err?.data?.existing_student) setMatch(err.data.existing_student)
+      throw err
+    }
   })
   const remove = () => run(async () => {
     if (!window.confirm(`Delete ${app.first_name} ${app.last_name}'s application? This can't be undone.`)) return
@@ -215,8 +223,14 @@ function ApplicationDetail({ app, classes, onChanged, onClose }) {
                 {(fitting.length ? fitting : classes).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </label>
-            <button type="button" disabled={busy || !schoolClass} style={{ width: 'auto' }} onClick={enrol}>Enrol</button>
+            <button type="button" disabled={busy || !schoolClass} style={{ width: 'auto' }} onClick={() => enrol()}>Enrol</button>
           </div>
+          {match && (
+            <button type="button" className="secondary" disabled={busy} style={{ width: 'auto', marginTop: 8 }}
+              onClick={() => { if (window.confirm(`Enrol ${app.first_name} ${app.last_name} as a new student, separate from the existing one? This is recorded.`)) enrol(true) }}>
+              It's a different child: enrol anyway
+            </button>
+          )}
         </div>
       )}
     </div>

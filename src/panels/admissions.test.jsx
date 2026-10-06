@@ -159,7 +159,7 @@ describe('Admissions page', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Zara Patel' }))
     fireEvent.change(screen.getByLabelText('Class'), { target: { value: '21' } })
     fireEvent.click(screen.getByRole('button', { name: 'Enrol' }))
-    await waitFor(() => expect(enrol).toHaveBeenCalledWith(9, 21))
+    await waitFor(() => expect(enrol).toHaveBeenCalledWith(9, 21, undefined))
     expect(await screen.findByText(/is enrolled in 7A/)).toBeInTheDocument()
   })
 
@@ -229,6 +229,21 @@ describe('Admissions page', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Closed/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Zara Patel' }))
     expect(screen.getByText('ADM/41')).toBeInTheDocument()
+  })
+
+  it('offers "Enrol anyway" when the child matches an existing student, and sends it', async () => {
+    const err = Object.assign(new Error('Bad request'), { data: { detail: 'Zara Patel, born 02 Mar 2015, is already a student here.', existing_student: 41 } })
+    const enrol = vi.fn((id, cls, opts) => (opts?.differentChild ? Promise.resolve({ message: 'Zara Patel is enrolled in 7A.' }) : Promise.reject(err)))
+    mockApi.current = adminApi({ 'admissions.list': vi.fn(() => Promise.resolve([{ ...app, status: 'offered', status_label: 'Offered a place' }])),
+      'admissions.enrol': enrol })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<Admissions />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Zara Patel' }))
+    fireEvent.change(screen.getByLabelText('Class'), { target: { value: '21' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Enrol' }))
+    fireEvent.click(await screen.findByRole('button', { name: /different child: enrol anyway/i }))
+    await waitFor(() => expect(enrol).toHaveBeenLastCalledWith(9, 21, { differentChild: true }))
+    expect(await screen.findByText(/is enrolled in 7A/)).toBeInTheDocument()
   })
 
   it('shows the family\'s yes/no answer about needs', async () => {
