@@ -128,6 +128,29 @@ async function page(request) {
   }
 }
 
+// Phone and browser notifications (src/push.js): a short notice from the
+// school's server. A tap opens HouseMaster, never another site.
+self.addEventListener('push', (event) => {
+  let data = {}
+  try { data = event.data ? event.data.json() : {} } catch { data = {} }
+  event.waitUntil(self.registration.showNotification(String(data.title || 'HouseMaster'), {
+    body: String(data.body || 'There is something new in HouseMaster.'),
+    icon: '/icons/icon-192.png',
+    data: { url: typeof data.url === 'string' ? data.url : '/' },
+  }))
+})
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  let url = new URL('/', self.location.origin)
+  try { url = new URL(event.notification.data?.url || '/', self.location.origin) } catch { /* keep the home page */ }
+  if (url.origin !== self.location.origin) url = new URL('/', self.location.origin)
+  event.waitUntil(self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((tabs) => {
+    const open = tabs.find((t) => new URL(t.url).origin === self.location.origin)
+    return open ? open.focus().then((t) => t && t.navigate ? t.navigate(url.href) : t) : self.clients.openWindow(url.href)
+  }))
+})
+
 // Scripts, styles, fonts and icons never change under the same name, so the
 // copy on the phone is used first.
 async function stored(request) {

@@ -743,6 +743,12 @@ export const api = {
   },
   guardianMe: () => request('/api/guardian-me/'),
   updateGuardianMe: (body) => request('/api/guardian-me/', { method: 'PATCH', body }),
+  // Phone and browser notifications for this device (src/push.js).
+  push: {
+    settings: (endpoint) => request('/api/push/', { params: endpoint ? { endpoint } : undefined }),
+    subscribe: (subscription) => request('/api/push/subscribe/', { method: 'POST', body: subscription }),
+    unsubscribe: (endpoint) => request('/api/push/unsubscribe/', { method: 'POST', body: { endpoint } }),
+  },
   requestPasswordReset,
   confirmPasswordReset,
 
