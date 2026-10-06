@@ -315,7 +315,61 @@ function RollCallPanel({ houses, me }) {
 }
 
 // --- Leave: decide on requests, sign boarders out and in, give leave directly.
-function LeavePanel() {
+// Boarders whose leave only an admin may give, approve or sign out (e.g. a custody order). House staff see the
+// list; admins add and remove. The note is for staff only and never goes to parents or the change log.
+function LeaveRules({ isAdmin, boarders }) {
+  const [rules, reload, loadError] = useLoader(useCallback(() => api.boarding.restrictions.list(), []))
+  const [student, setStudent] = useState('')
+  const [note, setNote] = useState('')
+  const [error, setError] = useState('')
+  async function save(body, done) {
+    setError('')
+    try {
+      await api.boarding.restrictions.set(body)
+      done?.()
+      reload()
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+  const active = (rules || []).filter((r) => r.leave_admin_only)
+  if (!isAdmin && active.length === 0) return null
+  return (
+    <div className="card">
+      <h3 style={{ fontSize: 15, marginBottom: 4 }}>Leave only with admin approval</h3>
+      <Banner error={error || loadError} />
+      {active.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>None.</p> : (
+        <ul className="support-list">
+          {active.map((r) => (
+            <li key={r.student} className="support-row">
+              <span className="leave-rule"><strong>{r.name}</strong>{r.note ? ` · ${r.note}` : ''} <span className="text-muted">· set by {r.set_by_name}</span></span>
+              {isAdmin && (
+                <button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} aria-label={`Remove the rule for ${r.name}`}
+                  onClick={() => save({ student: r.student, leave_admin_only: false, note: '' })}>Remove</button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {isAdmin && (
+        <form onSubmit={(e) => { e.preventDefault(); save({ student: Number(student), leave_admin_only: true, note }, () => { setStudent(''); setNote('') }) }}
+          style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 8 }}>
+          <label style={{ flex: '1 1 200px' }}>Boarder needing admin approval
+            <select value={student} onChange={(e) => setStudent(e.target.value)} required>
+              <option value="">Choose…</option>
+              {(boarders || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.house})</option>)}
+            </select>
+          </label>
+          <label style={{ flex: '1 1 200px' }}>Why (staff only)<input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} placeholder="e.g. Court order" /></label>
+          <button type="submit" className="secondary" style={{ width: 'auto' }}>Add rule</button>
+        </form>
+      )}
+      <p className="hint" style={{ marginBottom: 0 }}>House staff can't give, approve or sign out leave for these boarders. Every parent is emailed about their leave.</p>
+    </div>
+  )
+}
+
+function LeavePanel({ me }) {
   const [leave, reload, loadError] = useLoader(useCallback(() => api.boarding.leave.list(), []))
   const [boarders] = useLoader(useCallback(() => api.boarding.boarders(), []))
   const [form, setForm] = useState(null)
@@ -365,7 +419,7 @@ function LeavePanel() {
             <label>Boarder
               <select value={form.student} onChange={set('student')} required>
                 <option value="">Choose…</option>
-                {(boarders || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.house})</option>)}
+                {(boarders || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.house}){b.leave_admin_only ? ' · admin approval only' : ''}</option>)}
               </select>
             </label>
             <label>Kind<select value={form.kind} onChange={set('kind')}>{LEAVE_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
@@ -383,6 +437,7 @@ function LeavePanel() {
         <button type="button" className="secondary" style={{ width: 'auto', marginBottom: 12 }}
           onClick={() => setForm({ student: '', kind: 'weekend', leaving_at: '', returning_at: '', collected_by: '', reason: '' })}>Give leave</button>
       )}
+      <LeaveRules isAdmin={me?.role === 'admin'} boarders={boarders} />
       {groups.map(([title, items]) => (
         <div className="card" key={title}>
           <h3 style={{ fontSize: 15, marginBottom: 4 }}>{title}</h3>
@@ -566,6 +621,16 @@ function HousesPanel({ me, houses, reload }) {
       return false
     }
   }
+  // The bed may have been taken since the page loaded: the server says so, and the admin chooses whether to replace.
+  async function assignBed(bed, student) {
+    try {
+      return await api.boarding.assignBed(bed, student)
+    } catch (err) {
+      const text = errorText(err)
+      if (!/is in this bed/.test(text) || !window.confirm(`${text}\n\nReplace them?`)) throw err
+      return api.boarding.assignBed(bed, student, { replace: true })
+    }
+  }
   const archive = (h) => {
     if (!window.confirm(`Archive ${h.name}? It disappears from roll calls and lists; its history stays readable.`)) return
     run(() => api.boarding.houses.archive(h.id), `${h.name} is archived. Its history is kept.`).then((ok) => ok && archived && loadArchived())
@@ -628,7 +693,7 @@ function HousesPanel({ me, houses, reload }) {
                         <ul className="bed-results">
                           {results.map((s) => (
                             <li key={s.id}><button type="button" className="link-button" style={{ width: 'auto', padding: 0 }}
-                              onClick={() => run(() => api.boarding.assignBed(b.id, s.id), `${s.name} is in ${d.name} ${b.name}.`).then(() => { setAssigning(null); setQuery('') })}>
+                              onClick={() => run(() => assignBed(b.id, s.id), `${s.name} is in ${d.name} ${b.name}.`).then(() => { setAssigning(null); setQuery('') })}>
                               {s.name}{s.class_name ? ` · ${s.class_name}` : ''}{s.bed ? ` (now ${s.bed})` : ''}
                             </button></li>
                           ))}
@@ -702,7 +767,7 @@ export default function Boarding({ me }) {
         <>
           {tab === 'today' && <Today onGo={setTab} />}
           {tab === 'roll' && (houses.length ? <RollCallPanel houses={houses} me={me} /> : <p className="text-muted">Add a boarding house first.</p>)}
-          {tab === 'leave' && <LeavePanel />}
+          {tab === 'leave' && <LeavePanel me={me} />}
           {tab === 'sick' && <SickBayPanel />}
           {tab === 'houses' && <HousesPanel me={me} houses={houses} reload={loadHouses} />}
         </>

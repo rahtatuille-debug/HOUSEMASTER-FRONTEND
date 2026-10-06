@@ -194,6 +194,55 @@ describe('Boarding page', () => {
     await waitFor(() => expect(assign).toHaveBeenCalledWith(101, 12))
     expect(screen.queryByRole('button', { name: 'Add house' })).toBeNull()  // only admins add houses
   })
+
+  it('X-1: if the bed was taken meanwhile, asks before replacing who is in it', async () => {
+    const assign = vi.fn()
+      .mockImplementationOnce(() => Promise.reject(new Error('Zed K is in this bed. Move them out first, or choose to replace them (they will then need a bed).')))
+      .mockImplementationOnce(() => Promise.resolve({}))
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    mockApi.current = staffApi({ 'boarding.assignBed': assign,
+      'boarding.students': () => Promise.resolve([{ id: 12, name: 'Dee K', class_name: '2 East', bed: '' }]) })
+    render(<Boarding me={{ role: 'admin' }} />)
+    await screen.findByText('Missing: not found yet')
+    tab('Boarding houses and beds')
+    fireEvent.click(screen.getByRole('button', { name: 'Put someone here' }))
+    fireEvent.change(screen.getByLabelText('Who sleeps in Dorm A Bed 2'), { target: { value: 'Dee' } })
+    fireEvent.click(await screen.findByRole('button', { name: 'Dee K · 2 East' }))
+    await waitFor(() => expect(assign).toHaveBeenLastCalledWith(101, 12, { replace: true }))
+    expect(confirm).toHaveBeenCalledWith(expect.stringMatching(/Zed K is in this bed/))
+    confirm.mockRestore()
+  })
+
+  it('X-3: an admin sets "leave only with admin approval"; the boarder is flagged in the leave form', async () => {
+    const setRule = vi.fn(() => Promise.resolve({}))
+    mockApi.current = staffApi({ 'boarding.leave.list': () => Promise.resolve([]),
+      'boarding.boarders': () => Promise.resolve(boarders.map((b) => ({ ...b, leave_admin_only: b.id === 8 }))),
+      'boarding.restrictions.list': () => Promise.resolve([{ student: 8, name: 'Brian K', leave_admin_only: true, note: 'Court order', set_by_name: 'Head' }]),
+      'boarding.restrictions.set': setRule })
+    render(<Boarding me={{ role: 'admin' }} />)
+    await screen.findByText('Missing: not found yet')
+    tab('Leave')
+    expect(await screen.findByText('Brian K', { selector: '.leave-rule strong' })).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Boarder needing admin approval'), { target: { value: '7' } })
+    fireEvent.change(screen.getByLabelText('Why (staff only)'), { target: { value: 'Custody' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add rule' }))
+    await waitFor(() => expect(setRule).toHaveBeenCalledWith({ student: 7, leave_admin_only: true, note: 'Custody' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove the rule for Brian K' }))
+    await waitFor(() => expect(setRule).toHaveBeenCalledWith({ student: 8, leave_admin_only: false, note: '' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Give leave' }))
+    expect(screen.getByRole('option', { name: /Brian K .*admin approval only/ })).toBeInTheDocument()
+  })
+
+  it('X-3: house staff see the rule but cannot change it', async () => {
+    mockApi.current = staffApi({ 'boarding.leave.list': () => Promise.resolve([]),
+      'boarding.restrictions.list': () => Promise.resolve([{ student: 8, name: 'Brian K', leave_admin_only: true, note: '', set_by_name: 'Head' }]) })
+    render(<Boarding me={{ role: 'teacher' }} />)
+    await screen.findByText('Missing: not found yet')
+    tab('Leave')
+    expect(await screen.findByText('Brian K', { selector: '.leave-rule strong' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Add rule' })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Remove the rule/ })).toBeNull()
+  })
 })
 
 describe('Teacher home', () => {

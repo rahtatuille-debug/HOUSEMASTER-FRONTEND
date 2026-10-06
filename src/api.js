@@ -887,7 +887,8 @@ export const api = {
       addBeds: (id, count) => request(`/api/boarding/dorms/${id}/beds/`, { method: 'POST', body: { count } }),
     },
     // student: an id to put them in the bed, or null to empty it
-    assignBed: (bed, student) => request(`/api/boarding/beds/${bed}/`, { method: 'POST', body: { student } }),
+    // opts.replace: the bed is taken and the admin chose to move its occupant out (they then need a bed).
+    assignBed: (bed, student, opts) => request(`/api/boarding/beds/${bed}/`, { method: 'POST', body: { student, ...(opts?.replace ? { replace: true } : {}) } }),
     removeBed: (bed) => request(`/api/boarding/beds/${bed}/`, { method: 'DELETE' }),
     rollCalls: {
       list: (params) => listRequest('/api/boarding/roll-calls/', { params }),
@@ -902,6 +903,11 @@ export const api = {
       list: (params) => listRequest('/api/boarding/absences/', { params }),
       // resolution: found, returned, on_leave or left_school
       resolve: (id, resolution, note) => request(`/api/boarding/absences/${id}/resolve/`, { method: 'POST', body: { resolution, note } }),
+    },
+    // Boarders whose leave only an admin may give, approve or sign out. Staff read; admins set {student, leave_admin_only, note}.
+    restrictions: {
+      list: () => request('/api/boarding/restrictions/'),
+      set: (body) => request('/api/boarding/restrictions/', { method: 'POST', body }),
     },
     leave: {
       list: (params) => listRequest('/api/boarding/leave/', { params }),
