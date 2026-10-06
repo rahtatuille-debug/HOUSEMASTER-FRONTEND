@@ -108,6 +108,14 @@ export function StudentTable({ students: given, showClass, showYear, onOpenStude
   const LIMIT = 15
   const shown = showAll ? students : students.slice(0, LIMIT)
   const placeText = (s) => (placeOf(s) == null ? '—' : String(placeOf(s)))
+  // What a position is based on, and why there is none (reporting/rankings.py).
+  const placeTitle = (s) => {
+    const parts = [ofCount(s) && placeOf(s) != null ? `${placeText(s)} of ${ofCount(s)}` : null,
+      mode === 'overall' && s.basis ? `based on ${s.basis.subjects} subjects, ${s.basis.marks} marks` : null].filter(Boolean)
+    return parts.length ? parts.join(' · ') : undefined
+  }
+  const whyNot = (s) => (mode === 'overall' && placeOf(s) == null ? s.not_ranked_label
+    : mode === 'improved' && placeOf(s) == null ? s.improvement_note : '') || ''
 
   return (
     <div className="card">
@@ -145,12 +153,13 @@ export function StudentTable({ students: given, showClass, showYear, onOpenStude
         <tbody>
           {shown.map((s) => (
             <tr key={s.id}>
-              {ranked && <td className="text-muted" title={ofCount(s) ? `${placeText(s)} of ${ofCount(s)}` : undefined}>{placeText(s)}</td>}
+              {ranked && <td className="text-muted" title={placeTitle(s)}>{placeText(s)}</td>}
               <td>
                 <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: 0 }} onClick={() => onOpenStudent(s.id)}>
                   {s.name}
                 </button>
                 <SupportBadge status={s.support} />
+                {whyNot(s) && <div className="hint" style={{ margin: 0 }}>{whyNot(s)}</div>}
               </td>
               {showClass && <td>{showYear ? [s.year_group_name, s.class_name].filter(Boolean).join(' · ') || '—' : s.class_name || '—'}</td>}
               {sections.size > 1 && <td>{s.section || '—'}</td>}
