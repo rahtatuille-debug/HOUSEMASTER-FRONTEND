@@ -76,6 +76,20 @@ describe('Public application form', () => {
     expect(await screen.findByText(/0712 345 678 or \+254 712 345 678/)).toBeInTheDocument()
   })
 
+  it('asks a yes/no question about needs, not for health details', async () => {
+    const submit = vi.fn(() => Promise.resolve({ detail: 'ok' }))
+    mockApi.current = deepApiMock({ applyInfo: () => Promise.resolve(info), submitApplication: submit })
+    const { container } = render(<Apply token="tok" onSignIn={() => {}} />)
+    await screen.findByText('Welcome to Alpha.')
+    expect(container.querySelector('textarea#ap-medical')).toBeNull()
+    fireEvent.change(screen.getByLabelText(/health or learning needs we should discuss/), { target: { value: 'yes' } })
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'priya@example.test' } })
+    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.submit(container.querySelector('form'))
+    await waitFor(() => expect(submit).toHaveBeenCalledWith('tok', expect.objectContaining({ has_needs: true })))
+    expect(submit.mock.calls[0][1]).not.toHaveProperty('medical_notes')
+  })
+
   it('says when the form is closed', async () => {
     mockApi.current = deepApiMock({ applyInfo: () => Promise.reject(new Error("This application form isn't open.")) })
     render(<Apply token="tok" onSignIn={() => {}} />)
@@ -215,5 +229,12 @@ describe('Admissions page', () => {
     fireEvent.click(screen.getByRole('tab', { name: /Closed/ }))
     fireEvent.click(await screen.findByRole('button', { name: 'Zara Patel' }))
     expect(screen.getByText('ADM/41')).toBeInTheDocument()
+  })
+
+  it('shows the family\'s yes/no answer about needs', async () => {
+    mockApi.current = adminApi({ 'admissions.list': vi.fn(() => Promise.resolve([{ ...app, has_needs: true }])) })
+    render(<Admissions />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Zara Patel' }))
+    expect(screen.getByText(/Yes: ask the family after an offer/)).toBeInTheDocument()
   })
 })

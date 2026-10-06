@@ -167,7 +167,8 @@ function ApplicationDetail({ app, classes, onChanged, onClose }) {
         {row('Gender', app.gender)}
         {row('Current school', app.current_school)}
         {row('Day or boarding', app.mode_of_learning)}
-        {row('Health or learning needs', app.medical_notes)}
+        {row('Needs to discuss', app.has_needs === true ? 'Yes: ask the family after an offer' : app.has_needs === false ? 'No' : '')}
+        {row('Health or learning needs (older application)', app.medical_notes)}
         {row('From the family', app.notes)}
         {row('Parent', `${app.parent_name}${app.relationship ? ` (${app.relationship})` : ''}`)}
         {row('Email', <a href={`mailto:${app.parent_email}`}>{app.parent_email}</a>)}

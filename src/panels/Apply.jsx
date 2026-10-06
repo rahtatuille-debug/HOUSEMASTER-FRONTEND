@@ -15,7 +15,7 @@ export default function Apply({ token, onSignIn }) {
   const [loadError, setLoadError] = useState('')
   const [form, setForm] = useState({
     first_name: '', last_name: '', date_of_birth: '', gender: '', year_group: '', start: '', current_school: '',
-    mode_of_learning: 'day', medical_notes: '', notes: '', parent_name: '', parent_email: '', parent_phone: '',
+    mode_of_learning: 'day', has_needs: '', notes: '', parent_name: '', parent_email: '', parent_phone: '',
     relationship: '', website: '',
   })
   const [agreed, setAgreed] = useState(false)
@@ -35,7 +35,8 @@ export default function Apply({ token, onSignIn }) {
     setError('')
     setSubmitting(true)
     try {
-      const body = { ...form, consent: agreed, year_group: form.year_group ? Number(form.year_group) : null }
+      const body = { ...form, consent: agreed, year_group: form.year_group ? Number(form.year_group) : null,
+        has_needs: form.has_needs === '' ? null : form.has_needs === 'yes' }
       await api.submitApplication(token, body)
       setSent(form.parent_email)
     } catch (err) {
@@ -96,7 +97,11 @@ export default function Apply({ token, onSignIn }) {
                   <option value="day">Day</option><option value="boarding">Boarding</option>
                 </select>
               ))}
-              {field('ap-medical', 'Health or learning needs the school should know about', <textarea id="ap-medical" rows={2} value={form.medical_notes} onChange={set('medical_notes')} />)}
+              {field('ap-needs', 'Does your child have health or learning needs we should discuss?', (
+                <select id="ap-needs" value={form.has_needs} onChange={set('has_needs')}>
+                  <option value="">Prefer not to say</option><option value="yes">Yes</option><option value="no">No</option>
+                </select>
+              ), 'Please don\u2019t give details here: if a place is offered, the school will ask you privately.')}
 
               <h3 style={{ fontSize: 15 }}>You</h3>
               {field('ap-parent', 'Your full name', <input id="ap-parent" value={form.parent_name} onChange={set('parent_name')} required autoComplete="name" />)}
