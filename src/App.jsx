@@ -15,6 +15,8 @@ import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
 import AcceptGuardianInvite from './panels/AcceptGuardianInvite.jsx'
 import JoinClass from './panels/JoinClass.jsx'
+import Apply from './panels/Apply.jsx'
+import ConfirmApplication from './panels/ConfirmApplication.jsx'
 import ForgotPassword from './panels/ForgotPassword.jsx'
 import ResetPassword from './panels/ResetPassword.jsx'
 import Students from './panels/Students.jsx'
@@ -36,6 +38,7 @@ import Performance from './panels/Performance.jsx'
 import Support from './panels/Support.jsx'
 import Timetable from './panels/Timetable.jsx'
 import Boarding from './panels/Boarding.jsx'
+import Admissions from './panels/Admissions.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
@@ -58,6 +61,7 @@ const TABS = [
   { key: 'setup', label: 'Setup', component: Setup },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
   { key: 'parents', label: 'Parents', component: GuardianInvites, adminOnly: true },
+  { key: 'admissions', label: 'Admissions', component: Admissions, adminOnly: true },
   { key: 'activity', label: 'Activity log', component: Activity, adminOnly: true },
   { key: 'guide', label: 'Guide', component: Guide },
   { key: 'profile', label: 'Profile', component: Profile },
@@ -109,6 +113,16 @@ function getGuardianInviteToken() {
 
 function getJoinToken() {
   const match = window.location.pathname.match(/^\/join\/([^/]+)\/?$/)
+  return match ? match[1] : null
+}
+
+function getConfirmApplicationToken() {
+  const match = window.location.pathname.match(/^\/apply\/confirm\/([^/]+)\/?$/)
+  return match ? match[1] : null
+}
+
+function getApplyToken() {
+  const match = window.location.pathname.match(/^\/apply\/([^/]+)\/?$/)
   return match ? match[1] : null
 }
 
@@ -164,6 +178,8 @@ export default function App() {
   const [guardianInviteToken, setGuardianInviteToken] = useState(getGuardianInviteToken())
   const [resetToken, setResetToken] = useState(getResetToken())
   const [joinToken, setJoinToken] = useState(getJoinToken())
+  const [applyToken, setApplyToken] = useState(getApplyToken())
+  const [confirmApplicationToken, setConfirmApplicationToken] = useState(getConfirmApplicationToken())
   const [loggedIn, setLoggedIn] = useState(api.isLoggedIn())
   const [me, setMe] = useState(null)
   // 'staff' | 'guardian' | null (unknown until /api/me/ or /api/guardian-me/ resolves)
@@ -336,6 +352,14 @@ export default function App() {
 
   if (guardianInviteToken) {
     return <AcceptGuardianInvite token={guardianInviteToken} onAccepted={handleGuardianInviteAccepted} />
+  }
+
+  if (confirmApplicationToken) {
+    return <ConfirmApplication token={confirmApplicationToken} onDone={() => { window.history.replaceState({}, '', '/'); setConfirmApplicationToken(null) }} />
+  }
+
+  if (applyToken) {
+    return <Apply token={applyToken} onSignIn={() => { window.history.replaceState({}, '', '/'); setApplyToken(null) }} />
   }
 
   if (joinToken) {

@@ -149,6 +149,35 @@ async function joinClass(token, body) {
   return data
 }
 
+// Admissions: a school's public application form (no account needed).
+async function applyInfo(token) {
+  const res = await fetch(`${API_BASE}/api/admissions/apply/${token}/`)
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(data?.detail || "This application form isn't open.")
+  return data
+}
+
+async function submitApplication(token, body) {
+  const res = await fetch(`${API_BASE}/api/admissions/apply/${token}/`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Sending failed (${res.status})`)
+  }
+  return data
+}
+
+// The link in the confirmation email: sends the application to the school (once).
+async function confirmApplication(token) {
+  const res = await fetch(`${API_BASE}/api/admissions/confirm/${token}/`, { method: 'POST' })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Confirming failed (${res.status})`)
+  }
+  return data
+}
+
 async function acceptGuardianInvite(token, password, acceptPrivacy = false) {
   const res = await fetch(`${API_BASE}/api/guardian-invites/accept/`, {
     method: 'POST',
@@ -687,6 +716,22 @@ export const api = {
   acceptGuardianInvite,
   joinInfo,
   joinClass,
+  applyInfo,
+  submitApplication,
+  confirmApplication,
+  admissions: {
+    // params: { status } for confirmed applications, or { unconfirmed: 1 } for those waiting for the family's email
+    list: (params) => listRequest('/api/admissions/applications/', { params }),
+    update: (id, body) => request(`/api/admissions/applications/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/admissions/applications/${id}/`, { method: 'DELETE' }),
+    // opts.differentChild: the admin confirmed that a student with the same name and birthday is someone else.
+    enrol: (id, schoolClass, opts) => request(`/api/admissions/applications/${id}/enrol/`, { method: 'POST',
+      body: { school_class: schoolClass, ...(opts?.differentChild ? { different_child: true } : {}) } }),
+    summary: () => request('/api/admissions/applications/summary/'),
+    settings: () => request('/api/admissions/settings/'),
+    saveSettings: (body) => request('/api/admissions/settings/', { method: 'PATCH', body }),
+    newLink: () => request('/api/admissions/settings/', { method: 'POST', body: { new_link: true } }),
+  },
   signupLinks: {
     list: () => request('/api/signup-links/'),
     change: (schoolClass, action) => request('/api/signup-links/', { method: 'POST', body: { school_class: schoolClass, action } }),
