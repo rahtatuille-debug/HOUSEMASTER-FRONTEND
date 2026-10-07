@@ -1,27 +1,27 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
 
-// A step-by-step tour of the menu: each step highlights one menu item and
-// says what that part of HouseMaster is for. On a phone the menu drawer is
-// opened so the items can be seen. `steps`: [{ key, title, text }], where a
-// step without a menu item (the welcome and the end) shows in the middle.
-export default function Tour({ steps, onClose, onShowMenu }) {
+// A step-by-step tour of the menu: each step highlights one menu button and
+// says what that part of HouseMaster is for. `steps`: [{ key, title, text,
+// targets }], where `targets` are selectors tried in order (the laptop rail,
+// then the phone's bottom bar); a step without one (the welcome and the end)
+// shows in the middle.
+export default function Tour({ steps, onClose }) {
   const [index, setIndex] = useState(0)
   const [rect, setRect] = useState(null)
   const step = steps[index]
   const last = index === steps.length - 1
 
-  // On a phone, the menu is a drawer: keep it open while the tour points at it.
-  useEffect(() => { onShowMenu?.(Boolean(step.menu)) }, [step, onShowMenu])
-
   useLayoutEffect(() => {
     function place() {
-      const el = step.menu && document.querySelector(`.sidebar-nav button[data-tab="${step.key}"]`)
+      // The first target that is actually on screen (the rail is hidden on a phone, the bottom bar on a laptop).
+      const el = (step.targets || []).map((sel) => document.querySelector(sel))
+        .find((e) => e && e.getBoundingClientRect().width > 0)
       if (!el) { setRect(null); return }
       el.scrollIntoView({ block: 'nearest' })
       setRect(el.getBoundingClientRect())
     }
     place()
-    // The drawer slides in, so measure again once it has settled.
+    // Measure again once the layout has settled.
     const timer = setTimeout(place, 260)
     window.addEventListener('resize', place)
     return () => { clearTimeout(timer); window.removeEventListener('resize', place) }
@@ -37,12 +37,14 @@ export default function Tour({ steps, onClose, onShowMenu }) {
     return () => window.removeEventListener('keydown', onKey)
   }, [index, last, onClose])
 
-  const narrow = window.innerWidth <= 768
+  // Beside the button when there's room, otherwise below it (top bar) or above it (phone's bottom bar).
   let cardStyle = {}
   if (rect) {
-    cardStyle = narrow
-      ? { left: 12, right: 12, bottom: 16 }
-      : { left: rect.right + 16, top: Math.max(12, Math.min(rect.top - 20, window.innerHeight - 260)) }
+    const w = window.innerWidth
+    const h = window.innerHeight
+    if (rect.top > h * 0.6) cardStyle = { left: 12, right: 12, bottom: h - rect.top + 12 }
+    else if (rect.right + 360 <= w) cardStyle = { left: rect.right + 16, top: Math.max(12, Math.min(rect.top - 20, h - 260)) }
+    else cardStyle = { right: 12, top: rect.bottom + 12, maxWidth: Math.min(340, w - 24) }
   }
 
   return (

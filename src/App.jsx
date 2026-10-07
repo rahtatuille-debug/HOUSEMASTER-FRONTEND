@@ -42,9 +42,11 @@ import Admissions from './panels/Admissions.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
+import { GUARDIAN_SECTIONS, STAFF_SECTIONS, bottomBarSections, sectionOf, visibleSections } from './nav.js'
+import { NavIcon } from './icons.jsx'
 
 const TABS = [
-  { key: 'home', label: 'Home', component: StaffHome },
+  { key: 'home', label: 'Dashboard', component: StaffHome },
   { key: 'students', label: 'Students', component: Students },
   { key: 'timetable', label: 'Timetable', component: Timetable },
   { key: 'attendance', label: 'Attendance', component: Attendance },
@@ -72,21 +74,26 @@ function StaffHome(props) {
   return props.me?.role === 'admin' ? <Home {...props} /> : <TeacherHome {...props} />
 }
 
-// The guided tour: a welcome, one stop per menu item, and where to find help afterwards.
-function tourSteps(me, tabKeys) {
+// The guided tour: a welcome, one stop per page (pointing at its section in
+// the menu), and where to find help afterwards.
+function tourSteps(me, sections, pageLabel) {
   const role = me?.role === 'admin' ? 'admin' : 'teacher'
-  const sections = guideSections(vocabFor(me?.school), role).filter((s) => tabKeys.includes(s.key))
+  const guide = Object.fromEntries(guideSections(vocabFor(me?.school), role).map((g) => [g.key, g]))
   const first = me?.name?.split(' ')[0]
+  const at = (section) => [`.rail [data-section="${section}"]`, `.bottom-bar [data-section="${section}"]`, '.bottom-bar [data-section="more"]']
+  const stops = sections.flatMap((s) => s.pages.filter((k) => guide[k]).map((k) => ({
+    key: k, title: s.pages.length > 1 ? `${s.label}: ${pageLabel(k)}` : guide[k].title, text: guide[k].tour, targets: at(s.key),
+  })))
   return [
     { key: 'welcome', title: `Welcome to HouseMaster${first ? `, ${first}` : ''}`,
-      text: `A quick tour of everything you can do here, one menu item at a time. It takes about two minutes, and you can leave it whenever you like.` },
-    ...sections.map((s) => ({ key: s.key, title: s.title, text: s.tour, menu: true })),
-    { key: 'guide', title: 'Guide', menu: true,
+      text: `A quick tour of everything you can do here. The menu has a few sections; each opens with its pages as tabs along the top. It takes about two minutes, and you can leave it whenever you like.` },
+    ...stops,
+    { key: 'guide', title: 'Guide', targets: ['.topbar [aria-label="Guide"]'],
       text: 'Step-by-step instructions for every page. Come back here any time you are unsure how to do something, or to take this tour again.' },
     { key: 'end', title: "You're ready",
       text: role === 'admin'
-        ? 'Your Home page shows what needs you today and your school\'s first-week checklist.'
-        : 'Your Home page has your classes and a getting-started checklist that ticks itself as you go. A good first step is today\'s register.' },
+        ? 'Your Dashboard shows what needs you today and your school\'s first-week checklist.'
+        : 'Your Dashboard has your lessons, your classes and a getting-started checklist that ticks itself as you go. A good first step is today\'s register.' },
   ]
 }
 
@@ -185,7 +192,21 @@ export default function App() {
   // 'staff' | 'guardian' | null (unknown until /api/me/ or /api/guardian-me/ resolves)
   const [identityKind, setIdentityKind] = useState(null)
   const [activeTab, setActiveTab] = useState('home')
-  const [menuOpen, setMenuOpen] = useState(false)
+  // Extra details for the page being opened, e.g. which student (the dashboard's search).
+  const [navParams, setNavParams] = useState(null)
+  // The last page used in each section, so a section opens where you left it.
+  const [lastPage, setLastPage] = useState({})
+  // Phone: the "More" sheet. Laptop: the quick-links bar on the right (remembered per browser).
+  const [moreOpen, setMoreOpen] = useState(false)
+  const [quickLinks, setQuickLinks] = useState(() => {
+    try { return localStorage.getItem('hm.quickLinks') === '1' } catch { return false }
+  })
+  // Until someone chooses, admins start with the quick links open and teachers without.
+  useEffect(() => {
+    let chosen = null
+    try { chosen = localStorage.getItem('hm.quickLinks') } catch { /* private mode */ }
+    if (chosen === null && identityKind === 'staff' && me?.role) setQuickLinks(me.role === 'admin')
+  }, [identityKind, me?.role])
   const [tourOpen, setTourOpen] = useState(false)
   // A teacher's first visit starts with the guided tour (once; it can be replayed from Home or the Guide).
   const autoTour = identityKind === 'staff' && me && me.role !== 'admin' && me.tour_seen === false && me.school?.setup_completed
@@ -297,12 +318,12 @@ export default function App() {
   }
 
   // Shared close-on-Escape / close-on-outside-click handling for the three
-  // overlay affordances (mobile sidebar, notifications popover, profile menu).
+  // overlay affordances (the phone's More sheet, notifications popover, profile menu).
   useEffect(() => {
-    if (!menuOpen && !notifOpen && !profileOpen) return
+    if (!moreOpen && !notifOpen && !profileOpen) return
     function onKeyDown(e) {
       if (e.key !== 'Escape') return
-      setMenuOpen(false)
+      setMoreOpen(false)
       setNotifOpen(false)
       setProfileOpen(false)
     }
@@ -316,14 +337,14 @@ export default function App() {
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('mousedown', onClickOutside)
     }
-  }, [menuOpen, notifOpen, profileOpen])
+  }, [moreOpen, notifOpen, profileOpen])
 
   function handleLogout() {
     api.logout()
     setMe(null)
     setIdentityKind(null)
     setLoggedIn(false)
-    setMenuOpen(false)
+    setMoreOpen(false)
     setProfileOpen(false)
   }
 
@@ -465,43 +486,76 @@ export default function App() {
   }
 
   const tabSet = identityKind === 'guardian' ? GUARDIAN_TABS : TABS
-  const visibleTabs = tabSet.filter((t) => (!t.adminOnly || me?.role === 'admin') && (!t.boardingOnly || me?.is_boarding_staff))
-  const activeKey = visibleTabs.some((t) => t.key === activeTab) ? activeTab : visibleTabs[0]?.key
+  const isAdmin = me?.role === 'admin'
+  const visibleTabs = tabSet.filter((t) => (!t.adminOnly || isAdmin) && (!t.boardingOnly || me?.is_boarding_staff))
+  const pageKeys = visibleTabs.map((t) => t.key)
+  const sections = visibleSections(identityKind === 'guardian' ? GUARDIAN_SECTIONS : STAFF_SECTIONS, pageKeys, isAdmin)
+  const activeKey = pageKeys.includes(activeTab) ? activeTab : sections[0]?.pages[0] || visibleTabs[0]?.key
   const ActivePanel = visibleTabs.find((t) => t.key === activeKey)?.component
+  const activeSection = sections.find((s) => s.pages.includes(activeKey)) || null
   const identityLine = identityKind === 'guardian' ? guardianIdentity(me) : personIdentity(me)
   // Settings has nowhere sensible to send a guardian yet (no Setup-equivalent
   // for them), so it's staff-only — same gate as the Setup tab itself.
   const showSettings = identityKind === 'staff'
+  const pageLabel = (key) => {
+    const t = visibleTabs.find((x) => x.key === key)
+    return t ? (!isAdmin && t.teacherLabel ? t.teacherLabel : t.label) : key
+  }
+  // Pages outside the sections (a teacher's Setup and requests, the guide, the profile).
+  const extraPages = pageKeys.filter((k) => !sections.some((s) => s.pages.includes(k)))
+  const { bar, more } = bottomBarSections(sections)
+  const badgeFor = (section) => (section.pages.includes('approvals') && waitingCount > 0 ? waitingCount : 0)
 
-  function selectTab(key) {
+  function selectTab(key, params = null) {
     setActiveTab(key)
-    setMenuOpen(false)
+    setNavParams(params)
+    setMoreOpen(false)
+    const sectionKey = sectionOf(sections, key)
+    if (sectionKey) setLastPage((last) => ({ ...last, [sectionKey]: key }))
   }
 
-  const sidebarContent = (
+  function selectSection(section) {
+    const last = lastPage[section.key]
+    selectTab(section.pages.includes(last) ? last : section.pages[0])
+  }
+
+  function toggleQuickLinks() {
+    setQuickLinks((open) => {
+      try { localStorage.setItem('hm.quickLinks', open ? '0' : '1') } catch { /* private mode: just this visit */ }
+      return !open
+    })
+  }
+
+  // Everything in one list: the quick-links bar on a laptop, the "More" sheet on a phone.
+  const linkMap = (
     <>
-      <div className="sidebar-brand">
-        HouseMaster
-        {me?.school && <span className="school-name">{me.school.name}</span>}
-      </div>
-      <nav className="sidebar-nav" aria-label="Main navigation">
-        {visibleTabs.map((t) => (
-          <button key={t.key} data-tab={t.key} className={activeKey === t.key ? 'active' : ''} onClick={() => selectTab(t.key)}>
-            {me?.role !== 'admin' && t.teacherLabel ? t.teacherLabel : t.label}
-            {t.key === 'approvals' && waitingCount > 0 && (
-              <span className="nav-count" aria-label={`${waitingCount} waiting`}>
-                {waitingCount}
-              </span>
-            )}
-          </button>
-        ))}
-      </nav>
+      {sections.map((s) => (
+        <div className="link-group" key={s.key}>
+          <p className="link-group-title">{s.label}</p>
+          {s.pages.map((k) => (
+            <button key={k} type="button" data-quick={k} className={activeKey === k ? 'active' : ''} onClick={() => selectTab(k)}>
+              {pageLabel(k)}
+              {k === 'approvals' && waitingCount > 0 && <span className="nav-count">{waitingCount}</span>}
+            </button>
+          ))}
+        </div>
+      ))}
+      {extraPages.length > 0 && (
+        <div className="link-group">
+          <p className="link-group-title">You</p>
+          {extraPages.map((k) => (
+            <button key={k} type="button" data-quick={k} className={activeKey === k ? 'active' : ''} onClick={() => selectTab(k)}>
+              {pageLabel(k)}
+              {k === 'approvals' && waitingCount > 0 && <span className="nav-count">{waitingCount}</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </>
   )
 
   function closeTour() {
     setTourOpen(false)
-    setMenuOpen(false)
     if (!me?.tour_seen) {
       // Saved first, so the home page's checklist ticks the tour off when it reloads.
       api.tourSeen().then(() => setMe((m) => (m ? { ...m, tour_seen: true } : m))).catch(() => {})
@@ -509,45 +563,42 @@ export default function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${quickLinks ? ' with-links' : ''}`}>
       {tourOpen && identityKind === 'staff' && (
-        <Tour steps={tourSteps(me, visibleTabs.map((t) => t.key))} onClose={closeTour}
-          onShowMenu={(show) => { if (window.innerWidth <= 768) setMenuOpen(show) }} />
+        <Tour steps={tourSteps(me, sections, pageLabel)} onClose={closeTour} />
       )}
-      {menuOpen && <div className="nav-backdrop" onClick={() => setMenuOpen(false)} aria-hidden="true" />}
 
-      <aside className={`sidebar${menuOpen ? ' open' : ''}`}>
-        <div className="sidebar-mobile-header">
-          <span>Menu</span>
-          <button
-            type="button"
-            className="secondary nav-drawer-close"
-            aria-label="Close menu"
-            onClick={() => setMenuOpen(false)}
-          >
-            ✕
+      <nav className="rail" aria-label="Main navigation">
+        <div className="rail-brand" title={me?.school?.name || 'HouseMaster'} aria-hidden="true">HM</div>
+        {sections.map((s) => (
+          <button key={s.key} type="button" data-section={s.key} className={activeSection?.key === s.key ? 'active' : ''}
+            aria-current={activeSection?.key === s.key ? 'page' : undefined} onClick={() => selectSection(s)}>
+            <NavIcon name={s.icon} />
+            <span>{s.label}</span>
+            {badgeFor(s) > 0 && <span className="rail-badge" aria-label={`${badgeFor(s)} waiting`}>{badgeFor(s)}</span>}
           </button>
-        </div>
-        {sidebarContent}
-      </aside>
+        ))}
+      </nav>
 
       <div className="main-column">
         <header className="topbar">
-          <button
-            type="button"
-            className="menu-toggle"
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
-            onClick={() => setMenuOpen((open) => !open)}
-          >
-            <span />
-            <span />
-            <span />
-          </button>
+          <div className="topbar-brand">
+            <strong>HouseMaster</strong>
+            {me?.school && <span className="school-name">{me.school.name}</span>}
+          </div>
 
           <div className="topbar-spacer" />
 
           <div className="topbar-icons">
+            <button type="button" className="icon-button only-wide" aria-label="Quick links" aria-pressed={quickLinks}
+              title="Quick links" onClick={toggleQuickLinks}>
+              <NavIcon name="links" size={20} />
+            </button>
+            {pageKeys.includes('guide') && (
+              <button type="button" className="icon-button" aria-label="Guide" title="Guide" onClick={() => selectTab('guide')}>
+                <NavIcon name="help" size={20} />
+              </button>
+            )}
             <div className="icon-menu-wrap" ref={notifRef}>
               <button
                 type="button"
@@ -560,6 +611,7 @@ export default function App() {
                 }}
               >
                 <BellIcon />
+                {waitingCount > 0 && <span className="icon-dot" aria-hidden="true" />}
               </button>
               {notifOpen && (
                 <div className="icon-popover">
@@ -589,6 +641,7 @@ export default function App() {
                 type="button"
                 className="icon-button"
                 aria-label="Settings"
+                title="Settings"
                 onClick={() => selectTab('setup')}
               >
                 <GearIcon />
@@ -622,6 +675,12 @@ export default function App() {
                   >
                     View profile
                   </button>
+                  {extraPages.filter((k) => k !== 'profile' && k !== 'guide').map((k) => (
+                    <button key={k} type="button" className="secondary" style={{ width: '100%', marginBottom: 8 }}
+                      onClick={() => { selectTab(k); setProfileOpen(false) }}>
+                      {pageLabel(k)}
+                    </button>
+                  ))}
                   <button type="button" className="danger" style={{ width: '100%' }} onClick={handleLogout}>
                     Log out
                   </button>
@@ -647,21 +706,78 @@ export default function App() {
           </div>
         ))}
 
-        <main className="content">
-          <SchoolContext.Provider value={me?.school || null}>
-            {ActivePanel && (
-              <ActivePanel
-                me={me}
-                identityKind={identityKind}
-                onUserUpdated={setMe}
-                onCountsChanged={refreshWaitingCount}
-                onNavigate={selectTab}
-                onStartTour={() => setTourOpen(true)}
-              />
+        <div className="workspace">
+          <main className="content">
+            {activeSection && activeSection.pages.length > 1 && (
+              <div className="section-tabs" role="tablist" aria-label={activeSection.label}>
+                {activeSection.pages.map((k) => (
+                  <button key={k} type="button" role="tab" data-tab={k} aria-selected={activeKey === k}
+                    className={activeKey === k ? 'active' : ''} onClick={() => selectTab(k)}>
+                    {pageLabel(k)}
+                    {k === 'approvals' && waitingCount > 0 && <span className="nav-count">{waitingCount}</span>}
+                  </button>
+                ))}
+              </div>
             )}
-          </SchoolContext.Provider>
-        </main>
+            <SchoolContext.Provider value={me?.school || null}>
+              {ActivePanel && (
+                <ActivePanel
+                  key={activeKey}
+                  me={me}
+                  identityKind={identityKind}
+                  onUserUpdated={setMe}
+                  onCountsChanged={refreshWaitingCount}
+                  onNavigate={selectTab}
+                  navParams={navParams}
+                  onStartTour={() => setTourOpen(true)}
+                />
+              )}
+            </SchoolContext.Provider>
+          </main>
+          {quickLinks && (
+            <aside className="quick-links" aria-label="Quick links">
+              <div className="quick-links-head">
+                <strong>Quick links</strong>
+                <button type="button" className="link-button" onClick={toggleQuickLinks}>Hide</button>
+              </div>
+              {linkMap}
+            </aside>
+          )}
+        </div>
       </div>
+
+      <nav className="bottom-bar" aria-label="Main navigation on a phone">
+        {bar.map((s) => (
+          <button key={s.key} type="button" data-section={s.key} className={activeSection?.key === s.key && !moreOpen ? 'active' : ''}
+            onClick={() => selectSection(s)}>
+            <NavIcon name={s.icon} />
+            <span>{s.label}</span>
+            {badgeFor(s) > 0 && <span className="rail-badge">{badgeFor(s)}</span>}
+          </button>
+        ))}
+        {more.length > 0 && (
+          <button type="button" data-section="more" aria-expanded={moreOpen}
+            className={moreOpen || more.some((s) => s.key === activeSection?.key) ? 'active' : ''}
+            onClick={() => setMoreOpen((open) => !open)}>
+            <NavIcon name="more" />
+            <span>More</span>
+            {more.some((s) => badgeFor(s) > 0) && <span className="rail-badge">{waitingCount}</span>}
+          </button>
+        )}
+      </nav>
+      {moreOpen && (
+        <>
+          <div className="nav-backdrop" onClick={() => setMoreOpen(false)} aria-hidden="true" />
+          <div className="more-sheet" role="dialog" aria-label="Everything in HouseMaster">
+            <div className="more-sheet-head">
+              <strong>Everything</strong>
+              <button type="button" className="link-button" onClick={() => setMoreOpen(false)}>Close</button>
+            </div>
+            {linkMap}
+            <button type="button" className="danger" style={{ width: '100%', marginTop: 12 }} onClick={handleLogout}>Log out</button>
+          </div>
+        </>
+      )}
     </div>
   )
 }

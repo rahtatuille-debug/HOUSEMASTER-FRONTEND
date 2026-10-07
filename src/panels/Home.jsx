@@ -3,6 +3,8 @@ import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
 import { api } from '../api.js'
 import FirstWeekChecklist from './FirstWeekChecklist.jsx'
+import Panel from './Panel.jsx'
+import { Bulletin, Greeting, MyDay, NeedsAttention, QuickFind, SchoolNumbers } from './DashboardParts.jsx'
 
 function StatTile({ label, value, sub, onClick, alert }) {
   const content = (
@@ -21,14 +23,18 @@ function StatTile({ label, value, sub, onClick, alert }) {
   )
 }
 
-// Admin home page: today's attendance and everything waiting on an admin.
+// Admin dashboard: a few numbers across the top, then panels for the day,
+// the bulletin, what is waiting, the school's numbers and a student search.
 export default function Home({ me, onNavigate, onStartTour }) {
   const words = useVocab()
   const [data, setData] = useState(null)
+  const [lessons, setLessons] = useState(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
     api.dashboard().then(setData).catch((err) => setError(err.message))
+    // An admin who also teaches sees their own lessons.
+    api.teacherHome.get().then((d) => setLessons(d?.today || [])).catch(() => setLessons([]))
   }, [])
 
   if (error) return <div className="error-banner">{error}</div>
@@ -37,19 +43,60 @@ export default function Home({ me, onNavigate, onStartTour }) {
   const att = data.attendance_today
   const waiting = data.reports_waiting.count + data.requests_waiting
   const noParent = data.students_without_parent
-  const today = formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long' })
   // At weekends the figures are for the last school day.
   const registerDay = att.is_today ? 'today' : `on ${formatDate(att.date, { weekday: 'long' })}`
 
+  const registersTab = (
+    att.classes.length === 0 ? (
+      <p className="text-muted dash-empty">No classes with students yet.</p>
+    ) : (
+      <table className="dash-table">
+        <thead><tr><th>{words.class}</th><th>Marked</th><th>Absent</th><th>Late</th></tr></thead>
+        <tbody>
+          {att.classes.map((c) => (
+            <tr key={c.id}>
+              <td>{c.name}</td>
+              <td>{c.marked === 0 ? <span className="badge rejected">Not taken</span> : `${c.marked} / ${c.students}`}</td>
+              <td>{c.marked ? c.absent : '—'}</td>
+              <td>{c.marked ? c.late : '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+  )
+
+  const expired = data.invites.items.filter((i) => i.status === 'expired').length
+  const attention = [
+    att.classes_not_taken.length > 0 && {
+      key: 'registers', alert: true, action: 'Registers', onClick: () => onNavigate('attendance'),
+      text: `${att.classes_not_taken.length} register${att.classes_not_taken.length === 1 ? '' : 's'} not taken ${registerDay}: ${att.classes_not_taken.slice(0, 4).join(', ')}${att.classes_not_taken.length > 4 ? '…' : ''}`,
+    },
+    data.reports_waiting.count > 0 && {
+      key: 'reports', action: 'Review', onClick: () => onNavigate('approvals'),
+      text: `${data.reports_waiting.count} report${data.reports_waiting.count === 1 ? '' : 's'} waiting for approval`,
+    },
+    data.requests_waiting > 0 && {
+      key: 'requests', action: 'Review', onClick: () => onNavigate('approvals'),
+      text: `${data.requests_waiting} teacher request${data.requests_waiting === 1 ? '' : 's'} to approve`,
+    },
+    data.parent_signups_waiting > 0 && {
+      key: 'signups', action: 'Parents', onClick: () => onNavigate('parents'),
+      text: `${data.parent_signups_waiting} parent sign-up${data.parent_signups_waiting === 1 ? '' : 's'} to approve`,
+    },
+    data.invites.items.length > 0 && {
+      key: 'invites', action: 'Staff', onClick: () => onNavigate('staff'),
+      text: `${data.invites.items.length} invite${data.invites.items.length === 1 ? '' : 's'} not accepted${expired ? ` (${expired} expired)` : ''}`,
+    },
+    noParent.count > 0 && {
+      key: 'noparent', action: 'Invite parents', onClick: () => onNavigate('parents'),
+      text: `${noParent.count} student${noParent.count === 1 ? '' : 's'} with no parent account`,
+    },
+  ]
+
   return (
-    <div>
-      <div className="panel-header">
-        <div>
-          <h2>Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}{me?.name ? `, ${me.name.split(' ')[0]}` : ''}</h2>
-          <p className="text-muted" style={{ margin: '4px 0 0' }}>{me?.school?.name} · {today}</p>
-        </div>
-        <button type="button" className="secondary" style={{ width: 'auto' }} onClick={onStartTour}>Take the tour</button>
-      </div>
+    <div className="dashboard">
+      <Greeting me={me} onStartTour={onStartTour} onNavigate={onNavigate} />
 
       {data.active_alerts.length > 0 && (
         <div className="card urgent-card">
@@ -100,105 +147,22 @@ export default function Home({ me, onNavigate, onStartTour }) {
         />
       </div>
 
-      <div className="home-grid">
-        <div className="card">
-          <h3 style={{ fontSize: 15, marginBottom: 10 }}>{att.is_today ? "Today's registers" : `Registers ${registerDay}`}</h3>
-          {att.classes.length === 0 ? (
-            <p className="text-muted" style={{ margin: 0 }}>No classes with students yet.</p>
-          ) : (
-            <table className="responsive-table">
-              <thead>
-                <tr><th>{words.class}</th><th>Marked</th><th>Absent</th><th>Late</th></tr>
-              </thead>
-              <tbody>
-                {att.classes.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td>
-                      {c.marked === 0 ? (
-                        <span className="badge rejected">Not taken</span>
-                      ) : (
-                        `${c.marked} / ${c.students}`
-                      )}
-                    </td>
-                    <td>{c.marked ? c.absent : '—'}</td>
-                    <td>{c.marked ? c.late : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        <div>
-          <div className="card">
-            <div className="panel-header" style={{ marginBottom: 8 }}>
-              <h3 style={{ fontSize: 15 }}>Reports waiting for approval</h3>
-              {data.reports_waiting.count > 0 && (
-                <button type="button" className="secondary" onClick={() => onNavigate('approvals')}>Review</button>
-              )}
-            </div>
-            {data.reports_waiting.count === 0 ? (
-              <p className="text-muted" style={{ margin: 0 }}>None waiting.</p>
-            ) : (
-              data.reports_waiting.items.map((r) => (
-                <div key={r.id} style={{ fontSize: 14, marginBottom: 4 }}>
-                  {r.student} <span className="text-muted">· {r.term}</span>
-                </div>
-              ))
-            )}
-            {data.requests_waiting > 0 && (
-              <p className="hint" style={{ marginBottom: 0 }}>
-                Plus {data.requests_waiting} teacher request{data.requests_waiting === 1 ? '' : 's'} to approve.
-              </p>
-            )}
-          </div>
-
-          <div className="card">
-            <div className="panel-header" style={{ marginBottom: 8 }}>
-              <h3 style={{ fontSize: 15 }}>Invites not accepted</h3>
-            </div>
-            {data.invites.items.length === 0 ? (
-              <p className="text-muted" style={{ margin: 0 }}>None.</p>
-            ) : (
-              <>
-                {data.invites.items.map((i) => (
-                  <div key={`${i.kind}-${i.id}`} style={{ fontSize: 14, marginBottom: 4, display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                    <span>
-                      {i.name} <span className="text-muted">· {i.kind}</span>
-                    </span>
-                    <span className={`badge ${i.status === 'expired' ? 'draft' : 'pending'}`}>{i.status}</span>
-                  </div>
-                ))}
-                <div className="form-actions" style={{ marginTop: 8 }}>
-                  <button type="button" className="secondary" onClick={() => onNavigate('staff')}>Staff invites</button>
-                  <button type="button" className="secondary" onClick={() => onNavigate('parents')}>Parent invites</button>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div className="card">
-            <h3 style={{ fontSize: 15, marginBottom: 8 }}>Students with no parent account</h3>
-            {noParent.count === 0 ? (
-              <p className="text-muted" style={{ margin: 0 }}>Every active student has a parent account linked.</p>
-            ) : (
-              <>
-                {noParent.items.map((s) => (
-                  <div key={s.id} style={{ fontSize: 14, marginBottom: 4 }}>
-                    {s.name} <span className="text-muted">· {s.class_name || 'no class'}</span>
-                  </div>
-                ))}
-                {noParent.count > noParent.items.length && (
-                  <p className="hint">and {noParent.count - noParent.items.length} more.</p>
-                )}
-                <button type="button" className="secondary" style={{ marginTop: 8 }} onClick={() => onNavigate('parents')}>
-                  Invite parents
-                </button>
-              </>
-            )}
-          </div>
-        </div>
+      <div className="dash-grid">
+        <MyDay lessons={lessons} onNavigate={onNavigate} />
+        <NeedsAttention items={attention} />
+        <Bulletin onNavigate={onNavigate} extraTabs={[['registers', att.is_today ? 'Registers today' : 'Registers', registersTab]]} />
+        {data.students_by_year_group && <SchoolNumbers rows={data.students_by_year_group} onNavigate={onNavigate} />}
+        <QuickFind onNavigate={onNavigate} />
+        {data.reports_waiting.count > 0 && (
+          <Panel title="Reports waiting for approval"
+            actions={<button type="button" className="secondary" onClick={() => onNavigate('approvals')}>Review</button>}>
+            <ul className="dash-list">
+              {data.reports_waiting.items.map((r) => (
+                <li key={r.id}><span>{r.student} <span className="text-muted">· {r.term}</span></span></li>
+              ))}
+            </ul>
+          </Panel>
+        )}
       </div>
     </div>
   )

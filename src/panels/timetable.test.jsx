@@ -186,7 +186,7 @@ describe('Teacher home', () => {
     })
     const onNavigate = vi.fn()
     render(<TeacherHome me={{ name: 'Ann' }} onNavigate={onNavigate} onStartTour={() => {}} />)
-    expect(await screen.findByText('Your lessons today')).toBeInTheDocument()
+    expect(await screen.findByRole('region', { name: 'My day' })).toBeInTheDocument()
     expect(screen.getByText('10A Mathematics')).toBeInTheDocument()
     expect(screen.getByText('08:00–08:40')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Timetable' }))

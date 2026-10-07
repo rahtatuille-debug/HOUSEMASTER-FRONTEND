@@ -12,12 +12,13 @@ const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', s
 // Teachers only see and add students in the classes they teach. Deleting a
 // student permanently (with all their grades, attendance and reports) is
 // admin-only; a teacher's delete becomes a request for an admin to approve.
-export default function Students({ me }) {
+export default function Students({ me, navParams }) {
   const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [notice, setNotice] = useState('')
   // The student whose profile is open, if any.
-  const [openStudentId, setOpenStudentId] = useState(null)
+  // The dashboard's student search opens a profile straight away.
+  const [openStudentId, setOpenStudentId] = useState(navParams?.studentId || null)
   const [allClasses, setAllClasses] = useState([])
   const [error, setError] = useState('')
   const [form, setForm] = useState(emptyForm)
