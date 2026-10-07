@@ -9,7 +9,7 @@ const ROLL_STATUS = { present: 'Present', missing: 'Missing', on_leave: 'On leav
 const LEAVE_KINDS = [['weekend', 'Weekend'], ['half_term', 'Half term'], ['exeat', 'Exeat'], ['appointment', 'Appointment'], ['other', 'Other']]
 const OUTCOMES = [['back', 'Back to lessons or the house'], ['home', 'Sent home'], ['hospital', 'Sent to hospital or a clinic']]
 const RESOLUTIONS = [['found', 'Found'], ['returned', 'Came back'], ['on_leave', 'Was on authorised leave'], ['left_school', 'Has left the school']]
-const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Boarding houses and beds']]
+const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Boarding houses and beds'], ['allocation', 'House allocation']]
 
 function defaultSession() {
   const hour = new Date().getHours()
@@ -631,6 +631,22 @@ function HousesPanel({ me, houses, reload }) {
       return api.boarding.assignBed(bed, student, { replace: true })
     }
   }
+  // Put the house's allocated boarders who have no bed in its free beds, at random.
+  async function fillBeds(h) {
+    const n = Math.min(h.allocated_waiting, h.beds_free)
+    if (!window.confirm(`Put ${n} boarder${n === 1 ? '' : 's'} in ${h.name}'s free beds at random? Nobody who already has a bed is moved.`)) return
+    setError('')
+    try {
+      const result = await api.boarding.houses.fillBeds(h.id)
+      const who = result.placed.map((p) => `${p.name} (${p.bed})`).join(', ')
+      setNotice(`Placed ${result.placed.length} boarder${result.placed.length === 1 ? '' : 's'} in ${h.name}: ${who}.`
+        + (result.still_waiting ? ` ${result.still_waiting} still ${result.still_waiting === 1 ? 'needs' : 'need'} a bed: add beds, then fill again.` : ''))
+      await reload()
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+
   const archive = (h) => {
     if (!window.confirm(`Archive ${h.name}? It disappears from roll calls and lists; its history stays readable.`)) return
     run(() => api.boarding.houses.archive(h.id), `${h.name} is archived. Its history is kept.`).then((ok) => ok && archived && loadArchived())
@@ -652,7 +668,7 @@ function HousesPanel({ me, houses, reload }) {
       )}
       {houses.length === 0 && <p className="text-muted">No boarding houses yet.</p>}
       {houses.map((h) => (
-        <div className="card" key={h.id}>
+        <section className="card" key={h.id} aria-label={h.name}>
           <div className="support-row">
             <h3 style={{ fontSize: 15, margin: '0 0 4px' }}>{h.name}</h3>
             {isAdmin && (
@@ -661,6 +677,14 @@ function HousesPanel({ me, houses, reload }) {
             )}
           </div>
           <p className="hint" style={{ marginTop: 0 }}>House staff: {h.staff_names.length ? h.staff_names.join(', ') : 'none yet'}</p>
+          {(h.allocated_waiting > 0 || h.beds_free > 0) && (
+            <div className="fill-beds-row">
+              <span>{h.allocated_waiting} allocated boarder{h.allocated_waiting === 1 ? '' : 's'} without a bed · {h.beds_free} free bed{h.beds_free === 1 ? '' : 's'}</span>
+              {h.allocated_waiting > 0 && h.beds_free > 0 && (
+                <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => fillBeds(h)}>Fill free beds at random</button>
+              )}
+            </div>
+          )}
           {isAdmin && staff.length > 0 && (
             <details style={{ marginBottom: 8 }}>
               <summary>Choose house staff</summary>
@@ -719,7 +743,7 @@ function HousesPanel({ me, houses, reload }) {
               <button type="submit" className="secondary" style={{ width: 'auto' }}>Add dormitory</button>
             </form>
           )}
-        </div>
+        </section>
       ))}
       {isAdmin && (
         <details className="card" onToggle={(e) => { if (e.currentTarget.open && archived === null) loadArchived() }}>
@@ -737,6 +761,115 @@ function HousesPanel({ me, houses, reload }) {
           )}
         </details>
       )}
+    </>
+  )
+}
+
+// Which boarding house each boarder belongs to. Admins tick boarders and allocate them; house staff see the list.
+function AllocationPanel({ me, houses, reload }) {
+  const isAdmin = me?.role === 'admin'
+  const [rows, setRows] = useState(null)
+  const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [query, setQuery] = useState('')
+  const [show, setShow] = useState('all')
+  const [picked, setPicked] = useState([])
+  const [target, setTarget] = useState('')
+  const load = useCallback(() => api.boarding.allocations.list().then(setRows).catch((err) => setError(errorText(err))), [])
+  useEffect(() => { load() }, [load])
+  if (!rows) return error ? <Banner error={error} /> : <p className="text-muted">Loading…</p>
+
+  const q = query.trim().toLowerCase()
+  const shown = rows.filter((r) => (show === 'all' || (show === 'none' ? !r.house_id : String(r.house_id) === show))
+    && (!q || r.name.toLowerCase().includes(q) || (r.admission_number || '').toLowerCase().includes(q)
+      || (r.class_name || '').toLowerCase().includes(q)))
+  const allPicked = shown.length > 0 && shown.every((r) => picked.includes(r.id))
+  const toggle = (id) => setPicked((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]))
+  const unallocated = rows.filter((r) => !r.house_id).length
+
+  async function allocate(e) {
+    e.preventDefault()
+    setError('')
+    const house = target === 'none' ? null : Number(target)
+    try {
+      await api.boarding.allocations.allocate(picked, house)
+      const name = house ? houses.find((h) => h.id === house)?.name : null
+      setNotice(`${picked.length} boarder${picked.length === 1 ? '' : 's'} ${name ? `allocated to ${name}` : 'taken out of their house'}.`
+        + (name ? ' Use "Fill free beds at random" on Boarding houses and beds to give them beds.' : ''))
+      setPicked([])
+      await load()
+      reload()
+    } catch (err) {
+      setError(errorText(err))
+    }
+  }
+
+  return (
+    <>
+      <Banner error={error} notice={notice} />
+      <div className="card">
+        <p className="hint" style={{ marginTop: 0 }}>
+          {rows.length} boarder{rows.length === 1 ? '' : 's'}{unallocated ? ` · ${unallocated} not in a house yet` : ''}.
+          {isAdmin ? ' Tick boarders, choose a house and allocate. Moving a boarder to another house frees their old bed.' : ' Only admins allocate boarders to houses.'}
+        </p>
+        <div className="form-row" style={{ alignItems: 'flex-end' }}>
+          <label className="field" style={{ marginBottom: 0 }}>Search boarders
+            <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Name, admission number or class" />
+          </label>
+          <label className="field" style={{ marginBottom: 0 }}>Show
+            <select value={show} onChange={(e) => setShow(e.target.value)}>
+              <option value="all">All boarders</option>
+              <option value="none">Not in a house yet</option>
+              {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+            </select>
+          </label>
+        </div>
+        {isAdmin && (
+          <form className="alloc-bar" onSubmit={allocate}>
+            <label className="field" style={{ marginBottom: 0 }}>Allocate to
+              <select value={target} onChange={(e) => setTarget(e.target.value)} required>
+                <option value="">Choose a house…</option>
+                {houses.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+                <option value="none">No house (take them out)</option>
+              </select>
+            </label>
+            <button type="submit" style={{ width: 'auto' }} disabled={picked.length === 0}>
+              Allocate {picked.length} boarder{picked.length === 1 ? '' : 's'}
+            </button>
+          </form>
+        )}
+      </div>
+      <div className="card" style={{ padding: 0 }}>
+        {shown.length === 0 ? <p className="text-muted" style={{ padding: 16, margin: 0 }}>No boarders match.</p> : (
+          <table className="responsive-table">
+            <thead>
+              <tr>
+                {isAdmin && (
+                  <th style={{ width: 36 }}>
+                    <input type="checkbox" aria-label="Select all shown" style={{ width: 'auto' }} checked={allPicked}
+                      onChange={() => setPicked(allPicked ? picked.filter((id) => !shown.some((r) => r.id === id))
+                        : [...new Set([...picked, ...shown.map((r) => r.id)])])} />
+                  </th>
+                )}
+                <th>Boarder</th><th>Class</th><th>House</th><th>Bed</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shown.map((r) => (
+                <tr key={r.id}>
+                  {isAdmin && (
+                    <td><input type="checkbox" aria-label={`Select ${r.name}`} style={{ width: 'auto' }} checked={picked.includes(r.id)} onChange={() => toggle(r.id)} /></td>
+                  )}
+                  <td>{r.name}{r.admission_number ? <span className="text-muted"> · {r.admission_number}</span> : null}</td>
+                  <td>{r.class_name}</td>
+                  <td>{r.house || <span className="badge pending">Not in a house</span>}</td>
+                  <td>{r.bed || <span className="text-muted">No bed</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
     </>
   )
 }
@@ -770,6 +903,7 @@ export default function Boarding({ me }) {
           {tab === 'leave' && <LeavePanel me={me} />}
           {tab === 'sick' && <SickBayPanel />}
           {tab === 'houses' && <HousesPanel me={me} houses={houses} reload={loadHouses} />}
+          {tab === 'allocation' && <AllocationPanel me={me} houses={houses} reload={loadHouses} />}
         </>
       )}
     </div>

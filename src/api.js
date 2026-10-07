@@ -934,6 +934,13 @@ export const api = {
       // A house with history can't be deleted: archive it instead.
       archive: (id) => request(`/api/boarding/houses/${id}/archive/`, { method: 'POST' }),
       unarchive: (id) => request(`/api/boarding/houses/${id}/unarchive/`, { method: 'POST' }),
+      // Put the house's allocated boarders who have no bed in its free beds, at random.
+      fillBeds: (id) => request(`/api/boarding/houses/${id}/fill-beds/`, { method: 'POST' }),
+    },
+    // Which boarding house each boarder belongs to. Admins allocate (house: id, or null for none).
+    allocations: {
+      list: () => request('/api/boarding/allocations/'),
+      allocate: (students, house) => request('/api/boarding/allocations/', { method: 'POST', body: { students, house } }),
     },
     dorms: {
       create: (body) => request('/api/boarding/dorms/', { method: 'POST', body }),
