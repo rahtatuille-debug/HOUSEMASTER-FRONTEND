@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { formatDate } from '../format.js'
 import { useVocab } from '../levels.js'
+import StudentSelect from './StudentSelect.jsx'
 
 const REASONS = [
   { code: 'low_average', label: 'Low average' },
@@ -179,13 +180,8 @@ export default function Support() {
         <div className="card">
           <h3 style={{ fontSize: 15, marginBottom: 8 }}>Mark a student as needing support</h3>
           <ConcernForm submitLabel="Mark and tell parents" onSubmit={createManual} onCancel={() => setOpen(null)}>
-            <label>
-              Student
-              <select value={manualStudent} onChange={(e) => setManualStudent(e.target.value)}>
-                <option value="">Choose…</option>
-                {choosable.map((s) => <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>)}
-              </select>
-            </label>
+            <StudentSelect id="support-student" label="Student" students={choosable} value={manualStudent}
+              onChange={setManualStudent} emptyLabel="Choose…" />
           </ConcernForm>
         </div>
       )}
