@@ -873,6 +873,8 @@ export const api = {
     list: (params) => listRequest('/api/attendance/', { params }),
     create: (body) => request('/api/attendance/', { method: 'POST', body }),
     update: (id, body) => request(`/api/attendance/${id}/`, { method: 'PATCH', body }),
+    // Every class's register for a day: { date, classes: [{ id, name, students, marked, present, late, absent }], totals }.
+    summary: (date) => request('/api/attendance/summary/', { params: date ? { date } : undefined }),
   },
   grades: {
     list: (params) => listRequest('/api/grades/', { params }),

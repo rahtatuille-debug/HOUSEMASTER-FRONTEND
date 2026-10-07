@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
 import { api } from '../api.js'
@@ -50,6 +50,13 @@ export default function Attendance({ me }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [history, setHistory] = useState(null) // { student, records }
+  // Every class's register for the date, for the class tabs and the overview.
+  const [summary, setSummary] = useState(null)
+  const loadSummary = useCallback(() => {
+    // An older server has no summary: the tabs then show the classes without numbers.
+    api.attendance.summary(date).then((d) => setSummary(Array.isArray(d?.classes) ? d : null)).catch(() => setSummary(null))
+  }, [date])
+  useEffect(() => { loadSummary() }, [loadSummary])
   const draftName = `attendance:${classId}:${date}`
   const loadedFor = useRef(null) // the register whose marks are on screen
 
@@ -203,6 +210,7 @@ export default function Attendance({ me }) {
       return m.id === null || m.status !== m.savedStatus || m.notes.trim() !== m.savedNotes
     }).length
     const done = toSave.length - remaining
+    loadSummary()
     if (remaining === 0) {
       setNotice(`Register saved for ${toSave.length} student${toSave.length === 1 ? '' : 's'}.`)
     } else {
@@ -239,28 +247,68 @@ export default function Attendance({ me }) {
       {error && <div className="error-banner">{error}</div>}
       {notice && <div className="success-banner">{notice}</div>}
 
-      <div className="card">
-        <div className="form-row">
-          <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="att-class">{words.class}</label>
-            <select id="att-class" value={classId} onChange={(e) => setClassId(e.target.value)}>
-              <option value="">Select…</option>
-              {classes.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+      <div className="card att-picker">
+        <div className="att-picker-head">
           <div className="field" style={{ marginBottom: 0 }}>
             <label htmlFor="att-date">Date</label>
             <input id="att-date" type="date" value={date} max={todayLocal()} onChange={(e) => setDate(e.target.value)} />
           </div>
+          {summary && summary.classes.length > 0 && (
+            <p className="att-totals" aria-label="Whole school">
+              <span>Present <strong>{summary.totals.present + summary.totals.late}</strong></span>
+              <span>Absent <strong>{summary.totals.absent}</strong></span>
+              <span>Marked <strong>{summary.totals.marked} / {summary.totals.students}</strong></span>
+              {summary.totals.not_taken > 0 && <span className="att-alert">{summary.totals.not_taken} register{summary.totals.not_taken === 1 ? '' : 's'} not taken</span>}
+            </p>
+          )}
+        </div>
+        <div className="att-class-tabs" role="tablist" aria-label={words.classes}>
+          <button type="button" role="tab" aria-selected={!classId} className={!classId ? 'active' : ''} onClick={() => setClassId('')}>
+            <strong>All {words.classes.toLowerCase()}</strong>
+          </button>
+          {classes.map((c) => {
+            const row = summary?.classes.find((r) => r.id === c.id)
+            return (
+              <button key={c.id} type="button" role="tab" aria-selected={String(c.id) === classId}
+                aria-label={!row ? c.name : row.marked === 0 ? `${c.name}: register not taken` : `${c.name}: ${row.present + row.late} present, ${row.absent} absent`}
+                className={`${String(c.id) === classId ? 'active' : ''}${row && row.marked === 0 ? ' not-taken' : ''}`}
+                onClick={() => setClassId(String(c.id))}>
+                <strong>{c.name}</strong>
+                {row && (row.marked === 0
+                  ? <span className="att-tab-counts">Not taken</span>
+                  : <span className="att-tab-counts"><span className="att-present">{row.present + row.late} in</span> · <span className="att-absent">{row.absent} out</span></span>)}
+              </button>
+            )
+          })}
         </div>
         {!isAdmin && classes.length === 0 && (
           <p className="hint">You aren't assigned to any classes yet. Ask an admin to assign you.</p>
         )}
       </div>
+
+      {!classId && summary && summary.classes.length > 0 && (
+        <div className="card" style={{ padding: 0 }}>
+          <table className="responsive-table att-overview">
+            <thead>
+              <tr><th>{words.class}</th><th>Present</th><th>Late</th><th>Absent</th><th>Marked</th><th></th></tr>
+            </thead>
+            <tbody>
+              {summary.classes.map((r) => (
+                <tr key={r.id}>
+                  <td><strong>{r.name}</strong> <span className="text-muted">· {r.year_group}</span></td>
+                  <td>{r.marked ? r.present : '—'}</td>
+                  <td>{r.marked ? r.late : '—'}</td>
+                  <td>{r.marked ? <span className={r.absent ? 'att-absent' : ''}>{r.absent}</span> : '—'}</td>
+                  <td>{r.marked === 0 ? <span className="badge rejected">Not taken</span> : `${r.marked} / ${r.students}`}</td>
+                  <td><button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => setClassId(String(r.id))}>
+                    {r.marked === 0 ? 'Take register' : 'Open'}
+                  </button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {classId && (
         loading ? (

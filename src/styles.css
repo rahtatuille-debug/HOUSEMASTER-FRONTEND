@@ -1398,3 +1398,21 @@ body { background: var(--surface); }
 .section-tabs { position: sticky; top: 56px; z-index: 10; background: var(--surface); padding-top: 6px; }
 .fill-beds-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: var(--surface); border-radius: 6px; padding: 8px 12px; margin: 0 0 10px; font-size: 14px; }
 .alloc-bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+/* Attendance: class tabs with today's numbers, and the whole-school overview. */
+.att-picker-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 12px; }
+.att-picker-head .field { min-width: 200px; }
+.att-totals { display: flex; gap: 16px; flex-wrap: wrap; margin: 0; font-size: 14px; }
+.att-alert { color: var(--stamp-red); font-weight: 600; }
+.att-class-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.att-class-tabs button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: auto; min-width: 92px;
+  background: #fff; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-weight: 500; }
+.att-class-tabs button:hover { border-color: var(--navy); background: #fff; }
+.att-class-tabs button.active { border-color: var(--navy); box-shadow: inset 0 -3px 0 var(--gold); background: #eef1f7; }
+.att-class-tabs button.not-taken .att-tab-counts { color: var(--stamp-red); }
+.att-tab-counts { font-size: 12px; color: var(--muted); }
+.att-present { color: var(--stamp-green); }
+.att-absent { color: var(--stamp-red); font-weight: 600; }
+@media (max-width: 768px) {
+  .att-class-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
+  .att-class-tabs button { flex: none; }
+}
