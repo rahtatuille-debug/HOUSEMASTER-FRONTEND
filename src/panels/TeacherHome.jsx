@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { formatDate } from '../format.js'
 import { useVocab } from '../levels.js'
+import Panel from './Panel.jsx'
+import { Bulletin, Greeting, MyDay, NeedsAttention, QuickFind } from './DashboardParts.jsx'
 
-// A teacher's home page: their classes with quick actions, and a
-// getting-started checklist that ticks itself as they use HouseMaster.
+// A teacher's dashboard: their day, the bulletin, what needs them, their
+// classes, and a getting-started checklist that ticks itself as they go.
 export default function TeacherHome({ me, onNavigate, onStartTour }) {
   const words = useVocab()
   const [data, setData] = useState(null)
@@ -24,8 +26,6 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
   if (error && !data) return <div className="error-banner">{error}</div>
   if (!data) return <p className="text-muted">Loading…</p>
   const list = data.checklist
-  const firstName = me?.name?.split(' ')[0]
-  const today = formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long' })
 
   function go(tab) {
     if (tab === 'home') onStartTour()
@@ -33,17 +33,8 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
   }
 
   return (
-    <div>
-      <div className="panel-header">
-        <div>
-          <h2>Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}{firstName ? `, ${firstName}` : ''}</h2>
-          <p className="text-muted" style={{ margin: '4px 0 0' }}>{me?.school?.name} · {today}</p>
-        </div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button type="button" className="secondary" style={{ width: 'auto' }} onClick={onStartTour}>Take the tour</button>
-          <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => onNavigate('guide')}>Open the guide</button>
-        </div>
-      </div>
+    <div className="dashboard">
+      <Greeting me={me} onStartTour={onStartTour} onNavigate={onNavigate} />
       {error && <div className="error-banner">{error}</div>}
 
       {!list.hidden && (
@@ -74,101 +65,94 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
         </div>
       )}
 
-      {data.boarding && (data.boarding.missing.length > 0 || data.boarding.leave_waiting > 0 || data.boarding.sick_bay > 0) && (
-        <div className="card">
-          <div className="support-row">
-            <div>
-              <h3 style={{ fontSize: 15, margin: 0 }}>Boarding</h3>
-              <p className="text-muted" style={{ margin: '4px 0 0' }}>
-                {[
-                  data.boarding.leave_waiting > 0 && `${data.boarding.leave_waiting} leave request${data.boarding.leave_waiting === 1 ? '' : 's'} to decide`,
-                  data.boarding.sick_bay > 0 && `${data.boarding.sick_bay} in sick bay`,
-                ].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-            <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => onNavigate('boarding')}>Open</button>
-          </div>
-          {data.boarding.missing.length > 0 && (
-            <p style={{ margin: '10px 0 0', color: 'var(--stamp-red)' }}>
-              <strong>Missing, not found yet:</strong> {data.boarding.missing.map((m) => m.name).join(', ')}
-            </p>
-          )}
-        </div>
-      )}
-
-      {data.today && data.today.length > 0 && (
-        <div className="card">
-          <div className="support-row">
-            <h3 style={{ fontSize: 15, margin: 0 }}>Your lessons today</h3>
-            <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => onNavigate('timetable')}>Timetable</button>
-          </div>
-          <ol className="tt-today-list">
-            {data.today.map((l) => (
-              <li key={l.id}>
-                <span className="tt-time">{l.start_time}–{l.end_time}</span>
-                <span><strong>{l.class_name} {l.label}</strong>{l.room_name ? <span className="text-muted"> · {l.room_name}</span> : null}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      {data.support && (data.support.suggested > 0 || data.support.open > 0) && (
-        <div className="card">
-          <div className="support-row">
-            <div>
-              <h3 style={{ fontSize: 15, margin: 0 }}>Students who need support</h3>
-              <p className="text-muted" style={{ margin: '4px 0 0' }}>
-                {[
-                  data.support.suggested > 0 && `${data.support.suggested} suggested by HouseMaster to look at`,
-                  data.support.open > 0 && `${data.support.open} marked as needing support`,
-                ].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-            <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => onNavigate('support')}>Open</button>
-          </div>
-          {data.support.due.length > 0 && (
-            <>
-              <p style={{ margin: '12px 0 4px' }}><strong>Reviews due</strong></p>
-              <ul style={{ margin: 0, paddingLeft: 18 }}>
-                {data.support.due.map((d) => (
-                  <li key={d.id}>{d.student_name} <span className="text-muted">· {formatDate(d.review_date)}</span></li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      )}
-
-      <div className="card">
-        <h3 style={{ fontSize: 15, marginBottom: 12 }}>Your {words.classes.toLowerCase()}</h3>
-        {data.classes.length === 0 ? (
-          <p className="text-muted" style={{ margin: 0 }}>
-            You haven&apos;t been given any {words.classes.toLowerCase()} yet. An admin assigns them on the Staff page.
-          </p>
-        ) : (
-          <div className="class-tiles">
-            {data.classes.map((c) => (
-              <div className="class-tile" key={c.id}>
-                <h4>{c.name}</h4>
-                <span className="text-muted" style={{ fontSize: 13 }}>
-                  {c.year_group}{c.curriculum ? ` · ${c.curriculum}` : ''} · {c.students} student{c.students === 1 ? '' : 's'}
-                </span>
-                <span style={{ fontSize: 13 }}>
-                  {c.class_teacher ? `${words.class} teacher` : ''}{c.class_teacher && c.subjects.length ? ' · ' : ''}{c.subjects.join(', ')}
-                </span>
-                <span className={c.register_taken_today ? 'badge finalized' : 'badge pending'} style={{ justifySelf: 'start' }}>
-                  {c.register_taken_today ? "Today's register is in" : 'Register not taken today'}
-                </span>
-                <div className="tile-actions">
-                  <button type="button" className="secondary" onClick={() => onNavigate('attendance')}>Register</button>
-                  <button type="button" className="secondary" onClick={() => onNavigate('grades')}>Marks</button>
-                  <button type="button" className="secondary" onClick={() => onNavigate('students')}>Students</button>
+      <div className="dash-grid">
+        <MyDay lessons={data.today} onNavigate={onNavigate} />
+        <NeedsAttention items={(() => {
+          const missing = (data.classes || []).filter((c) => !c.register_taken_today).map((c) => c.name)
+          return [missing.length > 0 && {
+            key: 'registers', alert: true, action: 'Register', onClick: () => onNavigate('attendance'),
+            text: `${missing.length} register${missing.length === 1 ? '' : 's'} not taken today: ${missing.slice(0, 4).join(', ')}${missing.length > 4 ? '…' : ''}`,
+          }]
+        })()}>
+          {data.boarding && (data.boarding.missing.length > 0 || data.boarding.leave_waiting > 0 || data.boarding.sick_bay > 0) && (
+            <div className="attention-block">
+              <div className="support-row">
+                <div>
+                  <strong>Boarding</strong>
+                  <p className="text-muted" style={{ margin: '2px 0 0' }}>
+                    {[
+                      data.boarding.leave_waiting > 0 && `${data.boarding.leave_waiting} leave request${data.boarding.leave_waiting === 1 ? '' : 's'} to decide`,
+                      data.boarding.sick_bay > 0 && `${data.boarding.sick_bay} in sick bay`,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
                 </div>
+                <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => onNavigate('boarding')}>Boarding</button>
               </div>
-            ))}
-          </div>
-        )}
+              {data.boarding.missing.length > 0 && (
+                <p style={{ margin: '8px 0 0', color: 'var(--stamp-red)' }}>
+                  <strong>Missing, not found yet:</strong> {data.boarding.missing.map((m) => m.name).join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+          {data.support && (data.support.suggested > 0 || data.support.open > 0) && (
+            <div className="attention-block">
+              <div className="support-row">
+                <div>
+                  <strong>Students who need support</strong>
+                  <p className="text-muted" style={{ margin: '2px 0 0' }}>
+                    {[
+                      data.support.suggested > 0 && `${data.support.suggested} suggested by HouseMaster to look at`,
+                      data.support.open > 0 && `${data.support.open} marked as needing support`,
+                    ].filter(Boolean).join(' · ')}
+                  </p>
+                </div>
+                <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => onNavigate('support')}>Open</button>
+              </div>
+              {data.support.due.length > 0 && (
+                <>
+                  <p style={{ margin: '8px 0 2px' }}><strong>Reviews due</strong></p>
+                  <ul style={{ margin: 0, paddingLeft: 18 }}>
+                    {data.support.due.map((d) => (
+                      <li key={d.id}>{d.student_name} <span className="text-muted">· {formatDate(d.review_date)}</span></li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+          )}
+        </NeedsAttention>
+        <Bulletin onNavigate={onNavigate} />
+        <QuickFind onNavigate={onNavigate} />
+        <Panel title={`My ${words.classes.toLowerCase()}`} wide>
+          {data.classes.length === 0 ? (
+            <p className="text-muted dash-empty">
+              You haven&apos;t been given any {words.classes.toLowerCase()} yet. An admin assigns them on the Staff page.
+            </p>
+          ) : (
+            <div className="class-tiles">
+              {data.classes.map((c) => (
+                <div className="class-tile" key={c.id}>
+                  <h4>{c.name}</h4>
+                  <span className="text-muted" style={{ fontSize: 13 }}>
+                    {c.year_group}{c.curriculum ? ` · ${c.curriculum}` : ''} · {c.students} student{c.students === 1 ? '' : 's'}
+                  </span>
+                  <span style={{ fontSize: 13 }}>
+                    {c.class_teacher ? `${words.class} teacher` : ''}{c.class_teacher && c.subjects.length ? ' · ' : ''}{c.subjects.join(', ')}
+                  </span>
+                  <span className={c.register_taken_today ? 'badge finalized' : 'badge pending'} style={{ justifySelf: 'start' }}>
+                    {c.register_taken_today ? "Today's register is in" : 'Register not taken today'}
+                  </span>
+                  <div className="tile-actions">
+                    <button type="button" className="secondary" onClick={() => onNavigate('attendance')}>Register</button>
+                    <button type="button" className="secondary" onClick={() => onNavigate('grades')}>Marks</button>
+                    <button type="button" className="secondary" onClick={() => onNavigate('students')}>Students</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Panel>
       </div>
       {list.hidden && (
         <p className="hint">

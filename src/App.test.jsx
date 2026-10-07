@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { deepApiMock } from './test/apiMock.js'
 
 // The identity fork: staff have a profile (/api/me/ works); parents don't
@@ -47,11 +47,51 @@ describe('identity fork', () => {
       'checklist.get': () => Promise.resolve(checklist),
     })
     const { container, findByText } = render(<App />)
-    await waitFor(() => expect(container.querySelector('[data-tab="grades"]')).toBeInTheDocument())
-    expect(container.querySelector('[data-tab="staff"]')).toBeInTheDocument()
+    await waitFor(() => expect(container.querySelector('.rail [data-section="reports"]')).toBeInTheDocument())
+    expect(container.querySelector('.rail [data-section="admin"]')).toBeInTheDocument()
     // The home page itself renders, rather than crashing after the menu.
     expect(await findByText(/Good (morning|afternoon), Amina/)).toBeInTheDocument()
-    expect(container.querySelector('[data-tab="staff"]')).toBeInTheDocument()
+    // A section opens on its first page, with its other pages as tabs along the top.
+    fireEvent.click(container.querySelector('.rail [data-section="admin"]'))
+    const tabs = within(await screen.findByRole('tablist', { name: 'Admin' }))
+    expect(tabs.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Setup', 'Staff', 'Parents', 'Approvals', 'Activity log'])
+    expect(tabs.getByRole('tab', { name: 'Setup' })).toHaveAttribute('aria-selected', 'true')
+  })
+
+  it('a teacher sees five sections; Setup and their requests are in the profile menu', async () => {
+    mockApi.current = deepApiMock({
+      isLoggedIn: () => true,
+      me: () => Promise.resolve({ id: 2, name: 'Tom', role: 'teacher', tour_seen: true, school, assignments: [] }),
+      'teacherHome.get': () => Promise.resolve({ classes: [], checklist: { hidden: true, steps: [], done: 0, total: 0 }, today: [] }),
+    })
+    const { container } = render(<App />)
+    await waitFor(() => expect(container.querySelector('.rail [data-section="reports"]')).toBeInTheDocument())
+    expect([...container.querySelectorAll('.rail [data-section]')].map((b) => b.dataset.section))
+      .toEqual(['home', 'registers', 'reports', 'messages', 'students'])
+    // All five fit the phone's bottom bar, so there's no "More".
+    expect(container.querySelector('.bottom-bar [data-section="more"]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Your profile' }))
+    expect(screen.getByRole('button', { name: 'My requests' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Setup' })).toBeInTheDocument()
+  })
+
+  it('an admin on a phone gets four sections and More, which lists everything', async () => {
+    mockApi.current = deepApiMock({
+      isLoggedIn: () => true,
+      me: () => Promise.resolve({ id: 1, name: 'Amina', role: 'admin', tour_seen: true, school, assignments: [] }),
+      dashboard: () => Promise.resolve(dashboard),
+      'checklist.get': () => Promise.resolve(checklist),
+      'activity.list': () => Promise.resolve({ results: [], next: null }),
+    })
+    const { container } = render(<App />)
+    await waitFor(() => expect(container.querySelector('.bottom-bar [data-section="more"]')).toBeInTheDocument())
+    expect([...container.querySelectorAll('.bottom-bar [data-section]')].map((b) => b.dataset.section))
+      .toEqual(['home', 'registers', 'reports', 'messages', 'more'])
+    fireEvent.click(container.querySelector('.bottom-bar [data-section="more"]'))
+    const sheet = within(screen.getByRole('dialog', { name: 'Everything in HouseMaster' }))
+    fireEvent.click(sheet.getByRole('button', { name: 'Activity log' }))
+    expect(await screen.findByRole('tab', { name: 'Activity log' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByRole('dialog', { name: 'Everything in HouseMaster' })).toBeNull()
   })
 
   it('falls back to the parent menu when /api/me/ answers 403', async () => {
@@ -59,9 +99,10 @@ describe('identity fork', () => {
     mockApi.current = deepApiMock({ isLoggedIn: () => true, me: forbidden, guardianMe })
     const { container } = render(<App />)
     await waitFor(() => expect(guardianMe).toHaveBeenCalled())
-    await waitFor(() => expect(container.querySelector('[data-tab="messages"]')).toBeInTheDocument())
-    expect(container.querySelector('[data-tab="grades"]')).not.toBeInTheDocument()
-    expect(container.querySelector('[data-tab="staff"]')).not.toBeInTheDocument()
+    await waitFor(() => expect(container.querySelector('.rail [data-section="messages"]')).toBeInTheDocument())
+    expect(container.querySelector('[data-section="reports"]')).not.toBeInTheDocument()
+    expect(container.querySelector('[data-section="admin"]')).not.toBeInTheDocument()
+    expect(container.querySelector('[data-quick="grades"]')).not.toBeInTheDocument()
     expect(container.querySelector('[data-tab="activity"]')).not.toBeInTheDocument()
   })
 

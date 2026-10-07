@@ -31,6 +31,18 @@ export default function FirstWeekChecklist({ onNavigate }) {
     )
   }
   const allDone = list.done === list.total
+  // Once everything is done it takes one line, not half the dashboard.
+  if (allDone) {
+    return (
+      <div className="card checklist-done">
+        <span className="checklist-mark" aria-hidden="true">✓</span>
+        <span><strong>Your first week is done.</strong> <span className="text-muted">All {list.total} steps are complete.</span></span>
+        <button type="button" className="link-button" style={{ width: 'auto', padding: 0, marginLeft: 'auto' }} onClick={() => setHidden(true)}>
+          Hide this checklist
+        </button>
+      </div>
+    )
+  }
   return (
     <div className="card checklist-card">
       <div className="checklist-head">

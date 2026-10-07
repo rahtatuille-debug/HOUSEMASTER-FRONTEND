@@ -57,7 +57,7 @@ describe('opening the app without a signal', () => {
       connection.report(false)
       connection.report(true)
     })
-    await waitFor(() => expect(container.querySelector('[data-tab="attendance"]')).toBeInTheDocument())
+    await waitFor(() => expect(container.querySelector('.rail [data-section="registers"]')).toBeInTheDocument())
   })
 
   it('tries again when asked', async () => {
@@ -71,7 +71,7 @@ describe('opening the app without a signal', () => {
     await screen.findByText(/can’t reach HouseMaster/i)
     online = true
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
-    await waitFor(() => expect(container.querySelector('[data-tab="attendance"]')).toBeInTheDocument())
+    await waitFor(() => expect(container.querySelector('.rail [data-section="registers"]')).toBeInTheDocument())
   })
 
   it('waits too when the server is down, rather than asking for the password', async () => {
