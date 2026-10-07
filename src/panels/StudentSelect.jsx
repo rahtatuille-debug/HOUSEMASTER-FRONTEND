@@ -4,13 +4,21 @@ import { useState } from 'react'
 // admission number and the list narrows; when only one student matches,
 // they're chosen. Keeps the plain <select> underneath, so it works the same
 // with a keyboard, a screen reader and on a phone.
-export default function StudentSelect({ id, label, students, value, onChange, emptyLabel = 'Select…', required = false }) {
+//
+// Students can be { first_name, last_name, external_id } or, as boarding
+// lists send them, { name }. `describe` adds extra text after the name (e.g.
+// the house), which the search also looks at.
+export function studentLabel(s, describe) {
+  const name = s.name || `${s.first_name} ${s.last_name}`
+  const extra = describe ? describe(s) : ''
+  return `${name}${s.external_id ? ` (${s.external_id})` : ''}${extra ? ` ${extra}` : ''}`
+}
+
+export default function StudentSelect({ id, label, students, value, onChange, emptyLabel = 'Select…', required = false, describe, placeholder = 'Type a name or admission number' }) {
   const [query, setQuery] = useState('')
   const q = query.trim().toLowerCase()
-  const name = (s) => `${s.first_name} ${s.last_name}`
-  const matches = q
-    ? students.filter((s) => name(s).toLowerCase().includes(q) || (s.external_id || '').toLowerCase().includes(q))
-    : students
+  const find = (text) => students.filter((s) => studentLabel(s, describe).toLowerCase().includes(text))
+  const matches = q ? find(q) : students
   // The chosen student stays in the list even when the search hides them.
   const chosen = students.find((s) => String(s.id) === String(value))
   const shown = chosen && !matches.includes(chosen) ? [chosen, ...matches] : matches
@@ -19,7 +27,7 @@ export default function StudentSelect({ id, label, students, value, onChange, em
     setQuery(text)
     const t = text.trim().toLowerCase()
     if (!t) return
-    const found = students.filter((s) => name(s).toLowerCase().includes(t) || (s.external_id || '').toLowerCase().includes(t))
+    const found = find(t)
     if (found.length === 1 && String(found[0].id) !== String(value)) onChange(String(found[0].id))
   }
 
@@ -28,14 +36,12 @@ export default function StudentSelect({ id, label, students, value, onChange, em
       <label htmlFor={id}>{label}</label>
       {students.length > 8 && (
         <input type="search" className="student-search" aria-label={`Search ${label.toLowerCase()}`}
-          placeholder="Type a name or admission number" value={query} onChange={(e) => search(e.target.value)} />
+          placeholder={placeholder} value={query} onChange={(e) => search(e.target.value)} />
       )}
       <select id={id} value={value} onChange={(e) => onChange(e.target.value)} required={required}>
         <option value="">{q && matches.length === 0 ? 'No students match' : emptyLabel}</option>
         {shown.map((s) => (
-          <option key={s.id} value={s.id}>
-            {name(s)}{s.external_id ? ` (${s.external_id})` : ''}
-          </option>
+          <option key={s.id} value={s.id}>{studentLabel(s, describe)}</option>
         ))}
       </select>
       {q && matches.length > 1 && <p className="hint" style={{ margin: '4px 0 0' }}>{matches.length} students match</p>}

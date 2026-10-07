@@ -28,7 +28,6 @@ export default function Messages({ me, identityKind }) {
   // "new conversation" flow state
   const [composing, setComposing] = useState(false)
   const [contacts, setContacts] = useState([])
-  const [students, setStudents] = useState([])
   const [newParticipantId, setNewParticipantId] = useState('')
   const [newStudentId, setNewStudentId] = useState('')
   const [newBody, setNewBody] = useState('')
@@ -131,13 +130,17 @@ export default function Messages({ me, identityKind }) {
     try {
       const contactList = await api.conversations.contacts()
       setContacts(contactList)
-      if (identityKind === 'staff') {
-        const studentList = await api.students.list({ is_active: true })
-        setStudents(studentList)
-      }
     } catch (err) {
       setError(err.message)
     }
+  }
+
+  // Staff can only write to a parent about that parent's own children.
+  const children = contacts.find((c) => String(c.id) === String(newParticipantId))?.children || []
+  function chooseContact(id) {
+    setNewParticipantId(id)
+    const kids = contacts.find((c) => String(c.id) === String(id))?.children || []
+    setNewStudentId(kids.length === 1 ? String(kids[0].id) : '')
   }
 
   async function handleCreate(e) {
@@ -307,7 +310,7 @@ export default function Messages({ me, identityKind }) {
                   <select
                     id="new-msg-contact"
                     value={newParticipantId}
-                    onChange={(e) => setNewParticipantId(e.target.value)}
+                    onChange={(e) => chooseContact(e.target.value)}
                     required
                   >
                     <option value="">Choose someone…</option>
@@ -316,18 +319,12 @@ export default function Messages({ me, identityKind }) {
                     ))}
                   </select>
                 </div>
-                {identityKind === 'staff' && (
+                {identityKind === 'staff' && children.length > 0 && (
                   <div className="field">
-                    <label htmlFor="new-msg-student">About which student? (optional)</label>
-                    <select
-                      id="new-msg-student"
-                      value={newStudentId}
-                      onChange={(e) => setNewStudentId(e.target.value)}
-                    >
-                      <option value="">Not specific to a student</option>
-                      {students.map((s) => (
-                        <option key={s.id} value={s.id}>{s.first_name} {s.last_name}</option>
-                      ))}
+                    <label htmlFor="new-msg-student">About which child? (optional)</label>
+                    <select id="new-msg-student" value={newStudentId} onChange={(e) => setNewStudentId(e.target.value)}>
+                      <option value="">Not about one child</option>
+                      {children.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                   </div>
                 )}

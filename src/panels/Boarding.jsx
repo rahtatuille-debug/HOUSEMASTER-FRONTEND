@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { formatDate, formatDateTime } from '../format.js'
 import { errorText } from './Timetable.jsx'
+import StudentSelect from './StudentSelect.jsx'
 
 const SHORT = { dateStyle: 'medium', timeStyle: 'short' }
 const WHERE = { in: ['In the house', 'finalized'], on_leave: ['On leave', 'pending'], sick_bay: ['In sick bay', 'draft'] }
@@ -9,6 +10,9 @@ const ROLL_STATUS = { present: 'Present', missing: 'Missing', on_leave: 'On leav
 const LEAVE_KINDS = [['weekend', 'Weekend'], ['half_term', 'Half term'], ['exeat', 'Exeat'], ['appointment', 'Appointment'], ['other', 'Other']]
 const OUTCOMES = [['back', 'Back to lessons or the house'], ['home', 'Sent home'], ['hospital', 'Sent to hospital or a clinic']]
 const RESOLUTIONS = [['found', 'Found'], ['returned', 'Came back'], ['on_leave', 'Was on authorised leave'], ['left_school', 'Has left the school']]
+// Boarder dropdowns show (and search) the house after the name.
+const BOARDER_HOUSE = (b) => `(${b.house})`
+const BOARDER_SEARCH = 'Type a name or house'
 const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Boarding houses and beds'], ['allocation', 'House allocation']]
 
 function defaultSession() {
@@ -354,12 +358,10 @@ function LeaveRules({ isAdmin, boarders }) {
       {isAdmin && (
         <form onSubmit={(e) => { e.preventDefault(); save({ student: Number(student), leave_admin_only: true, note }, () => { setStudent(''); setNote('') }) }}
           style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginTop: 8 }}>
-          <label style={{ flex: '1 1 200px' }}>Boarder needing admin approval
-            <select value={student} onChange={(e) => setStudent(e.target.value)} required>
-              <option value="">Choose…</option>
-              {(boarders || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.house})</option>)}
-            </select>
-          </label>
+          <div style={{ flex: '1 1 200px' }}>
+            <StudentSelect id="rule-student" label="Boarder needing admin approval" students={boarders || []} value={student}
+              onChange={setStudent} emptyLabel="Choose…" required describe={BOARDER_HOUSE} placeholder={BOARDER_SEARCH} />
+          </div>
           <label style={{ flex: '1 1 200px' }}>Why (staff only)<input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} placeholder="e.g. Court order" /></label>
           <button type="submit" className="secondary" style={{ width: 'auto' }}>Add rule</button>
         </form>
@@ -416,12 +418,9 @@ function LeavePanel({ me }) {
         <div className="card">
           <h3 style={{ fontSize: 15, marginBottom: 8 }}>Give leave</h3>
           <form onSubmit={give} className="tt-form-grid">
-            <label>Boarder
-              <select value={form.student} onChange={set('student')} required>
-                <option value="">Choose…</option>
-                {(boarders || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.house}){b.leave_admin_only ? ' · admin approval only' : ''}</option>)}
-              </select>
-            </label>
+            <StudentSelect id="leave-student" label="Boarder" students={boarders || []} value={form.student}
+              onChange={(v) => setForm((f) => ({ ...f, student: v }))} emptyLabel="Choose…" required
+              describe={(b) => `${BOARDER_HOUSE(b)}${b.leave_admin_only ? ' · admin approval only' : ''}`} placeholder={BOARDER_SEARCH} />
             <label>Kind<select value={form.kind} onChange={set('kind')}>{LEAVE_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select></label>
             <label>Leaving<input type="datetime-local" value={form.leaving_at} onChange={set('leaving_at')} required /></label>
             <label>Back<input type="datetime-local" value={form.returning_at} onChange={set('returning_at')} required /></label>
@@ -520,12 +519,9 @@ function SickBayPanel() {
       <div className="card">
         <h3 style={{ fontSize: 15, marginBottom: 8 }}>Check a boarder in</h3>
         <form onSubmit={checkIn} className="tt-form-grid">
-          <label>Boarder
-            <select value={form.student} onChange={(e) => setForm({ ...form, student: e.target.value })} required>
-              <option value="">Choose…</option>
-              {(boarders || []).map((b) => <option key={b.id} value={b.id}>{b.name} ({b.house})</option>)}
-            </select>
-          </label>
+          <StudentSelect id="sick-student" label="Boarder" students={boarders || []} value={form.student}
+            onChange={(v) => setForm((f) => ({ ...f, student: v }))} emptyLabel="Choose…" required
+            describe={BOARDER_HOUSE} placeholder={BOARDER_SEARCH} />
           <label>Why they came<input value={form.complaint} onChange={(e) => setForm({ ...form, complaint: e.target.value })} placeholder="e.g. headache, fever 38°C" required /></label>
           <label>Given or done<input value={form.treatment} onChange={(e) => setForm({ ...form, treatment: e.target.value })} placeholder="e.g. paracetamol 500 mg" /></label>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontWeight: 400 }}>
