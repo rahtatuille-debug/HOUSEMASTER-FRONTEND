@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { levelFor, levelMidpoint, levelsForScale, useSchool, useVocab } from '../levels.js'
+import StudentSelect from './StudentSelect.jsx'
 import { api, isPage } from '../api.js'
 import { loadDraft, saveDraft } from '../drafts.js'
 import ShowMore, { PAGE } from './ShowMore.jsx'
@@ -217,20 +218,8 @@ export default function Grades({ me }) {
           <form onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="field" style={{ marginBottom: 0 }}>
-                <label htmlFor="g-student">Student</label>
-                <select
-                  id="g-student"
-                  value={form.student}
-                  onChange={(e) => setForm({ ...form, student: e.target.value })}
-                  required
-                >
-                  <option value="">Select…</option>
-                  {students.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.first_name} {s.last_name}
-                    </option>
-                  ))}
-                </select>
+                <StudentSelect id="g-student" label="Student" students={students} value={form.student}
+                  onChange={(v) => setForm({ ...form, student: v })} required />
               </div>
               <div className="field" style={{ marginBottom: 0 }}>
                 <label htmlFor="g-subject">{words.subject}</label>
@@ -331,15 +320,8 @@ export default function Grades({ me }) {
 
       <div className="form-row" style={{ marginBottom: 14 }}>
         <div className="field" style={{ marginBottom: 0 }}>
-          <label htmlFor="filter-student">Filter by student</label>
-          <select id="filter-student" value={filterStudent} onChange={(e) => setFilterStudent(e.target.value)}>
-            <option value="">All students</option>
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.first_name} {s.last_name}
-              </option>
-            ))}
-          </select>
+          <StudentSelect id="filter-student" label="Filter by student" students={students} value={filterStudent}
+            onChange={setFilterStudent} emptyLabel="All students" />
         </div>
         <div className="field" style={{ marginBottom: 0 }}>
           <label htmlFor="filter-term">Filter by term</label>

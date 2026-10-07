@@ -1393,3 +1393,6 @@ body { background: var(--surface); }
   .dashboard { display: flex; flex-direction: column; }
   .dashboard > .checklist-card { order: 5; margin-top: 16px; }
 }
+.student-select .student-search { margin-bottom: 6px; }
+/* The section's tabs stay in view under the top bar on long pages. */
+.section-tabs { position: sticky; top: 56px; z-index: 10; background: var(--surface); padding-top: 6px; }

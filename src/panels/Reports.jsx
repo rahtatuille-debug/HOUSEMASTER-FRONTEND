@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
+import StudentSelect from './StudentSelect.jsx'
 import { api } from '../api.js'
 import ClassReports from './ClassReports.jsx'
 import SubjectReportsCard from './SubjectReportsCard.jsx'
@@ -154,15 +155,8 @@ export default function Reports({ me, onCountsChanged }) {
         <h3 style={{ marginBottom: 14, fontSize: 15 }}>One student</h3>
         <form onSubmit={handleGenerate} className="form-row">
           <div className="field" style={{ marginBottom: 0 }}>
-            <label htmlFor="r-student">Student</label>
-            <select id="r-student" value={genStudent} onChange={(e) => setGenStudent(e.target.value)} required>
-              <option value="">Select…</option>
-              {students.filter((s) => s.is_active).map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.first_name} {s.last_name}
-                </option>
-              ))}
-            </select>
+            <StudentSelect id="r-student" label="Student" students={students.filter((s) => s.is_active)} value={genStudent}
+              onChange={setGenStudent} required />
           </div>
           <div className="field" style={{ marginBottom: 0 }}>
             <label htmlFor="r-term">{words.term}</label>
