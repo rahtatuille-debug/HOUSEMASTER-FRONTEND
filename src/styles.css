@@ -1480,3 +1480,6 @@ form + .staff-sub { margin-top: 18px; }
 .perf-table { margin: 0 0 10px; }
 .perf-table tr.mine td { background: var(--surface); }
 @media (max-width: 640px) { .perf-head { grid-template-columns: 1fr auto auto; } .perf-year { display: none; } }
+.all-classes-table td { white-space: nowrap; }
+.all-classes-table tr.mine td { background: var(--surface); }
+.all-classes-table tr.mine td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
