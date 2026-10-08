@@ -1606,3 +1606,25 @@ form + .staff-sub { margin-top: 18px; }
   .print-area { position: absolute; left: 0; top: 0; width: 100%; }
   .sa-slips { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* Subscription status for admins (Billing). */
+.billing-banner {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  padding: 10px 20px;
+  background: rgba(30, 47, 82, 0.08);
+  color: var(--navy);
+  border-bottom: 1px solid rgba(30, 47, 82, 0.15);
+}
+.billing-banner p { margin: 0; }
+.billing-banner button { width: auto; }
+.billing-banner.billing-overdue { background: rgba(184, 134, 46, 0.15); color: var(--ink); }
+.billing-banner.billing-locked { background: rgba(156, 59, 59, 0.12); color: var(--stamp-red); }
+.billing-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 16px 0 0; }
+.billing-facts dt { font-size: 12px; color: var(--navy-2); text-transform: uppercase; letter-spacing: .04em; }
+.billing-facts dd { margin: 2px 0 0; font-weight: 600; }
+.billing-instructions { white-space: pre-line; }
+.billing-current td { font-weight: 600; }

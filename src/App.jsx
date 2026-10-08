@@ -43,6 +43,7 @@ import Clubs from './panels/Clubs.jsx'
 import Calendar from './panels/Calendar.jsx'
 import Homework from './panels/Homework.jsx'
 import StudentAccounts from './panels/StudentAccounts.jsx'
+import Billing, { billingSentence } from './panels/Billing.jsx'
 import StudentProfile, { ChooseFirstPassword } from './panels/StudentPassword.jsx'
 import GovernorHome from './panels/GovernorHome.jsx'
 import { perms } from './permissions.js'
@@ -82,6 +83,7 @@ const TABS = [
   { key: 'studentaccounts', label: 'Student accounts', component: StudentAccounts, need: 'manage_student_accounts' },
   { key: 'admissions', label: 'Admissions', component: Admissions, need: 'manage_admissions' },
   { key: 'activity', label: 'Activity log', component: Activity, adminOnly: true },
+  { key: 'billing', label: 'Billing', component: Billing, adminOnly: true },
   { key: 'guide', label: 'Guide', component: Guide },
   { key: 'profile', label: 'Profile', component: Profile },
 ]
@@ -257,11 +259,15 @@ export default function App() {
   // a connection (and say so) rather than asking for the password again.
   const [identityOffline, setIdentityOffline] = useState(false)
   const [identityAttempt, setIdentityAttempt] = useState(0)
+  // The school's subscription is overdue past its grace period: only its admins can sign in, to pay.
+  const [schoolLocked, setSchoolLocked] = useState('')
 
   useEffect(() => {
     if (!loggedIn) return
     setIdentityOffline(false)
+    setSchoolLocked('')
     const failed = (err) => {
+      if (err?.data?.code === 'school_locked') { setSchoolLocked(err.data.detail || 'HouseMaster is paused for your school.'); return }
       // No signal, or the server itself down: wait. Anything else (an
       // expired session) goes back to sign-in.
       if (err?.network || err?.status >= 500) setIdentityOffline(true)
@@ -277,7 +283,7 @@ export default function App() {
         setIdentityKind('staff')
       })
       .catch((err) => {
-        if (err.status === 403) {
+        if (err.status === 403 && err.data?.code !== 'school_locked') {
           api
             .guardianMe()
             .then((data) => {
@@ -285,7 +291,7 @@ export default function App() {
               setIdentityKind('guardian')
             })
             .catch((gErr) => {
-              if (gErr.status !== 403) { failed(gErr); return }
+              if (gErr.status !== 403 || gErr.data?.code === 'school_locked') { failed(gErr); return }
               // Neither staff nor parent: a student's own account (studentaccounts).
               api.student.me()
                 .then((data) => {
@@ -312,7 +318,7 @@ export default function App() {
   }, [identityOffline])
 
   function refreshWaitingCount() {
-    if (identityKind !== 'staff' || me?.role !== 'admin') {
+    if (identityKind !== 'staff' || me?.role !== 'admin' || me?.billing?.status === 'locked') {
       setWaitingCount(0)
       return
     }
@@ -328,8 +334,10 @@ export default function App() {
   }, [identityKind, me?.role, activeTab])
 
   // Check for urgent alerts on load and every minute after, for staff and parents.
+  // A locked school's admin can only reach Billing, so there's nothing to poll.
+  const schoolPaused = me?.billing?.status === 'locked'
   useEffect(() => {
-    if (!identityKind) return
+    if (!identityKind || schoolPaused) return
     let cancelled = false
     function check() {
       api.alerts
@@ -343,7 +351,7 @@ export default function App() {
       cancelled = true
       clearInterval(timer)
     }
-  }, [identityKind])
+  }, [identityKind, schoolPaused])
 
   async function acknowledgeAlert(id) {
     try {
@@ -468,6 +476,18 @@ export default function App() {
 
   // Still resolving which identity type this account is.
   if (!identityKind) {
+    if (schoolLocked) {
+      return (
+        <div className="login-wrap">
+          <div className="login-card">
+            <LogoFull />
+            <p className="tagline">HouseMaster is paused for your school</p>
+            <p>{schoolLocked}</p>
+            <button type="button" className="secondary" onClick={handleLogout}>Sign out</button>
+          </div>
+        </div>
+      )
+    }
     if (identityOffline) {
       return (
         <div className="login-wrap">
@@ -491,8 +511,11 @@ export default function App() {
     )
   }
 
+  // A locked school's admin sees only Billing and their profile until it's paid.
+  const billingLocked = identityKind === 'staff' && me?.billing?.status === 'locked'
+
   // A new school has to finish setup before anyone can use it.
-  if (identityKind === 'staff' && me?.school && me.school.setup_completed === false) {
+  if (identityKind === 'staff' && !billingLocked && me?.school && me.school.setup_completed === false) {
     if (me.role === 'admin' && me.school.setup_stage === 'people') {
       // Staff, students and parents, once the structure is in place. Words follow the chosen system.
       return (
@@ -534,7 +557,7 @@ export default function App() {
   const governor = identityKind === 'staff' && p.is_governor
   // A page shows when its role allows it (`need`), admins see admin pages,
   // and a governor sees only the school's figures and their profile.
-  const visibleTabs = tabSet.filter((t) => (governor ? GOVERNOR_PAGES.includes(t.key)
+  const visibleTabs = tabSet.filter((t) => (billingLocked ? ['billing', 'profile'].includes(t.key) : governor ? GOVERNOR_PAGES.includes(t.key)
     : (!t.adminOnly || isAdmin) && (!t.need || p[t.need]) && (!t.boardingOnly || me?.is_boarding_staff)))
   const pageKeys = visibleTabs.map((t) => t.key)
   // Pages a role opens inside the Admin section (e.g. Parents for the Secretary, Approvals for leaders).
@@ -548,7 +571,7 @@ export default function App() {
   const identityLine = identityKind === 'guardian' ? guardianIdentity(me) : identityKind === 'student' ? studentIdentity(me) : personIdentity(me)
   // Settings has nowhere sensible to send a guardian yet (no Setup-equivalent
   // for them), so it's staff-only — same gate as the Setup tab itself.
-  const showSettings = identityKind === 'staff'
+  const showSettings = identityKind === 'staff' && !billingLocked
   const pageLabel = (key) => {
     const t = visibleTabs.find((x) => x.key === key)
     return t ? (!(p.approve_requests || p.approve_reports) && t.teacherLabel ? t.teacherLabel : t.label) : key
@@ -742,6 +765,12 @@ export default function App() {
           </div>
         </header>
 
+        {identityKind === 'staff' && ['due', 'overdue', 'locked'].includes(me?.billing?.status) && (
+          <div className={`billing-banner billing-${me.billing.status}`} role={me.billing.status === 'due' ? 'status' : 'alert'}>
+            <p>{billingSentence(me.billing)}</p>
+            {activeKey !== 'billing' && <button type="button" className="secondary" onClick={() => selectTab('billing')}>Open billing</button>}
+          </div>
+        )}
         {urgentAlerts.map((a) => (
           <div className="urgent-banner" role="alert" key={a.id}>
             <div>

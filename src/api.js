@@ -1088,6 +1088,13 @@ export const api = {
       remove: (id) => request(`/api/calendar/events/${id}/`, { method: 'DELETE' }),
     },
   },
+  // The school's subscription (admins only): status, tier, invoices and how to pay.
+  billing: {
+    get: () => request('/api/billing/'),
+    // { method, reference, note }: tells HouseMaster the school has paid; it's checked and recorded by hand.
+    reportPaid: (id, body) => request(`/api/billing/invoices/${id}/paid/`, { method: 'POST', body }),
+    invoicePdf: (id) => downloadFile(`/api/billing/invoices/${id}/pdf/`),
+  },
   // Homework: teachers set it and record how each student did.
   homework: {
     // { school_class, subject, mine, when: upcoming|past }

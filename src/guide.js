@@ -264,6 +264,16 @@ export function guideSections(w, role) {
       steps: ['Filter by person or type of action to see what changed.'],
     },
     {
+      key: 'billing', title: 'Billing', for: 'admin',
+      tour: 'Your school\'s monthly subscription: its status, invoices and how to pay.',
+      steps: [
+        'The price depends on how many students your school has. Your tier and the prices are shown at the top.',
+        'Invoices are emailed to the school\'s admins a week before each month starts. Download any invoice as a PDF here.',
+        'Pay using the details under "How to pay", with the invoice number as the reference. Then press "We\'ve paid" and give the payment\'s reference (e.g. the M-Pesa code). We check it and mark the invoice paid.',
+        'If an invoice isn\'t paid by its due date, a grace period starts. After it, HouseMaster pauses for everyone at your school except admins, who can still open this page to pay. Paying unlocks it straight away once recorded.',
+      ],
+    },
+    {
       key: 'profile', title: 'Profile', for: 'all',
       tour: 'Your name, password and privacy information.',
       steps: ['Change the name others see, and your password.'],
