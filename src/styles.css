@@ -1429,3 +1429,9 @@ body { background: var(--surface); }
 .discipline-head .badge { min-width: 0; }
 .discipline-notes { margin-top: 6px; font-size: 13px; background: var(--surface); border-radius: 6px; padding: 6px 8px; }
 .text-alert { color: var(--stamp-red); }
+
+/* Staff: classes and roles under a staff member */
+.staff-sub { font-size: 13px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft, #555); margin: 4px 0 8px; }
+.staff-sub + .chip-list, .staff-sub + .hint { margin-top: 0; }
+form + .staff-sub { margin-top: 18px; }
+.responsive-table select[aria-label^="Role for"] { min-width: 150px; }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
 import StudentSelect from './StudentSelect.jsx'
@@ -26,7 +27,10 @@ const FILTERS = [
 // report back to draft with a note.
 export default function Reports({ me, onCountsChanged }) {
   const words = useVocab()
-  const isAdmin = me?.role === 'admin'
+  const p = perms(me)
+  // Admins and leadership write the principal's remarks; they and Heads of Year approve reports.
+  const isAdmin = p.is_leader
+  const approves = p.approve_reports
   const [filter, setFilter] = useState('')
   const [notice, setNotice] = useState('')
   const [sendingBack, setSendingBack] = useState(false)
@@ -281,7 +285,7 @@ export default function Reports({ me, onCountsChanged }) {
                   Submit for approval
                 </button>
               )}
-              {isAdmin && openReport.status !== 'finalized' && (
+              {approves && openReport.status !== 'finalized' && (
                 <button
                   onClick={() => act((r) => api.reports.finalize(r.id), 'Finalized. Parents can now see this report.')}
                   disabled={saving}
@@ -289,7 +293,7 @@ export default function Reports({ me, onCountsChanged }) {
                   Finalize and release to parents
                 </button>
               )}
-              {isAdmin && openReport.status !== 'draft' && (
+              {approves && openReport.status !== 'draft' && (
                 <button className="secondary" onClick={() => setSendingBack(true)} disabled={saving}>
                   Send back with a note
                 </button>

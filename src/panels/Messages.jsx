@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
@@ -90,8 +91,7 @@ export default function Messages({ me, identityKind }) {
     try {
       const all = await api.schoolClasses.list()
       // Teachers can only message classes they teach.
-      const mine =
-        me?.role === 'admin' ? all : all.filter((c) => (me?.assignments || []).some((a) => a.school_class === c.id))
+      const mine = classesFor(me, all, 'pastoral')
       setClasses(mine)
       if (mine.length === 1) setClassId(String(mine[0].id))
     } catch (err) {

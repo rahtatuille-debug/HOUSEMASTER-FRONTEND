@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { perms } from '../permissions.js'
 import { levelFor, levelMidpoint, levelsForScale, useSchool, useVocab } from '../levels.js'
 import StudentSelect from './StudentSelect.jsx'
 import { api, isPage } from '../api.js'
@@ -172,7 +173,9 @@ export default function Grades({ me }) {
   const termName = (id) => terms.find((t) => t.id === id)?.name || `#${id}`
 
   function canGrade(studentId, subjectId) {
-    if (isAdmin) return true
+    // Leaders grade anything; a Head of Department their subject in any class.
+    if (isAdmin || perms(me).is_leader) return true
+    if ((me?.roles || []).some((r) => r.role === 'head_of_department' && r.subject === Number(subjectId))) return true
     const student = students.find((s) => s.id === Number(studentId))
     if (!student) return false
     return (me?.assignments || []).some(

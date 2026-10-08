@@ -11,7 +11,7 @@ const LEAVE_KINDS = [['weekend', 'Weekend'], ['half_term', 'Half term'], ['exeat
 const OUTCOMES = [['back', 'Back to lessons or the house'], ['home', 'Sent home'], ['hospital', 'Sent to hospital or a clinic']]
 const RESOLUTIONS = [['found', 'Found'], ['returned', 'Came back'], ['on_leave', 'Was on authorised leave'], ['left_school', 'Has left the school']]
 // Boarder dropdowns show (and search) the house after the name.
-const BOARDER_HOUSE = (b) => `(${b.house})`
+const BOARDER_HOUSE = (b) => (b.house ? `(${b.house})` : '')
 const BOARDER_SEARCH = 'Type a name or house'
 const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Boarding houses and beds'], ['allocation', 'House allocation']]
 
@@ -480,9 +480,16 @@ function LeavePanel({ me }) {
 }
 
 // --- Sick bay: check in, record treatment and telling parents, check out.
-function SickBayPanel() {
+// The school nurse uses the same sick bay for every student (`everyone`),
+// house staff for their own boarders.
+export function SickBayPanel({ everyone = false }) {
   const [visits, reload, loadError] = useLoader(useCallback(() => api.boarding.sickBay.list(), []))
-  const [boarders] = useLoader(useCallback(() => api.boarding.boarders(), []))
+  const [boarders] = useLoader(useCallback(() => (everyone
+    ? api.students.list({ is_active: true }).then((rows) => (Array.isArray(rows) ? rows : []).map((st) => ({
+      id: st.id, name: `${st.first_name} ${st.last_name}`, house: st.external_id || '' })))
+    : api.boarding.boarders()), [everyone]))
+  const who = everyone ? 'student' : 'boarder'
+  const Who = everyone ? 'Student' : 'Boarder'
   const [form, setForm] = useState({ student: '', complaint: '', treatment: '', tell_parents: true })
   const [outcome, setOutcome] = useState({})
   const [how, setHow] = useState({})
@@ -503,7 +510,7 @@ function SickBayPanel() {
   }
   async function checkIn(e) {
     e.preventDefault()
-    const name = boarders?.find((b) => String(b.id) === String(form.student))?.name || 'The boarder'
+    const name = boarders?.find((b) => String(b.id) === String(form.student))?.name || `The ${who}`
     if (await run(() => api.boarding.sickBay.checkIn({ ...form, student: Number(form.student) }),
       `${name} is checked into sick bay.${form.tell_parents ? ' Parents have been emailed.' : ''}`)) {
       setForm({ student: '', complaint: '', treatment: '', tell_parents: true })
@@ -517,11 +524,11 @@ function SickBayPanel() {
     <>
       <Banner error={error} notice={notice} />
       <div className="card">
-        <h3 style={{ fontSize: 15, marginBottom: 8 }}>Check a boarder in</h3>
+        <h3 style={{ fontSize: 15, marginBottom: 8 }}>Check a {who} in</h3>
         <form onSubmit={checkIn} className="tt-form-grid">
-          <StudentSelect id="sick-student" label="Boarder" students={boarders || []} value={form.student}
+          <StudentSelect id="sick-student" label={Who} students={boarders || []} value={form.student}
             onChange={(v) => setForm((f) => ({ ...f, student: v }))} emptyLabel="Choose…" required
-            describe={BOARDER_HOUSE} placeholder={BOARDER_SEARCH} />
+            describe={BOARDER_HOUSE} placeholder={everyone ? 'Type a name or admission number' : BOARDER_SEARCH} />
           <label>Why they came<input value={form.complaint} onChange={(e) => setForm({ ...form, complaint: e.target.value })} placeholder="e.g. headache, fever 38°C" required /></label>
           <label>Given or done<input value={form.treatment} onChange={(e) => setForm({ ...form, treatment: e.target.value })} placeholder="e.g. paracetamol 500 mg" /></label>
           <label style={{ display: 'flex', gap: 6, alignItems: 'center', fontWeight: 400 }}>
@@ -567,7 +574,7 @@ function SickBayPanel() {
         <h3 style={{ fontSize: 15, marginBottom: 4 }}>Recent visits</h3>
         {done.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>None.</p> : (
           <table className="data-table">
-            <thead><tr><th>Boarder</th><th>In</th><th>Why</th><th>Given</th><th>Out</th></tr></thead>
+            <thead><tr><th>{Who}</th><th>In</th><th>Why</th><th>Given</th><th>Out</th></tr></thead>
             <tbody>
               {done.map((v) => (
                 <tr key={v.id}>

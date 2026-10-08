@@ -7,10 +7,14 @@ export const STAFF_SECTIONS = [
   { key: 'registers', label: 'Registers', icon: 'register', pages: ['attendance', 'timetable', 'boarding'] },
   { key: 'reports', label: 'Reports', icon: 'reports', pages: ['grades', 'reports', 'performance', 'exports'] },
   { key: 'messages', label: 'Messages', icon: 'messages', pages: ['messages', 'announcements', 'alerts'] },
-  { key: 'students', label: 'Students', icon: 'students', pages: ['students', 'support', 'discipline', 'admissions'] },
+  { key: 'students', label: 'Students', icon: 'students', pages: ['students', 'support', 'discipline', 'sickbay', 'admissions'] },
   // Teachers reach Setup and their requests from the profile menu and the quick links.
   { key: 'admin', label: 'Admin', icon: 'admin', pages: ['setup', 'staff', 'parents', 'approvals', 'activity'], adminOnly: true },
 ]
+
+// A governor's read-only account: the school's figures, nothing else.
+export const GOVERNOR_SECTIONS = [{ key: 'home', label: 'Dashboard', icon: 'home', pages: ['home'] }]
+export const GOVERNOR_PAGES = ['home', 'profile']
 
 export const GUARDIAN_SECTIONS = [
   { key: 'students', label: 'My children', icon: 'students', pages: ['students'] },
@@ -19,10 +23,11 @@ export const GUARDIAN_SECTIONS = [
 ]
 
 // The sections this person sees, each with only the pages they can open.
-export function visibleSections(sections, pageKeys, isAdmin) {
+// Someone who isn't an admin still sees the Admin section with just the
+// pages a role gives them (`granted`, e.g. Parents for the Secretary).
+export function visibleSections(sections, pageKeys, isAdmin, granted = []) {
   return sections
-    .filter((s) => !s.adminOnly || isAdmin)
-    .map((s) => ({ ...s, pages: s.pages.filter((p) => pageKeys.includes(p)) }))
+    .map((s) => ({ ...s, pages: s.pages.filter((p) => pageKeys.includes(p) && (!s.adminOnly || isAdmin || granted.includes(p))) }))
     .filter((s) => s.pages.length > 0)
 }
 

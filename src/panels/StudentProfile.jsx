@@ -13,12 +13,12 @@ import { BarChart, COMPARE } from './charts.jsx'
 
 const SECTIONS = [
   { key: 'details', label: 'Student details' },
-  { key: 'performance', label: 'Performance trends' },
-  { key: 'academics', label: 'Grades' },
+  { key: 'performance', label: 'Performance trends', area: 'academic' },
+  { key: 'academics', label: 'Grades', area: 'academic' },
   { key: 'subjects', label: 'Subjects & teachers' },
-  { key: 'attendance', label: 'Attendance' },
+  { key: 'attendance', label: 'Attendance', area: 'pastoral' },
   { key: 'parents', label: 'Parents' },
-  { key: 'reports', label: 'Reports' },
+  { key: 'reports', label: 'Reports', area: 'academic' },
   { key: 'history', label: 'History', adminOnly: true },
   { key: 'privacy', label: 'Data protection', adminOnly: true },
 ]
@@ -230,7 +230,8 @@ export default function StudentProfile({ studentId, me, onBack }) {
   const initials = `${s.first_name[0] || ''}${s.last_name[0] || ''}`.toUpperCase()
   const att = profile.attendance
   const latest = profile.performance[profile.performance.length - 1]
-  const sections = SECTIONS.filter((x) => !x.adminOnly || isAdmin)
+  // A role may cover only part of a student's record (e.g. the nurse: details and health notes).
+  const sections = SECTIONS.filter((x) => (!x.adminOnly || isAdmin) && (!x.area || profile.sections?.[x.area] !== false))
 
   return (
     <ScaleContext.Provider value={s.scale || null}>
@@ -347,16 +348,18 @@ export default function StudentProfile({ studentId, me, onBack }) {
                   <div className="stat-value">{fmt(latest?.student, 1)}</div>
                   {latest && <div className="text-muted" style={{ fontSize: 12 }}>{latest.term}{latest.class != null && ` · class ${latest.class}%`}</div>}
                 </div>
-                <div className="stat-tile">
-                  <div className="stat-label">Attendance</div>
-                  <div className="stat-value">{att.overall.rate != null ? `${att.overall.rate}%` : '—'}</div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>Present or late, of {att.overall.total} days recorded</div>
-                </div>
-                <div className="stat-tile">
-                  <div className="stat-label">Days absent</div>
-                  <div className="stat-value">{att.overall.absent}</div>
-                  <div className="text-muted" style={{ fontSize: 12 }}>{att.overall.late} late · {att.overall.excused} excused</div>
-                </div>
+                {att && <>
+                  <div className="stat-tile">
+                    <div className="stat-label">Attendance</div>
+                    <div className="stat-value">{att.overall.rate != null ? `${att.overall.rate}%` : '—'}</div>
+                    <div className="text-muted" style={{ fontSize: 12 }}>Present or late, of {att.overall.total} days recorded</div>
+                  </div>
+                  <div className="stat-tile">
+                    <div className="stat-label">Days absent</div>
+                    <div className="stat-value">{att.overall.absent}</div>
+                    <div className="text-muted" style={{ fontSize: 12 }}>{att.overall.late} late · {att.overall.excused} excused</div>
+                  </div>
+                </>}
                 <div className="stat-tile">
                   <div className="stat-label">Reports</div>
                   <div className="stat-value">{profile.reports.length}</div>
@@ -493,7 +496,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
             </div>
           )}
 
-          {section === 'attendance' && (
+          {section === 'attendance' && att && (
             <div className="card">
               <div className="stat-row">
                 {[['Attendance', att.overall.rate != null ? `${att.overall.rate}%` : '—'], ['Present', att.overall.present],

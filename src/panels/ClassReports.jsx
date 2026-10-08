@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { api } from '../api.js'
 
@@ -20,8 +21,7 @@ export default function ClassReports({ me, terms, onChanged }) {
   useEffect(() => {
     api.schoolClasses.list()
       .then((cls) => {
-        const assigned = new Set((me?.assignments || []).map((a) => a.school_class))
-        setClasses(isAdmin ? cls : cls.filter((c) => assigned.has(c.id)))
+        setClasses(classesFor(me, cls, 'pastoral'))
       })
       .catch((err) => setError(err.message))
   }, [isAdmin, me])

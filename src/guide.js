@@ -179,7 +179,16 @@ export function guideSections(w, role) {
       tour: `Invite staff (one at a time or from Excel) and give each teacher their ${classes} and ${subjects}.`,
       steps: ['Invite someone by email, or import a spreadsheet of staff with what they teach.',
         `Assign ${classes} and ${subjects}: a teacher only sees the students in their own ${classes}.`,
-        'Make someone an admin, or deactivate an account when they leave.'],
+        'Make someone an admin, or deactivate an account when they leave.',
+        'Give extra roles under "Classes & roles": Leadership (the whole school), Head of Year, Class Teacher, Head of Department, Nurse, Secretary or Admissions Officer. One person can hold several.',
+        'A Governor account is read-only: it sees the school\'s figures and never a named student.'],
+    },
+    {
+      key: 'sickbay', title: 'Sick bay', for: 'all',
+      tour: 'For the school nurse: check any student into the sick bay, note what was given, and tell parents.',
+      steps: ['Choose "Check a boarder in" and search for the student by name or admission number. Day students are included.',
+        'Write why they came and what was given. Tick "Email parents" to send a short email; the details stay in HouseMaster.',
+        'When they leave, choose where they went (back to lessons, home or to hospital) and check them out.'],
     },
     {
       key: 'parents', title: 'Parents', for: 'admin',
