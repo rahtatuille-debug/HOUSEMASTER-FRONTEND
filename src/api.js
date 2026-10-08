@@ -699,6 +699,8 @@ export const api = {
     setHidden: (hidden) => request('/api/teacher-home/', { method: 'PATCH', body: { hidden } }),
     // Each of my classes' average and position in its year group, overall and per subject.
     performance: (term) => request('/api/teacher-home/performance/', { params: term ? { term } : undefined }),
+    // Every class's average and position in its year group, and its subject averages. No students.
+    allClasses: (term) => request('/api/teacher-home/all-classes/', { params: term ? { term } : undefined }),
   },
   tourSeen: () => request('/api/tour-seen/', { method: 'POST' }),
   checklist: {
