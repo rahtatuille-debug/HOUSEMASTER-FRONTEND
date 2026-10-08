@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { FixtureLine } from './Clubs.jsx'
 import TermSummary from './TermSummary.jsx'
 import { formatDate as localDate, formatDateTime } from '../format.js'
 import { useSchool, useWithLevel, useVocab } from '../levels.js'
@@ -10,7 +11,7 @@ import WeekGrid from './WeekGrid.jsx'
 
 const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
 const MODES = { day: 'Day', boarding: 'Boarding' }
-const TABS = ['overview', 'progress', 'grades', 'timetable', 'attendance', 'reports', 'behaviour']
+const TABS = ['overview', 'progress', 'grades', 'timetable', 'attendance', 'reports', 'behaviour', 'clubs']
 
 function formatDate(value) {
   return value ? localDate(value) : '—'
@@ -158,6 +159,7 @@ export default function GuardianStudents() {
           )}
           {tab === 'timetable' && <ChildTimetable studentId={selected.id} />}
           {tab === 'behaviour' && <ChildBehaviour rows={profile?.discipline} merits={profile?.merits} firstName={selected.first_name} />}
+          {tab === 'clubs' && <ChildClubs clubs={profile?.clubs} firstName={selected.first_name} />}
           {tab === 'boarding' && <ChildBoarding studentId={selected.id} firstName={selected.first_name} />}
           {tab === 'attendance' && profile && (
             <div className="card">
@@ -307,6 +309,38 @@ function ChildBoarding({ studentId, firstName }) {
       </div>
     </>
   )
+}
+
+// The child's clubs and teams: when they meet, attendance, fixtures and results.
+export function ChildClubs({ clubs, firstName }) {
+  if (clubs === undefined) return <p className="text-muted">Loading…</p>
+  if (!clubs || clubs.length === 0) return <p className="text-muted">{firstName} isn't in any school clubs or teams yet.</p>
+  return clubs.map((c) => (
+    <div className="card" key={c.id}>
+      <h3 style={{ fontSize: 16, marginBottom: 4 }}>{c.name}{c.role && <span className="badge finalized" style={{ marginLeft: 8 }}>{c.role}</span>}</h3>
+      <p className="text-muted" style={{ margin: '0 0 6px' }}>{[c.kind_label, c.meets, c.location, c.leaders?.length ? `Run by ${c.leaders.join(', ')}` : ''].filter(Boolean).join(' · ')}</p>
+      {c.attendance?.sessions > 0 && (
+        <p style={{ margin: '0 0 6px' }}>Came to <strong>{c.attendance.present} of {c.attendance.sessions}</strong> sessions{c.attendance.excused ? ` (${c.attendance.excused} excused)` : ''}.</p>
+      )}
+      {c.upcoming?.length > 0 && (
+        <>
+          <h4 className="cover-sub">Coming up</h4>
+          <ul className="fixture-list">{c.upcoming.map((f) => <FixtureLine key={f.id} fixture={f}>{f.selected && <span className="badge finalized">{firstName} is in the squad</span>}</FixtureLine>)}</ul>
+        </>
+      )}
+      {c.results?.length > 0 && (
+        <>
+          <h4 className="cover-sub">Results</h4>
+          <ul className="fixture-list">{c.results.map((f) => (
+            <FixtureLine key={f.id} fixture={f}>
+              {f.selected && <span className="hint">{firstName} played.</span>}
+              {f.report && <span className="hint">{f.report}</span>}
+            </FixtureLine>
+          ))}</ul>
+        </>
+      )}
+    </div>
+  ))
 }
 
 // Merits the school has shared (rewards), then behaviour records; staff notes never reach parents.

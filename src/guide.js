@@ -113,6 +113,17 @@ export function guideSections(w, role) {
       ],
     },
     {
+      key: 'clubs', title: 'Clubs', for: 'all',
+      tour: 'Teams, clubs and societies: who is in them, registers, fixtures and results.',
+      steps: [
+        admin ? 'Choose "Add a club", give it a name, when and where it meets, and tick the staff who run it.' : 'Leadership or an admin adds each club and chooses the staff who run it.',
+        'Open a club you run. On Members, type a student\'s name to add them; give someone a role such as captain.',
+        'Register: choose the day, mark each member present, absent or excused, and save. The members list shows how often each one came.',
+        'Fixtures and results: add a fixture (who against, when, home or away), pick the squad, and add the result afterwards as a score or in words, with a short report.',
+        'Parents see their child\'s clubs, attendance, the fixtures they were picked for and the results. Every member of staff sees the clubs, fixtures and results.',
+      ],
+    },
+    {
       key: 'boarding', title: 'Boarding', for: 'all',
       tour: 'Beds, roll calls, leave and the sick bay for boarders. Only house staff and admins see it.',
       steps: [

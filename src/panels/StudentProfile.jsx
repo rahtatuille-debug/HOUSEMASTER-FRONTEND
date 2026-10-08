@@ -320,6 +320,12 @@ export default function StudentProfile({ studentId, me, onBack }) {
                         {profile.merits.count > 3 && <p className="hint" style={{ margin: '4px 0 0' }}>See every merit on the Behaviour page.</p>}
                       </div>
                     )}
+                    {profile.clubs?.length > 0 && (
+                      <div style={{ marginBottom: 18 }}>
+                        <h3 style={{ fontSize: 15, marginBottom: 8 }}>Clubs and teams</h3>
+                        <p style={{ margin: 0 }}>{profile.clubs.map((c) => `${c.name}${c.role ? ` (${c.role})` : ''}`).join(', ')}</p>
+                      </div>
+                    )}
                     {profile.discipline?.count > 0 && (
                       <div style={{ marginBottom: 18 }}>
                         <h3 style={{ fontSize: 15, marginBottom: 8 }}>Behaviour ({profile.discipline.count})</h3>
