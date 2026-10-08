@@ -45,6 +45,11 @@ export function personIdentity(person) {
 }
 
 /** @param {{ name?: string | null }} guardian */
+export function studentIdentity(student) {
+  const name = student?.name?.trim()
+  return name ? `${name} · Student` : 'Student'
+}
+
 export function guardianIdentity(guardian) {
   const name = guardian?.name?.trim()
   return name ? `${name} · Parent/Guardian` : 'Parent/Guardian'

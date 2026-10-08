@@ -123,6 +123,16 @@ export function guideSections(w, role) {
       ],
     },
     {
+      key: 'studentaccounts', title: 'Student accounts', for: 'admin',
+      tour: 'Give students their own sign-in to see their work and hand in homework.',
+      steps: [
+        'Choose a class, then "Make accounts for everyone without one" (or tick students and make accounts for them).',
+        'Print the slips straight away: each has the student\'s username and a starting password, and the passwords aren\'t shown again.',
+        'Students sign in on the usual page with their username, then choose their own password. They see their timetable, homework, grades, reports, attendance, merits and clubs, and the calendar, and can hand in homework. Nothing about anyone else.',
+        'If a student forgets their password, choose "New password" and give them the new slip. "Turn off" stops them signing in; their records stay.',
+      ],
+    },
+    {
       key: 'calendar', title: 'Calendar', for: 'all',
       tour: 'Term dates, school events and fixtures, month by month. You can add it to your phone\'s calendar.',
       steps: [

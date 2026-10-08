@@ -1594,3 +1594,15 @@ form + .staff-sub { margin-top: 18px; }
 .club-marks button.hw-missing { background: var(--stamp-red); border-color: var(--stamp-red); color: #fff; }
 .club-marks button.hw-excused { background: var(--navy); border-color: var(--navy); color: #fff; }
 @media (max-width: 760px) { .hw-records li { grid-template-columns: 1fr; } .club-marks { flex-wrap: wrap; } }
+.sa-table td { white-space: nowrap; }
+.sa-actions { display: flex; gap: 12px; }
+.sa-slips-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.sa-slips { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.sa-slip { border: 1px dashed var(--rule); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; font-size: 14px; break-inside: avoid; }
+.sa-slip code { font-size: 15px; font-weight: 700; }
+@media print {
+  body * { visibility: hidden; }
+  .print-area, .print-area * { visibility: visible; }
+  .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+  .sa-slips { grid-template-columns: repeat(2, 1fr); }
+}

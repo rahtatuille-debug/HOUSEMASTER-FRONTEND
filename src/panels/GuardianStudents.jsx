@@ -33,7 +33,10 @@ function ReportResults({ studentId, term }) {
   return summary ? <div className="report-results"><TermSummary summary={summary} /></div> : null
 }
 
-export default function GuardianStudents() {
+// Parents see their children; a student signed in to their own account
+// (`student` = /api/student/me/) sees just their own record, can hand in
+// homework, and doesn't get the parents-only parts (health notes, leave).
+export default function GuardianStudents({ student = null }) {
   const school = useSchool()
   const words = useVocab()
   const [students, setStudents] = useState([])
@@ -61,7 +64,7 @@ export default function GuardianStudents() {
     }
   }
 
-  useEffect(() => { loadStudents() }, [])
+  useEffect(() => { if (student) openStudent(student.student_id); else loadStudents() }, [student?.student_id])  // eslint-disable-line react-hooks/exhaustive-deps
 
   async function downloadCard(report) {
     setError('')
@@ -70,6 +73,13 @@ export default function GuardianStudents() {
     } catch (err) {
       setError(err.message)
     }
+  }
+
+  // A student hands in homework, then sees it as handed in.
+  async function handIn(h, body) {
+    await api.student.handIn(h.id, body)
+    const fresh = await api.guardianStudents.profile(selected.id)
+    setProfile(fresh)
   }
 
   async function openStudent(id) {
@@ -99,11 +109,11 @@ export default function GuardianStudents() {
     return (
       <section>
         <div className="panel-header">
-          <button type="button" className="back-button" onClick={() => { setSelected(null); setError('') }}>← Students</button>
+          {!student && <button type="button" className="back-button" onClick={() => { setSelected(null); setError('') }}>← Students</button>}
         </div>
         {error && <div className="error-banner">{error}</div>}
         <article className="card guardian-student-detail">
-          <p className="eyebrow">Student progress</p>
+          <p className="eyebrow">{student ? 'My work' : 'Student progress'}</p>
           <h2>{selected.first_name} {selected.last_name}</h2>
           <p className="text-muted">{selected.school_class_name || 'Class not assigned'}{selected.house ? ` · Sports house: ${selected.house}` : ''}</p>
           {profile?.support && <div style={{ margin: '12px 0' }}><SupportCard concern={profile.support} forParents /></div>}
@@ -128,12 +138,12 @@ export default function GuardianStudents() {
                     <li><span>Mode of learning</span> {MODES[selected.mode_of_learning] || '—'}</li>
                     <li><span>Admission date</span> {formatDate(selected.enrolled_on)}</li>
                   </ul>
-                  <HealthNotesCard
+                  {!student && <HealthNotesCard
                     studentId={selected.id}
                     notes={selected.medical_notes}
                     request={profile.health_notes_request}
                     onRequestChange={(r) => setProfile((p) => ({ ...p, health_notes_request: r }))}
-                  />
+                  />}
                 </div>
               </div>
               <div className="card">
@@ -161,8 +171,9 @@ export default function GuardianStudents() {
           {tab === 'timetable' && <ChildTimetable studentId={selected.id} />}
           {tab === 'behaviour' && <ChildBehaviour rows={profile?.discipline} merits={profile?.merits} firstName={selected.first_name} />}
           {tab === 'clubs' && <ChildClubs clubs={profile?.clubs} firstName={selected.first_name} />}
-          {tab === 'homework' && <HomeworkList items={profile ? (profile.homework || []) : null} firstName={selected.first_name} />}
-          {tab === 'boarding' && <ChildBoarding studentId={selected.id} firstName={selected.first_name} />}
+          {tab === 'homework' && <HomeworkList items={profile ? (profile.homework || []) : null} firstName={student ? null : selected.first_name}
+            onHandIn={student ? handIn : undefined} />}
+          {tab === 'boarding' && <ChildBoarding studentId={selected.id} firstName={selected.first_name} readOnly={Boolean(student)} />}
           {tab === 'attendance' && profile && (
             <div className="card">
               <div className="stat-row">
@@ -216,7 +227,7 @@ const SHORT = { dateStyle: 'medium', timeStyle: 'short' }
 const LEAVE_KINDS = [['weekend', 'Weekend'], ['half_term', 'Half term'], ['exeat', 'Exeat'], ['appointment', 'Appointment'], ['other', 'Other']]
 
 // Boarders: where they sleep, leave (ask for it here) and sick bay visits.
-function ChildBoarding({ studentId, firstName }) {
+function ChildBoarding({ studentId, firstName, readOnly = false }) {
   const [data, setData] = useState(null)
   const [form, setForm] = useState(null)
   const [error, setError] = useState('')
@@ -263,7 +274,7 @@ function ChildBoarding({ studentId, firstName }) {
       <div className="card">
         <div className="support-row">
           <h3 style={{ fontSize: 15, margin: 0 }}>Leave</h3>
-          {!form && <button type="button" style={{ width: 'auto' }} onClick={() => setForm({ kind: 'weekend', leaving_at: '', returning_at: '', collected_by: '', reason: '' })}>Ask for leave</button>}
+          {!form && !readOnly && <button type="button" style={{ width: 'auto' }} onClick={() => setForm({ kind: 'weekend', leaving_at: '', returning_at: '', collected_by: '', reason: '' })}>Ask for leave</button>}
         </div>
         {form && (
           <form onSubmit={ask} className="tt-form-grid" style={{ marginTop: 10 }}>
@@ -287,7 +298,7 @@ function ChildBoarding({ studentId, firstName }) {
                     <strong>{l.kind_label}</strong> · {formatDateTime(l.leaving_at, SHORT)} to {formatDateTime(l.returning_at, SHORT)}
                     <div className="hint" style={{ margin: 0 }}>{[l.status_label, l.decision_note].filter(Boolean).join(' · ')}</div>
                   </div>
-                  {['requested', 'approved'].includes(l.status) && (
+                  {!readOnly && ['requested', 'approved'].includes(l.status) && (
                     <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => cancel(l.id)}>Cancel</button>
                   )}
                 </div>

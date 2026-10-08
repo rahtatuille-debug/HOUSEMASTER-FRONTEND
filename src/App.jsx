@@ -42,6 +42,8 @@ import Cover from './panels/Cover.jsx'
 import Clubs from './panels/Clubs.jsx'
 import Calendar from './panels/Calendar.jsx'
 import Homework from './panels/Homework.jsx'
+import StudentAccounts from './panels/StudentAccounts.jsx'
+import StudentProfile, { ChooseFirstPassword } from './panels/StudentPassword.jsx'
 import GovernorHome from './panels/GovernorHome.jsx'
 import { perms } from './permissions.js'
 import Timetable from './panels/Timetable.jsx'
@@ -49,8 +51,8 @@ import Boarding from './panels/Boarding.jsx'
 import Admissions from './panels/Admissions.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
-import { personIdentity, guardianIdentity } from './user.js'
-import { GOVERNOR_PAGES, GOVERNOR_SECTIONS, GUARDIAN_SECTIONS, STAFF_SECTIONS, bottomBarSections, sectionOf, visibleSections } from './nav.js'
+import { personIdentity, guardianIdentity, studentIdentity } from './user.js'
+import { GOVERNOR_PAGES, GOVERNOR_SECTIONS, GUARDIAN_SECTIONS, STAFF_SECTIONS, STUDENT_SECTIONS, bottomBarSections, sectionOf, visibleSections } from './nav.js'
 import { NavIcon } from './icons.jsx'
 
 const TABS = [
@@ -77,6 +79,7 @@ const TABS = [
   { key: 'setup', label: 'Setup', component: Setup },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
   { key: 'parents', label: 'Parents', component: GuardianInvites, need: 'manage_parents' },
+  { key: 'studentaccounts', label: 'Student accounts', component: StudentAccounts, need: 'manage_student_accounts' },
   { key: 'admissions', label: 'Admissions', component: Admissions, need: 'manage_admissions' },
   { key: 'activity', label: 'Activity log', component: Activity, adminOnly: true },
   { key: 'guide', label: 'Guide', component: Guide },
@@ -113,6 +116,13 @@ function tourSteps(me, sections, pageLabel) {
         : 'Your Dashboard has your lessons, your classes and a getting-started checklist that ticks itself as you go. A good first step is today\'s register.' },
   ]
 }
+
+// A student's own account: their record (as their parents see it) and the calendar.
+const STUDENT_TABS = [
+  { key: 'mywork', label: 'My work', component: (props) => <GuardianStudents student={props.me} /> },
+  { key: 'calendar', label: 'Calendar', component: Calendar },
+  { key: 'profile', label: 'Profile', component: StudentProfile },
+]
 
 const GUARDIAN_TABS = [
   { key: 'students', label: 'Students', component: GuardianStudents },
@@ -274,7 +284,16 @@ export default function App() {
               setMe(data)
               setIdentityKind('guardian')
             })
-            .catch(failed)
+            .catch((gErr) => {
+              if (gErr.status !== 403) { failed(gErr); return }
+              // Neither staff nor parent: a student's own account (studentaccounts).
+              api.student.me()
+                .then((data) => {
+                  setMe(data)
+                  setIdentityKind('student')
+                })
+                .catch(failed)
+            })
         } else {
           failed(err)
         }
@@ -503,7 +522,13 @@ export default function App() {
     )
   }
 
-  const tabSet = identityKind === 'guardian' ? GUARDIAN_TABS : TABS
+  // A student chooses their own password before anything else.
+  if (identityKind === 'student' && me?.must_change_password) {
+    return <ChooseFirstPassword me={me} onLogout={handleLogout}
+      onDone={() => api.student.me().then(setMe).catch(() => setLoggedIn(false))} />
+  }
+
+  const tabSet = identityKind === 'guardian' ? GUARDIAN_TABS : identityKind === 'student' ? STUDENT_TABS : TABS
   const p = perms(me)
   const isAdmin = p.is_admin
   const governor = identityKind === 'staff' && p.is_governor
@@ -514,12 +539,13 @@ export default function App() {
   const pageKeys = visibleTabs.map((t) => t.key)
   // Pages a role opens inside the Admin section (e.g. Parents for the Secretary, Approvals for leaders).
   const granted = [...visibleTabs.filter((t) => t.need).map((t) => t.key), ...(p.approve_requests || p.approve_reports ? ['approvals'] : [])]
-  const sections = visibleSections(identityKind === 'guardian' ? GUARDIAN_SECTIONS : governor ? GOVERNOR_SECTIONS : STAFF_SECTIONS,
+  const sections = visibleSections(identityKind === 'guardian' ? GUARDIAN_SECTIONS : identityKind === 'student' ? STUDENT_SECTIONS
+    : governor ? GOVERNOR_SECTIONS : STAFF_SECTIONS,
     pageKeys, isAdmin, granted)
   const activeKey = pageKeys.includes(activeTab) ? activeTab : sections[0]?.pages[0] || visibleTabs[0]?.key
   const ActivePanel = visibleTabs.find((t) => t.key === activeKey)?.component
   const activeSection = sections.find((s) => s.pages.includes(activeKey)) || null
-  const identityLine = identityKind === 'guardian' ? guardianIdentity(me) : personIdentity(me)
+  const identityLine = identityKind === 'guardian' ? guardianIdentity(me) : identityKind === 'student' ? studentIdentity(me) : personIdentity(me)
   // Settings has nowhere sensible to send a guardian yet (no Setup-equivalent
   // for them), so it's staff-only — same gate as the Setup tab itself.
   const showSettings = identityKind === 'staff'
