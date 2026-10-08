@@ -911,6 +911,10 @@ export const api = {
       request('/api/reports/submit-class/', { method: 'POST', body: { school_class, term } }),
     finalizeClass: (school_class, term) =>
       request('/api/reports/finalize-class/', { method: 'POST', body: { school_class, term } }),
+    // Reports waiting for approval, grouped by term, year group and class.
+    waiting: () => request('/api/reports/waiting/'),
+    // { term, school_class } or { term, year_group }: finalize every waiting report there.
+    approveAll: (body) => request('/api/reports/approve-all/', { method: 'POST', body }),
   },
   announcements: {
     list: (params) => listRequest('/api/announcements/', { params }),
