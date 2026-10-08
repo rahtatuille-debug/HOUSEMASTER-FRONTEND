@@ -1416,3 +1416,16 @@ body { background: var(--surface); }
   .att-class-tabs { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
   .att-class-tabs button { flex: none; }
 }
+
+/* Behaviour (discipline) records */
+.discipline-form .span-all { grid-column: 1 / -1; }
+.discipline-form .check-row { display: flex; gap: 8px; align-items: baseline; font-weight: 400; text-transform: none; letter-spacing: normal; font-size: 14px; color: var(--ink); }
+.discipline-form .check-row input { width: auto; }
+.discipline-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 8px 12px; align-items: end; }
+.discipline-summary { margin: 0 0 8px; font-size: 14px; }
+.discipline-item { padding: 10px 0; border-bottom: 1px solid var(--rule); list-style: none; }
+.discipline-item:last-child { border-bottom: 0; }
+.discipline-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 14px; }
+.discipline-head .badge { min-width: 0; }
+.discipline-notes { margin-top: 6px; font-size: 13px; background: var(--surface); border-radius: 6px; padding: 6px 8px; }
+.text-alert { color: var(--stamp-red); }

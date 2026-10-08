@@ -10,7 +10,7 @@ import WeekGrid from './WeekGrid.jsx'
 
 const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
 const MODES = { day: 'Day', boarding: 'Boarding' }
-const TABS = ['overview', 'progress', 'grades', 'timetable', 'attendance', 'reports']
+const TABS = ['overview', 'progress', 'grades', 'timetable', 'attendance', 'reports', 'behaviour']
 
 function formatDate(value) {
   return value ? localDate(value) : '—'
@@ -157,6 +157,7 @@ export default function GuardianStudents() {
             </div>
           )}
           {tab === 'timetable' && <ChildTimetable studentId={selected.id} />}
+          {tab === 'behaviour' && <ChildBehaviour rows={profile?.discipline} firstName={selected.first_name} />}
           {tab === 'boarding' && <ChildBoarding studentId={selected.id} firstName={selected.first_name} />}
           {tab === 'attendance' && profile && (
             <div className="card">
@@ -305,5 +306,26 @@ function ChildBoarding({ studentId, firstName }) {
         )}
       </div>
     </>
+  )
+}
+
+// Behaviour records the school has shared; staff notes never reach parents.
+export function ChildBehaviour({ rows, firstName }) {
+  if (!rows) return <p className="text-muted">Loading…</p>
+  if (rows.length === 0) return <p className="text-muted">The school hasn't shared any behaviour records about {firstName}.</p>
+  return (
+    <ul className="support-list">
+      {rows.map((i) => (
+        <li key={i.id} className="discipline-item">
+          <div className="discipline-head">
+            <span className={`badge ${{ minor: 'draft', moderate: 'pending', serious: 'rejected' }[i.severity] || 'draft'}`}>{i.severity_label}</span>
+            <strong>{i.category_label}</strong>
+            <span className="text-muted">· {formatDate(i.date)}</span>
+          </div>
+          <p style={{ margin: '4px 0' }}>{i.description}</p>
+          <div className="hint" style={{ margin: 0 }}>{[i.action_label, i.action_detail, i.recorded_by_name && `Recorded by ${i.recorded_by_name}`].filter(Boolean).join(' · ')}</div>
+        </li>
+      ))}
+    </ul>
   )
 }

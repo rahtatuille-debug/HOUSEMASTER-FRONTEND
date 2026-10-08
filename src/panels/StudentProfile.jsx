@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { IncidentCard } from './Discipline.jsx'
 import TermSummary from './TermSummary.jsx'
 import { formatDate as localDate, formatDateTime } from '../format.js'
 import DataProtection from './DataProtection.jsx'
@@ -307,6 +308,15 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     <BoarderBedFlag boarding={profile.boarding} />
                     {profile.support?.open && (
                       <div style={{ marginBottom: 18 }}><SupportCard concern={profile.support.open} formatDate={formatDate} /></div>
+                    )}
+                    {profile.discipline?.count > 0 && (
+                      <div style={{ marginBottom: 18 }}>
+                        <h3 style={{ fontSize: 15, marginBottom: 8 }}>Behaviour ({profile.discipline.count})</h3>
+                        <ul className="support-list">
+                          {profile.discipline.recent.slice(0, 3).map((i) => <IncidentCard key={i.id} incident={i} showStudent={false} />)}
+                        </ul>
+                        {profile.discipline.count > 3 && <p className="hint" style={{ margin: '4px 0 0' }}>See every record on the Behaviour page.</p>}
+                      </div>
                     )}
                     <h3 style={{ fontSize: 15, marginBottom: 8 }}>Health notes</h3>
                     {s.medical_notes ? (
