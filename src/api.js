@@ -1055,6 +1055,18 @@ export const api = {
       remove: (id) => request(`/api/discipline/merits/${id}/`, { method: 'DELETE' }),
     },
   },
+  // The school calendar: events, term dates and fixtures for whoever is signed in.
+  calendar: {
+    get: (params) => request('/api/calendar/', { params }),
+    feed: () => request('/api/calendar/feed/'),
+    renewFeed: () => request('/api/calendar/feed/', { method: 'POST' }),
+    events: {
+      // { title, kind, description, location, start_date, end_date, start_time, end_time, staff_only, year_groups: [ids] }
+      create: (body) => request('/api/calendar/events/', { method: 'POST', body }),
+      update: (id, body) => request(`/api/calendar/events/${id}/`, { method: 'PATCH', body }),
+      remove: (id) => request(`/api/calendar/events/${id}/`, { method: 'DELETE' }),
+    },
+  },
   // Clubs and activities. Every staff member sees them; a club's staff run it.
   clubs: {
     list: (params) => listRequest('/api/clubs/', { params }),

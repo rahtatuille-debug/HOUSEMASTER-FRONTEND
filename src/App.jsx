@@ -40,6 +40,7 @@ import Discipline from './panels/Discipline.jsx'
 import SickBay from './panels/SickBay.jsx'
 import Cover from './panels/Cover.jsx'
 import Clubs from './panels/Clubs.jsx'
+import Calendar from './panels/Calendar.jsx'
 import GovernorHome from './panels/GovernorHome.jsx'
 import { perms } from './permissions.js'
 import Timetable from './panels/Timetable.jsx'
@@ -53,6 +54,7 @@ import { NavIcon } from './icons.jsx'
 
 const TABS = [
   { key: 'home', label: 'Dashboard', component: StaffHome },
+  { key: 'calendar', label: 'Calendar', component: Calendar },
   { key: 'students', label: 'Students', component: Students },
   { key: 'timetable', label: 'Timetable', component: Timetable },
   { key: 'cover', label: 'Cover', component: Cover, need: 'manage_cover' },
@@ -113,6 +115,7 @@ function tourSteps(me, sections, pageLabel) {
 const GUARDIAN_TABS = [
   { key: 'students', label: 'Students', component: GuardianStudents },
   { key: 'announcements', label: 'Communications', component: GuardianAnnouncements },
+  { key: 'calendar', label: 'Calendar', component: Calendar },
   { key: 'messages', label: 'Messages', component: Messages },
   { key: 'profile', label: 'Profile', component: Profile },
 ]
