@@ -36,6 +36,7 @@ import Home from './panels/Home.jsx'
 import Exports from './panels/Exports.jsx'
 import Performance from './panels/Performance.jsx'
 import Support from './panels/Support.jsx'
+import Discipline from './panels/Discipline.jsx'
 import Timetable from './panels/Timetable.jsx'
 import Boarding from './panels/Boarding.jsx'
 import Admissions from './panels/Admissions.jsx'
@@ -54,6 +55,7 @@ const TABS = [
   { key: 'reports', label: 'Reports', component: Reports },
   { key: 'performance', label: 'Performance', component: Performance },
   { key: 'support', label: 'Needs support', component: Support },
+  { key: 'discipline', label: 'Behaviour', component: Discipline },
   { key: 'boarding', label: 'Boarding', component: Boarding, boardingOnly: true },
   { key: 'announcements', label: 'Communications', component: Announcements },
   { key: 'messages', label: 'Messages', component: Messages },

@@ -100,6 +100,17 @@ export function guideSections(w, role) {
       ],
     },
     {
+      key: 'discipline', title: 'Behaviour', for: 'all',
+      tour: 'Discipline records: what happened, how serious it was and what the school did. You choose what parents see.',
+      steps: [
+        'Choose "Record an incident", find the student, and say what kind of incident it was, how serious, and what happened.',
+        'Add the action taken (for example a detention) and its details. Staff notes are for staff only and are never shown to parents.',
+        'Tick "Share with parents" to let them read the record. They get a short email; the details stay in HouseMaster. You can also share a record later.',
+        `Filter by student, kind, seriousness or date. ${admin ? 'As an admin you see every record and can change or delete any of them.' : 'You see the records for students in your classes, and can change the ones you recorded.'}`,
+        'A student\'s latest records also show on their profile.',
+      ],
+    },
+    {
       key: 'boarding', title: 'Boarding', for: 'all',
       tour: 'Beds, roll calls, leave and the sick bay for boarders. Only house staff and admins see it.',
       steps: [

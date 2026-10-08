@@ -1013,6 +1013,15 @@ export const api = {
       remove: (id) => request(`/api/timetable/lessons/${id}/`, { method: 'DELETE' }),
     },
   },
+  // Behaviour (discipline) records. Parents see shared ones through their child's profile.
+  discipline: {
+    // { student, category, severity, from, to }
+    list: (params) => listRequest('/api/discipline/incidents/', { params }),
+    // { student, date, category, severity, description, action, action_detail, staff_notes, shared_with_parents }
+    create: (body) => request('/api/discipline/incidents/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/discipline/incidents/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/discipline/incidents/${id}/`, { method: 'DELETE' }),
+  },
   // Students who need extra support: HouseMaster suggests, staff confirm.
   support: {
     suggestions: (term) => request('/api/support/suggestions/', { params: term ? { term } : undefined }),
