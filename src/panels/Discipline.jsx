@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { formatDate } from '../format.js'
+import Merits from './Merits.jsx'
 import StudentSelect from './StudentSelect.jsx'
 
 // The same lists the server accepts (discipline.models.DisciplineIncident).
@@ -101,12 +102,43 @@ export function IncidentCard({ incident: i, showStudent = true, actions }) {
   )
 }
 
-// Behaviour records. Staff record what happened and what was done; they
-// choose whether parents see it. Teachers see their own classes.
+// Behaviour: merits (rewards) and incidents, so a student's record isn't
+// only negative. Teachers see their own classes.
 export default function Discipline({ me, navParams }) {
+  const [view, setView] = useState(navParams?.view === 'merits' ? 'merits' : 'incidents')
+  const [students, setStudents] = useState([])
+  const [classNames, setClassNames] = useState({})
+  useEffect(() => {
+    api.students.list({ is_active: true }).then((s) => setStudents(Array.isArray(s) ? s : [])).catch(() => setStudents([]))
+    api.schoolClasses.list().then((c) => setClassNames(Object.fromEntries((Array.isArray(c) ? c : c?.results || []).map((k) => [k.id, k.name]))))
+      .catch(() => setClassNames({}))
+  }, [])
+  return (
+    <div>
+      <div className="panel-header" style={{ marginBottom: 8 }}>
+        <div>
+          <h2>Behaviour</h2>
+          <p className="text-muted" style={{ margin: '4px 0 0' }}>Merits for the good, and records of incidents and what the school did.</p>
+        </div>
+      </div>
+      <div className="scope-tabs filter-row" role="tablist" aria-label="Behaviour">
+        {[['incidents', 'Incidents'], ['merits', 'Merits']].map(([key, label]) => (
+          <button key={key} type="button" role="tab" aria-selected={view === key}
+            className={`secondary${view === key ? ' active' : ''}`} onClick={() => setView(key)}>{label}</button>
+        ))}
+      </div>
+      {view === 'merits'
+        ? <Merits students={students} classNames={classNames} navParams={navParams} />
+        : <Incidents me={me} navParams={navParams} students={students} />}
+    </div>
+  )
+}
+
+// Incidents. Staff record what happened and what was done; they choose
+// whether parents see it.
+function Incidents({ me, navParams, students }) {
   const isAdmin = me?.role === 'admin'
   const [incidents, setIncidents] = useState(null)
-  const [students, setStudents] = useState([])
   const [filters, setFilters] = useState({ student: navParams?.studentId ? String(navParams.studentId) : '', category: '', severity: '', period: '90' })
   const [open, setOpen] = useState(null) // "new" or "edit-<id>"
   const [error, setError] = useState('')
@@ -123,10 +155,6 @@ export default function Discipline({ me, navParams }) {
     }
   }, [filters])
   useEffect(() => { load() }, [load])
-  useEffect(() => {
-    api.students.list({ is_active: true }).then((s) => setStudents(Array.isArray(s) ? s : [])).catch(() => setStudents([]))
-  }, [])
-
   async function run(fn, message) {
     setError('')
     setNotice('')
@@ -157,8 +185,7 @@ export default function Discipline({ me, navParams }) {
     <div>
       <div className="panel-header">
         <div>
-          <h2>Behaviour</h2>
-          <p className="text-muted" style={{ margin: '4px 0 0' }}>Discipline records: what happened and what the school did.</p>
+          <p className="text-muted" style={{ margin: 0 }}>What happened and what the school did.</p>
         </div>
         <button type="button" style={{ width: 'auto' }} onClick={() => setOpen('new')}>Record an incident</button>
       </div>
