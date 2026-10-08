@@ -9,7 +9,7 @@ export const STAFF_SECTIONS = [
   { key: 'messages', label: 'Messages', icon: 'messages', pages: ['messages', 'announcements', 'alerts'] },
   { key: 'students', label: 'Students', icon: 'students', pages: ['students', 'support', 'discipline', 'clubs', 'sickbay', 'admissions'] },
   // Teachers reach Setup and their requests from the profile menu and the quick links.
-  { key: 'admin', label: 'Admin', icon: 'admin', pages: ['setup', 'staff', 'parents', 'studentaccounts', 'approvals', 'activity'], adminOnly: true },
+  { key: 'admin', label: 'Admin', icon: 'admin', pages: ['setup', 'staff', 'parents', 'studentaccounts', 'approvals', 'activity', 'billing'], adminOnly: true },
 ]
 
 // A governor's read-only account: the school's figures, nothing else.

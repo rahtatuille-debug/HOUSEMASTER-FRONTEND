@@ -54,7 +54,7 @@ describe('identity fork', () => {
     // A section opens on its first page, with its other pages as tabs along the top.
     fireEvent.click(container.querySelector('.rail [data-section="admin"]'))
     const tabs = within(await screen.findByRole('tablist', { name: 'Admin' }))
-    expect(tabs.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Setup', 'Staff', 'Parents', 'Approvals', 'Activity log'])
+    expect(tabs.getAllByRole('tab').map((t) => t.textContent)).toEqual(['Setup', 'Staff', 'Parents', 'Approvals', 'Activity log', 'Billing'])
     expect(tabs.getByRole('tab', { name: 'Setup' })).toHaveAttribute('aria-selected', 'true')
   })
 
