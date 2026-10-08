@@ -3,7 +3,7 @@
 // page. Guide and Profile sit in the top bar instead.
 
 export const STAFF_SECTIONS = [
-  { key: 'home', label: 'Dashboard', icon: 'home', pages: ['home'] },
+  { key: 'home', label: 'Dashboard', icon: 'home', pages: ['home', 'calendar'] },
   { key: 'registers', label: 'Registers', icon: 'register', pages: ['attendance', 'timetable', 'cover', 'boarding'] },
   { key: 'reports', label: 'Reports', icon: 'reports', pages: ['grades', 'reports', 'performance', 'exports'] },
   { key: 'messages', label: 'Messages', icon: 'messages', pages: ['messages', 'announcements', 'alerts'] },
@@ -19,6 +19,7 @@ export const GOVERNOR_PAGES = ['home', 'profile']
 export const GUARDIAN_SECTIONS = [
   { key: 'students', label: 'My children', icon: 'students', pages: ['students'] },
   { key: 'announcements', label: 'News', icon: 'reports', pages: ['announcements'] },
+  { key: 'calendar', label: 'Calendar', icon: 'calendar', pages: ['calendar'] },
   { key: 'messages', label: 'Messages', icon: 'messages', pages: ['messages'] },
 ]
 

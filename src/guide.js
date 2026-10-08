@@ -113,6 +113,16 @@ export function guideSections(w, role) {
       ],
     },
     {
+      key: 'calendar', title: 'Calendar', for: 'all',
+      tour: 'Term dates, school events and fixtures, month by month. You can add it to your phone\'s calendar.',
+      steps: [
+        'Move between months with the arrows. Tap a day to see just that day; the list below shows the whole month.',
+        admin ? 'Choose "Add an event": give it a title, the kind (holiday, exams, trip and so on), the date or dates and, if it isn\'t all day, the times. Choose who sees it: everyone, chosen year groups, or staff only.' : 'Leadership, admins and the secretary add events. Term dates and club fixtures appear by themselves.',
+        'Parents see the events for their children\'s year groups, term dates and their children\'s fixtures, never staff-only events.',
+        'To see the calendar in your phone\'s calendar app, choose "Add to my phone\'s calendar" and Subscribe (or copy the link into Google Calendar or Outlook). Keep the link private.',
+      ],
+    },
+    {
       key: 'clubs', title: 'Clubs', for: 'all',
       tour: 'Teams, clubs and societies: who is in them, registers, fixtures and results.',
       steps: [
