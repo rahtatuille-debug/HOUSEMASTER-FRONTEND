@@ -1044,6 +1044,16 @@ export const api = {
     create: (body) => request('/api/discipline/incidents/', { method: 'POST', body }),
     update: (id, body) => request(`/api/discipline/incidents/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/discipline/incidents/${id}/`, { method: 'DELETE' }),
+    // Merits: rewards. Parents see shared ones (the default) in the app.
+    merits: {
+      // { student, school_class, category, from, to }
+      list: (params) => listRequest('/api/discipline/merits/', { params }),
+      summary: (params) => request('/api/discipline/merits/summary/', { params }),
+      // { students: [ids], date, category, points, reason, shared_with_parents }
+      create: (body) => request('/api/discipline/merits/', { method: 'POST', body }),
+      update: (id, body) => request(`/api/discipline/merits/${id}/`, { method: 'PATCH', body }),
+      remove: (id) => request(`/api/discipline/merits/${id}/`, { method: 'DELETE' }),
+    },
   },
   // Students who need extra support: HouseMaster suggests, staff confirm.
   support: {

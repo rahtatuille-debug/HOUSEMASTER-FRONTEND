@@ -157,7 +157,7 @@ export default function GuardianStudents() {
             </div>
           )}
           {tab === 'timetable' && <ChildTimetable studentId={selected.id} />}
-          {tab === 'behaviour' && <ChildBehaviour rows={profile?.discipline} firstName={selected.first_name} />}
+          {tab === 'behaviour' && <ChildBehaviour rows={profile?.discipline} merits={profile?.merits} firstName={selected.first_name} />}
           {tab === 'boarding' && <ChildBoarding studentId={selected.id} firstName={selected.first_name} />}
           {tab === 'attendance' && profile && (
             <div className="card">
@@ -309,10 +309,42 @@ function ChildBoarding({ studentId, firstName }) {
   )
 }
 
-// Behaviour records the school has shared; staff notes never reach parents.
-export function ChildBehaviour({ rows, firstName }) {
+// Merits the school has shared (rewards), then behaviour records; staff notes never reach parents.
+export function ChildBehaviour({ rows, merits, firstName }) {
   if (!rows) return <p className="text-muted">Loading…</p>
-  if (rows.length === 0) return <p className="text-muted">The school hasn't shared any behaviour records about {firstName}.</p>
+  const points = (merits || []).reduce((sum, m) => sum + (m.points || 0), 0)
+  return (
+    <>
+      {merits && (
+        <div className="card">
+          <h3 style={{ fontSize: 15, marginBottom: 6 }}>Merits{merits.length > 0 ? ` · ${points} point${points === 1 ? '' : 's'}` : ''}</h3>
+          {merits.length === 0 ? <p className="text-muted" style={{ margin: 0 }}>No merits yet.</p> : (
+            <ul className="support-list">
+              {merits.map((m) => (
+                <li key={m.id} className="discipline-item">
+                  <div className="discipline-head">
+                    <span className="badge merit-points">+{m.points}</span>
+                    <strong>{m.category_label}</strong>
+                    <span className="text-muted">· {formatDate(m.date)}</span>
+                  </div>
+                  {m.reason && <p style={{ margin: '4px 0' }}>{m.reason}</p>}
+                  {m.awarded_by_name && <div className="hint" style={{ margin: 0 }}>Given by {m.awarded_by_name}</div>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      <div className={merits ? 'card' : undefined}>
+        {merits && <h3 style={{ fontSize: 15, marginBottom: 6 }}>Behaviour records</h3>}
+        <BehaviourRecords rows={rows} firstName={firstName} />
+      </div>
+    </>
+  )
+}
+
+function BehaviourRecords({ rows, firstName }) {
+  if (rows.length === 0) return <p className="text-muted" style={{ margin: 0 }}>The school hasn't shared any behaviour records about {firstName}.</p>
   return (
     <ul className="support-list">
       {rows.map((i) => (

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { IncidentCard } from './Discipline.jsx'
+import { MeritCard } from './Merits.jsx'
 import TermSummary from './TermSummary.jsx'
 import { formatDate as localDate, formatDateTime } from '../format.js'
 import DataProtection from './DataProtection.jsx'
@@ -309,6 +310,15 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     <BoarderBedFlag boarding={profile.boarding} />
                     {profile.support?.open && (
                       <div style={{ marginBottom: 18 }}><SupportCard concern={profile.support.open} formatDate={formatDate} /></div>
+                    )}
+                    {profile.merits?.count > 0 && (
+                      <div style={{ marginBottom: 18 }}>
+                        <h3 style={{ fontSize: 15, marginBottom: 8 }}>Merits ({profile.merits.points} point{profile.merits.points === 1 ? '' : 's'})</h3>
+                        <ul className="support-list">
+                          {profile.merits.recent.slice(0, 3).map((m) => <MeritCard key={m.id} merit={m} showStudent={false} />)}
+                        </ul>
+                        {profile.merits.count > 3 && <p className="hint" style={{ margin: '4px 0 0' }}>See every merit on the Behaviour page.</p>}
+                      </div>
                     )}
                     {profile.discipline?.count > 0 && (
                       <div style={{ marginBottom: 18 }}>

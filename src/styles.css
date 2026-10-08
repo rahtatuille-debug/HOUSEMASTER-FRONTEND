@@ -1483,3 +1483,12 @@ form + .staff-sub { margin-top: 18px; }
 .all-classes-table td { white-space: nowrap; }
 .all-classes-table tr.mine td { background: var(--surface); }
 .all-classes-table tr.mine td:first-child { box-shadow: inset 3px 0 0 var(--gold); }
+.badge.merit-points { background: #e3f1e6; color: #1f6b35; font-weight: 700; }
+.merit-who-pickers { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px 12px; align-items: end; }
+.merit-boards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 0 18px; }
+.merit-board { margin: 0; padding-left: 22px; font-size: 14px; }
+.merit-board li { padding: 5px 0; border-bottom: 1px solid var(--rule); }
+.merit-board li:last-child { border-bottom: 0; }
+.merit-board li > span { display: inline-block; width: calc(100% - 40px); }
+.merit-board li > strong { float: right; color: #1f6b35; }
+.merit-summary { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: baseline; margin: 0 0 6px; font-size: 14px; }
