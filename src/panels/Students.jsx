@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { usePagedList } from '../usePagedList.js'
 import SubjectChoicesCard from './SubjectChoicesCard.jsx'
 import { useVocab } from '../levels.js'
@@ -119,9 +120,7 @@ export default function Students({ me, navParams }) {
   }
 
   // Teachers can only put students in classes they teach.
-  const classes = isAdmin
-    ? allClasses
-    : allClasses.filter((c) => (me?.assignments || []).some((a) => a.school_class === c.id))
+  const classes = classesFor(me, allClasses, 'pastoral')
 
   // An older server sends the whole list and ignores the filters, so they are applied here instead.
   const needle = query.toLowerCase()

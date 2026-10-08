@@ -11,7 +11,7 @@ const LEAVE_KINDS = [['weekend', 'Weekend'], ['half_term', 'Half term'], ['exeat
 const OUTCOMES = [['back', 'Back to lessons or the house'], ['home', 'Sent home'], ['hospital', 'Sent to hospital or a clinic']]
 const RESOLUTIONS = [['found', 'Found'], ['returned', 'Came back'], ['on_leave', 'Was on authorised leave'], ['left_school', 'Has left the school']]
 // Boarder dropdowns show (and search) the house after the name.
-const BOARDER_HOUSE = (b) => `(${b.house})`
+const BOARDER_HOUSE = (b) => (b.house ? `(${b.house})` : '')
 const BOARDER_SEARCH = 'Type a name or house'
 const SUBTABS = [['today', 'Today'], ['roll', 'Roll call'], ['leave', 'Leave'], ['sick', 'Sick bay'], ['houses', 'Boarding houses and beds'], ['allocation', 'House allocation']]
 
@@ -480,9 +480,14 @@ function LeavePanel({ me }) {
 }
 
 // --- Sick bay: check in, record treatment and telling parents, check out.
-function SickBayPanel() {
+// The school nurse uses the same sick bay for every student (`everyone`),
+// house staff for their own boarders.
+export function SickBayPanel({ everyone = false }) {
   const [visits, reload, loadError] = useLoader(useCallback(() => api.boarding.sickBay.list(), []))
-  const [boarders] = useLoader(useCallback(() => api.boarding.boarders(), []))
+  const [boarders] = useLoader(useCallback(() => (everyone
+    ? api.students.list({ is_active: true }).then((rows) => (Array.isArray(rows) ? rows : []).map((st) => ({
+      id: st.id, name: `${st.first_name} ${st.last_name}`, house: st.external_id || '' })))
+    : api.boarding.boarders()), [everyone]))
   const [form, setForm] = useState({ student: '', complaint: '', treatment: '', tell_parents: true })
   const [outcome, setOutcome] = useState({})
   const [how, setHow] = useState({})

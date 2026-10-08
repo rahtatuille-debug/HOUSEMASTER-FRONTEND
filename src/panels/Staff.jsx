@@ -4,6 +4,7 @@ import { formatDate as localDate } from '../format.js'
 import StaffImportCard from './StaffImportCard.jsx'
 import { api } from '../api.js'
 import { displayRole, personIdentity } from '../user.js'
+import { ROLE_OPTIONS } from '../permissions.js'
 
 function formatDate(value) {
   return value ? localDate(value) : 'Never'
@@ -15,6 +16,9 @@ export default function Staff({ me }) {
   const [assignments, setAssignments] = useState([])
   const [classes, setClasses] = useState([])
   const [subjects, setSubjects] = useState([])
+  const [yearGroups, setYearGroups] = useState([])
+  const [newRole, setNewRole] = useState('')
+  const [newScope, setNewScope] = useState('')
   const [openMemberId, setOpenMemberId] = useState(null)
   const [newClass, setNewClass] = useState('')
   const [newSubject, setNewSubject] = useState('')
@@ -32,13 +36,15 @@ export default function Staff({ me }) {
     setLoading(true)
     setError('')
     try {
-      const [inv, staff, assigned, cls, subj] = await Promise.all([
+      const [inv, staff, assigned, cls, subj, years] = await Promise.all([
         api.invites.list(),
         api.staff.list(),
         api.teachingAssignments.list(),
         api.schoolClasses.list(),
         api.subjects.list(),
+        api.yearGroups.list().catch(() => []),
       ])
+      setYearGroups(Array.isArray(years) ? years : [])
       setInvites(inv)
       setMembers(staff)
       setAssignments(assigned)
@@ -97,7 +103,9 @@ export default function Staff({ me }) {
 
   function changeRole(member, role) {
     if (role === member.role) return
-    const what = role === 'admin' ? 'give admin rights to' : 'remove admin rights from'
+    const what = role === 'admin' ? 'give admin rights to'
+      : role === 'governor' ? 'make a read-only governor account (school figures only) for'
+        : 'remove admin rights from'
     if (!window.confirm(`Are you sure you want to ${what} ${member.name}?`)) return
     run(() => api.staff.setRole(member.id, role), `${member.name} is now ${displayRole(role).toLowerCase()}.`)
   }
@@ -138,6 +146,22 @@ export default function Staff({ me }) {
     })
   }
 
+  const scopeOf = (key) => ROLE_OPTIONS.find(([k]) => k === key)?.[2] || null
+  const scopeChoices = { year_group: yearGroups, subject: subjects, school_class: classes }
+  const scopeLabels = { year_group: words.year_group || 'Year group', subject: words.subject, school_class: words.class }
+
+  function addRole(e, member) {
+    e.preventDefault()
+    if (!newRole) return
+    const scope = scopeOf(newRole)
+    const label = ROLE_OPTIONS.find(([k]) => k === newRole)?.[1]
+    run(async () => {
+      await api.staffRoles.create({ profile: member.id, role: newRole, ...(scope ? { [scope]: Number(newScope) } : {}) })
+      setNewRole('')
+      setNewScope('')
+    }, `${member.name} is now ${label}.`)
+  }
+
   function inviteLink(token) {
     return `${window.location.origin}/invite/${token}`
   }
@@ -165,7 +189,10 @@ export default function Staff({ me }) {
         <h3 style={{ marginBottom: 6, fontSize: 15 }}>Staff members</h3>
         <p className="hint" style={{ marginTop: 0, marginBottom: 14 }}>
           Teachers only see the students in the classes they're assigned to, and can only enter
-          grades for the subjects they teach there. Admins see everything.
+          grades for the subjects they teach there. Admins see everything. Roles widen what someone sees:
+          Leadership sees the whole school; a Head of Year their year group; a Class Teacher their class;
+          a Head of Department their subject; the Nurse, Secretary and Admissions Officer every student&apos;s
+          record. A Governor account is read-only and sees school figures only.
         </p>
         {loading ? (
           <p className="text-muted">Loading…</p>
@@ -177,6 +204,7 @@ export default function Staff({ me }) {
                 <th>Email</th>
                 <th>Role</th>
                 <th>Teaches</th>
+                <th>Roles</th>
                 <th>Status</th>
                 <th>Joined</th>
                 <th>Last login</th>
@@ -208,6 +236,7 @@ export default function Staff({ me }) {
                           >
                             <option value="teacher">Teacher</option>
                             <option value="admin">Admin</option>
+                            <option value="governor">Governor (read-only)</option>
                           </select>
                         )}
                       </td>
@@ -217,6 +246,10 @@ export default function Staff({ me }) {
                         ) : (
                           own.map((a) => `${a.class_name} ${a.subject_name}`).join(', ')
                         )}
+                      </td>
+                      <td>
+                        {(m.roles || []).length === 0 ? <span className="text-muted">—</span>
+                          : m.roles.map((r) => (r.scope_name ? `${r.role_label} (${r.scope_name})` : r.role_label)).join(', ')}
                       </td>
                       <td>
                         <span className={`badge ${m.is_active ? 'active' : 'inactive'}`}>
@@ -232,9 +265,12 @@ export default function Staff({ me }) {
                             setOpenMemberId(open ? null : m.id)
                             setNewClass('')
                             setNewSubject('')
+                            setNewRole('')
+                            setNewScope('')
                           }}
+                          aria-label={`Classes and roles for ${m.name}`}
                         >
-                          {open ? 'Done' : 'Classes'}
+                          {open ? 'Done' : 'Classes & roles'}
                         </button>
                         {!isMe && m.is_active && (
                           <button className="secondary" onClick={() => sendReset(m)}>
@@ -250,7 +286,8 @@ export default function Staff({ me }) {
                     </tr>
                     {open && (
                       <tr>
-                        <td colSpan={8} style={{ background: 'var(--paper)' }}>
+                        <td colSpan={9} style={{ background: 'var(--paper)' }}>
+                          <h4 className="staff-sub">Teaches</h4>
                           <div className="chip-list" style={{ marginBottom: 10 }}>
                             {own.length === 0 && <span className="text-muted">Not assigned to any classes yet.</span>}
                             {own.map((a) => (
@@ -297,6 +334,44 @@ export default function Staff({ me }) {
                               <button type="submit">Assign</button>
                             </form>
                           )}
+                          <h4 className="staff-sub">Roles</h4>
+                          {m.role === 'governor' ? (
+                            <p className="hint" style={{ margin: 0 }}>Governor accounts are read-only and can&apos;t hold roles.</p>
+                          ) : (
+                            <>
+                              <div className="chip-list" style={{ marginBottom: 10 }}>
+                                {(m.roles || []).length === 0 && <span className="text-muted">No extra roles.</span>}
+                                {(m.roles || []).map((r) => (
+                                  <span className="chip" key={r.id}>
+                                    {r.scope_name ? `${r.role_label} · ${r.scope_name}` : r.role_label}
+                                    <button type="button" className="secondary" aria-label={`Remove ${r.role_label}${r.scope_name ? ` ${r.scope_name}` : ''} from ${m.name}`}
+                                      onClick={() => run(() => api.staffRoles.remove(r.id), `Removed ${r.role_label} from ${m.name}.`)}>✕</button>
+                                  </span>
+                                ))}
+                              </div>
+                              <form onSubmit={(e) => addRole(e, m)} className="form-row">
+                                <div className="field" style={{ marginBottom: 0 }}>
+                                  <label htmlFor={`role-${m.id}`}>Role</label>
+                                  <select id={`role-${m.id}`} value={newRole} onChange={(e) => { setNewRole(e.target.value); setNewScope('') }} required>
+                                    <option value="">Select…</option>
+                                    {ROLE_OPTIONS.filter(([k]) => !(k === 'leadership' && m.role === 'admin')).map(([k, label]) => (
+                                      <option key={k} value={k}>{label}</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                {scopeOf(newRole) && (
+                                  <div className="field" style={{ marginBottom: 0 }}>
+                                    <label htmlFor={`role-scope-${m.id}`}>{scopeLabels[scopeOf(newRole)]}</label>
+                                    <select id={`role-scope-${m.id}`} value={newScope} onChange={(e) => setNewScope(e.target.value)} required>
+                                      <option value="">Select…</option>
+                                      {(scopeChoices[scopeOf(newRole)] || []).map((x) => <option key={x.id} value={x.id}>{x.label || x.name}</option>)}
+                                    </select>
+                                  </div>
+                                )}
+                                <button type="submit">Add role</button>
+                              </form>
+                            </>
+                          )}
                         </td>
                       </tr>
                     )}
@@ -316,6 +391,7 @@ export default function Staff({ me }) {
             <select id="invite-role" value={role} onChange={(e) => setRole(e.target.value)}>
               <option value="teacher">Teacher</option>
               <option value="admin">Admin</option>
+              <option value="governor">Governor (read-only)</option>
             </select>
           </div>
           <div className="field" style={{ marginBottom: 0 }}>

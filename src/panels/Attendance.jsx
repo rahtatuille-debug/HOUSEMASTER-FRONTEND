@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
 import { api } from '../api.js'
@@ -70,9 +71,7 @@ export default function Attendance({ me }) {
     api.schoolClasses
       .list()
       .then((all) => {
-        const mine = isAdmin
-          ? all
-          : all.filter((c) => (me?.assignments || []).some((a) => a.school_class === c.id))
+        const mine = classesFor(me, all, 'attendance')
         setClasses(mine)
         if (mine.length === 1) setClassId(String(mine[0].id))
       })

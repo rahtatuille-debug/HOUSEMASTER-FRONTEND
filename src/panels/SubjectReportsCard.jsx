@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { api } from '../api.js'
 import { useVocab } from '../levels.js'
 
@@ -22,8 +23,7 @@ export default function SubjectReportsCard({ me, terms }) {
 
   useEffect(() => {
     Promise.all([api.schoolClasses.list(), api.subjects.list()]).then(([cls, subj]) => {
-      const mine = me?.assignments || []
-      setClasses(isAdmin ? cls : cls.filter((c) => mine.some((a) => a.school_class === c.id)))
+      setClasses(classesFor(me, cls, 'academic'))
       setSubjects(subj)
     }).catch((err) => setError(err.message))
   }, [isAdmin, me])
@@ -31,7 +31,8 @@ export default function SubjectReportsCard({ me, terms }) {
   // Only the chosen class's curriculum, and for teachers only the subjects they teach there.
   const chosenClass = classes.find((c) => c.id === Number(pick.school_class))
   const sectionSubjects = chosenClass ? subjects.filter((s) => !s.section || s.section === chosenClass.section) : subjects
-  const classSubjects = isAdmin || !pick.school_class ? sectionSubjects : sectionSubjects.filter((s) =>
+  const headOf = new Set((me?.roles || []).filter((r) => r.role === 'head_of_department').map((r) => r.subject))
+  const classSubjects = isAdmin || perms(me).is_leader || !pick.school_class ? sectionSubjects : sectionSubjects.filter((s) => headOf.has(s.id) ||
     (me?.assignments || []).some((a) => a.school_class === Number(pick.school_class) && (a.subject == null || a.subject === s.id)))
 
   useEffect(() => {

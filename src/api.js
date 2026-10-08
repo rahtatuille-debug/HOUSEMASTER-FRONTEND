@@ -671,6 +671,8 @@ export const api = {
   me: () => request('/api/me/'),
   // Admin home page.
   dashboard: () => request('/api/dashboard/'),
+  // School-wide figures for governors and leaders: numbers only.
+  governorSummary: () => request('/api/governor/summary/'),
   // Graphs data. scope: 'student' | 'class' | 'year_group' | 'school'.
   performance: (params) => request('/api/analytics/performance/', { params }),
   // Excel import (admins). commit=false is a preview: nothing is saved.
@@ -1046,6 +1048,12 @@ export const api = {
     deactivate: (id) => request(`/api/staff/${id}/deactivate/`, { method: 'POST' }),
     reactivate: (id) => request(`/api/staff/${id}/reactivate/`, { method: 'POST' }),
     sendPasswordReset: (id) => request(`/api/staff/${id}/send-password-reset/`, { method: 'POST' }),
+  },
+  // Extra roles (Head of Year, Nurse, ...): {profile, role, year_group|subject|school_class}. Admins only.
+  staffRoles: {
+    list: (params) => request('/api/staff-roles/', { params }),
+    create: (body) => request('/api/staff-roles/', { method: 'POST', body }),
+    remove: (id) => request(`/api/staff-roles/${id}/`, { method: 'DELETE' }),
   },
   teachingAssignments: {
     list: (params) => request('/api/teaching-assignments/', { params }),

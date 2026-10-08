@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
@@ -172,10 +173,9 @@ function AiDraftTool({ yearGroups, classes, audiences, initialContext, onUseDraf
 
 export default function Announcements({ me }) {
   const words = useVocab()
-  const admin = me?.role === 'admin'
-  // Teachers write to the parents of the classes they teach, and publish
-  // those themselves; everything else is for admins.
-  const myClassIds = new Set((me?.assignments || []).map((a) => a.school_class))
+  // Admins, leadership and the Secretary write to anyone. Other staff write to
+  // the parents of the classes they teach (or lead), and publish those themselves.
+  const admin = perms(me).send_announcements
   const audiences = admin
     ? { ...AUDIENCES, year_group: `Specific ${words.year_group.toLowerCase()}`, school_class: `Specific ${words.class.toLowerCase()}` }
     : { school_class: `Parents of a ${words.class.toLowerCase()} I teach` }
@@ -197,8 +197,9 @@ export default function Announcements({ me }) {
   const [pendingAiDraft, setPendingAiDraft] = useState(null)
   const [aiCreateMode, setAiCreateMode] = useState(false)
 
-  const myClasses = admin ? classes : classes.filter((c) => myClassIds.has(c.id))
-  const canWrite = admin || myClassIds.size > 0
+  const myClasses = admin ? classes : classesFor(me, classes, 'pastoral')
+  const scope = me?.permissions?.classes?.pastoral
+  const canWrite = admin || (scope ? scope.length > 0 : (me?.assignments || []).length > 0)
 
   // A page at a time from the server (F-4).
   const list = usePagedList((page) => api.announcements.page({ ...(status ? { status } : {}), ...page }), [status])

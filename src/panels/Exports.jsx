@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { api } from '../api.js'
 
@@ -24,7 +25,7 @@ export default function Exports({ me }) {
   useEffect(() => {
     Promise.all([api.schoolClasses.list(), api.terms.list()])
       .then(([cls, trm]) => {
-        const mine = isAdmin ? cls : cls.filter((c) => (me?.assignments || []).some((a) => a.school_class === c.id))
+        const mine = classesFor(me, cls, 'records')
         setClasses(mine)
         setTerms(trm)
         if (mine.length === 1) setClassId(String(mine[0].id))

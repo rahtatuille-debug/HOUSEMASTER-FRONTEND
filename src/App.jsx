@@ -37,13 +37,16 @@ import Exports from './panels/Exports.jsx'
 import Performance from './panels/Performance.jsx'
 import Support from './panels/Support.jsx'
 import Discipline from './panels/Discipline.jsx'
+import SickBay from './panels/SickBay.jsx'
+import GovernorHome from './panels/GovernorHome.jsx'
+import { perms } from './permissions.js'
 import Timetable from './panels/Timetable.jsx'
 import Boarding from './panels/Boarding.jsx'
 import Admissions from './panels/Admissions.jsx'
 import GuardianStudents from './panels/GuardianStudents.jsx'
 import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity } from './user.js'
-import { GUARDIAN_SECTIONS, STAFF_SECTIONS, bottomBarSections, sectionOf, visibleSections } from './nav.js'
+import { GOVERNOR_PAGES, GOVERNOR_SECTIONS, GUARDIAN_SECTIONS, STAFF_SECTIONS, bottomBarSections, sectionOf, visibleSections } from './nav.js'
 import { NavIcon } from './icons.jsx'
 
 const TABS = [
@@ -56,6 +59,7 @@ const TABS = [
   { key: 'performance', label: 'Performance', component: Performance },
   { key: 'support', label: 'Needs support', component: Support },
   { key: 'discipline', label: 'Behaviour', component: Discipline },
+  { key: 'sickbay', label: 'Sick bay', component: SickBay, need: 'nurse' },
   { key: 'boarding', label: 'Boarding', component: Boarding, boardingOnly: true },
   { key: 'announcements', label: 'Communications', component: Announcements },
   { key: 'messages', label: 'Messages', component: Messages },
@@ -64,16 +68,19 @@ const TABS = [
   { key: 'approvals', label: 'Approvals', teacherLabel: 'My requests', component: Approvals },
   { key: 'setup', label: 'Setup', component: Setup },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
-  { key: 'parents', label: 'Parents', component: GuardianInvites, adminOnly: true },
-  { key: 'admissions', label: 'Admissions', component: Admissions, adminOnly: true },
+  { key: 'parents', label: 'Parents', component: GuardianInvites, need: 'manage_parents' },
+  { key: 'admissions', label: 'Admissions', component: Admissions, need: 'manage_admissions' },
   { key: 'activity', label: 'Activity log', component: Activity, adminOnly: true },
   { key: 'guide', label: 'Guide', component: Guide },
   { key: 'profile', label: 'Profile', component: Profile },
 ]
 
-// Admins get the school's dashboard; teachers get their classes and a getting-started checklist.
+// Admins and leadership get the school's dashboard; governors the school's
+// figures; everyone else their classes and a getting-started checklist.
 function StaffHome(props) {
-  return props.me?.role === 'admin' ? <Home {...props} /> : <TeacherHome {...props} />
+  const p = perms(props.me)
+  if (p.is_governor) return <GovernorHome {...props} />
+  return p.school_dashboard ? <Home {...props} /> : <TeacherHome {...props} />
 }
 
 // The guided tour: a welcome, one stop per page (pointing at its section in
@@ -488,10 +495,18 @@ export default function App() {
   }
 
   const tabSet = identityKind === 'guardian' ? GUARDIAN_TABS : TABS
-  const isAdmin = me?.role === 'admin'
-  const visibleTabs = tabSet.filter((t) => (!t.adminOnly || isAdmin) && (!t.boardingOnly || me?.is_boarding_staff))
+  const p = perms(me)
+  const isAdmin = p.is_admin
+  const governor = identityKind === 'staff' && p.is_governor
+  // A page shows when its role allows it (`need`), admins see admin pages,
+  // and a governor sees only the school's figures and their profile.
+  const visibleTabs = tabSet.filter((t) => (governor ? GOVERNOR_PAGES.includes(t.key)
+    : (!t.adminOnly || isAdmin) && (!t.need || p[t.need]) && (!t.boardingOnly || me?.is_boarding_staff)))
   const pageKeys = visibleTabs.map((t) => t.key)
-  const sections = visibleSections(identityKind === 'guardian' ? GUARDIAN_SECTIONS : STAFF_SECTIONS, pageKeys, isAdmin)
+  // Pages a role opens inside the Admin section (e.g. Parents for the Secretary, Approvals for leaders).
+  const granted = [...visibleTabs.filter((t) => t.need).map((t) => t.key), ...(p.approve_requests || p.approve_reports ? ['approvals'] : [])]
+  const sections = visibleSections(identityKind === 'guardian' ? GUARDIAN_SECTIONS : governor ? GOVERNOR_SECTIONS : STAFF_SECTIONS,
+    pageKeys, isAdmin, granted)
   const activeKey = pageKeys.includes(activeTab) ? activeTab : sections[0]?.pages[0] || visibleTabs[0]?.key
   const ActivePanel = visibleTabs.find((t) => t.key === activeKey)?.component
   const activeSection = sections.find((s) => s.pages.includes(activeKey)) || null
@@ -501,7 +516,7 @@ export default function App() {
   const showSettings = identityKind === 'staff'
   const pageLabel = (key) => {
     const t = visibleTabs.find((x) => x.key === key)
-    return t ? (!isAdmin && t.teacherLabel ? t.teacherLabel : t.label) : key
+    return t ? (!(p.approve_requests || p.approve_reports) && t.teacherLabel ? t.teacherLabel : t.label) : key
   }
   // Pages outside the sections (a teacher's Setup and requests, the guide, the profile).
   const extraPages = pageKeys.filter((k) => !sections.some((s) => s.pages.includes(k)))

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { ScaleContext, useSchoolLevels, useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, ColumnChart, LineChart } from './charts.jsx'
@@ -186,7 +187,7 @@ export function StudentTable({ students: given, showClass, showYear, onOpenStude
 // Performance graphs for one student, a class, a year group, or the school.
 export default function Performance({ me }) {
   const words = useVocab()
-  const isAdmin = me?.role === 'admin'
+  const isAdmin = perms(me).is_leader  // the whole school: admins and leadership
   const [scope, setScope] = useState('class')
   const [classes, setClasses] = useState([])
   const [yearGroups, setYearGroups] = useState([])
@@ -200,8 +201,7 @@ export default function Performance({ me }) {
   useEffect(() => {
     Promise.all([api.schoolClasses.list(), api.yearGroups.list(), api.students.list({ is_active: true })])
       .then(([cls, years, studs]) => {
-        const assigned = new Set((me?.assignments || []).map((a) => a.school_class))
-        const myClasses = isAdmin ? cls : cls.filter((c) => assigned.has(c.id))
+        const myClasses = classesFor(me, cls, 'academic')
         const myYears = isAdmin ? years : years.filter((y) => myClasses.some((c) => c.year_group === y.id))
         setClasses(myClasses)
         setYearGroups(myYears)

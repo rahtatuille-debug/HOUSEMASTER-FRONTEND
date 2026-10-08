@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
@@ -25,7 +26,8 @@ function emailNote(alert) {
 // teachers only the parents of a class they teach (the API enforces this).
 export default function Alerts({ me }) {
   const words = useVocab()
-  const isAdmin = me?.role === 'admin'
+  // Admins and leadership alert anyone; other staff the parents of a class they teach or lead.
+  const isAdmin = perms(me).send_alerts
   const [alerts, setAlerts] = useState([])
   const [yearGroups, setYearGroups] = useState([])
   const [classes, setClasses] = useState([])
@@ -49,7 +51,7 @@ export default function Alerts({ me }) {
       setAlerts(list)
       setYearGroups(years)
       setClasses(
-        isAdmin ? cls : cls.filter((c) => (me?.assignments || []).some((a) => a.school_class === c.id))
+        classesFor(me, cls, 'pastoral')
       )
     } catch (err) {
       setError(err.message)

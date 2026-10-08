@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { classesFor, perms } from '../permissions.js'
 import { api } from '../api.js'
 import { useSchool, useVocab } from '../levels.js'
 
@@ -18,8 +19,7 @@ export default function SubjectChoicesCard({ me }) {
 
   useEffect(() => {
     api.schoolClasses.list().then((cls) => {
-      const mine = me?.assignments || []
-      setClasses(isAdmin ? cls : cls.filter((c) => mine.some((a) => a.school_class === c.id)))
+      setClasses(classesFor(me, cls, 'pastoral'))
     }).catch((err) => setError(err.message))
   }, [isAdmin, me])
 

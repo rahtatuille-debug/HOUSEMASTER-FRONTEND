@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { perms } from '../permissions.js'
 import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
 import { usePagedList } from '../usePagedList.js'
@@ -19,7 +20,10 @@ function formatWhen(value) {
 // changes) plus reports waiting to be finalized. Teachers: their own
 // requests and what happened to them.
 export default function Approvals({ me, onCountsChanged }) {
-  const isAdmin = me?.role === 'admin'
+  // Leaders review teachers' requests (admins also school settings); leaders and Heads of Year approve reports.
+  const p = perms(me)
+  const isAdmin = p.approve_requests
+  const reviewsReports = p.approve_reports
   const [filter, setFilter] = useState('pending')
   const [students, setStudents] = useState([])
   const [terms, setTerms] = useState([])
@@ -34,7 +38,7 @@ export default function Approvals({ me, onCountsChanged }) {
   const requestList = usePagedList(
     (page) => api.changeRequests.page({ ...(filter ? { status: filter } : {}), ...page }), [filter, isAdmin])
   const reportList = usePagedList(
-    (page) => (isAdmin ? api.reports.page({ status: 'submitted', ...page }) : Promise.resolve([])), [isAdmin])
+    (page) => (reviewsReports ? api.reports.page({ status: 'submitted', ...page }) : Promise.resolve([])), [reviewsReports])
   const requests = requestList.rows
   const reports = reportList.rows
   const loading = requestList.loading || reportList.loading
@@ -45,14 +49,14 @@ export default function Approvals({ me, onCountsChanged }) {
   }
 
   useEffect(() => {
-    if (!isAdmin) return
+    if (!isAdmin && !reviewsReports) return
     Promise.all([api.students.list(), api.terms.list()])
       .then(([st, te]) => {
         setStudents(st)
         setTerms(te)
       })
       .catch((err) => setError(err.message))
-  }, [isAdmin])
+  }, [isAdmin, reviewsReports])
 
   async function run(id, action, message) {
     setBusyId(id)
@@ -91,20 +95,20 @@ export default function Approvals({ me, onCountsChanged }) {
   return (
     <div>
       <div className="panel-header">
-        <h2>{isAdmin ? 'Approvals' : 'My requests'}</h2>
+        <h2>{isAdmin || reviewsReports ? 'Approvals' : 'My requests'}</h2>
       </div>
 
       {(error || listError) && <div className="error-banner">{error || listError}</div>}
       {notice && <div className="success-banner">{notice}</div>}
 
-      {!isAdmin && (
+      {!isAdmin && !reviewsReports && (
         <p className="hint" style={{ marginTop: 0 }}>
           Deleting a student, changing classes, subjects, terms or year groups, and changing school
           settings all need an admin's approval. Your requests and their answers show here.
         </p>
       )}
 
-      {isAdmin && (
+      {reviewsReports && (
         <div className="card">
           <h3 style={{ marginBottom: 14, fontSize: 15 }}>Reports waiting to be finalized</h3>
           {loading ? (
@@ -232,7 +236,7 @@ export default function Approvals({ me, onCountsChanged }) {
                   </td>
                   <td className="text-muted">{formatWhen(r.created_at)}</td>
                   <td>
-                    {r.status === 'pending' && isAdmin && !(noteFor?.type === 'reject' && noteFor.id === r.id) && (
+                    {r.status === 'pending' && isAdmin && (r.kind !== 'school' || p.is_admin) && !(noteFor?.type === 'reject' && noteFor.id === r.id) && (
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button disabled={busyId === r.id} onClick={() => approve(r)}>Approve</button>
                         <button className="secondary" onClick={() => openNote('reject', r.id)}>Reject</button>

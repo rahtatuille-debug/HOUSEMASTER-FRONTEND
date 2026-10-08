@@ -1,4 +1,4 @@
-/** @typedef {'admin' | 'teacher'} UserRole */
+/** @typedef {'admin' | 'teacher' | 'governor'} UserRole */
 
 /**
  * @typedef {Object} Announcement
@@ -29,6 +29,7 @@
 export function getRoleLabel(role) {
   if (role === 'admin') return 'Admin'
   if (role === 'teacher') return 'Teacher'
+  if (role === 'governor') return 'Governor'
   return 'Staff'
 }
 
