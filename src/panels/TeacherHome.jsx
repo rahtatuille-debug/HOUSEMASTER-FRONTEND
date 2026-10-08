@@ -127,6 +127,19 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
         </NeedsAttention>
         <ClassPerformance onNavigate={onNavigate} />
         <AllClasses />
+        {data.homework?.length > 0 && (
+          <Panel title="Homework to record" wide menu={[{ label: 'Open Homework', onClick: () => onNavigate('homework') }]}>
+            <ul className="dash-list">
+              {data.homework.map((h) => (
+                <li key={h.id}>
+                  <strong>{h.title} <span className="text-muted" style={{ fontWeight: 400 }}>· {h.subject} · {h.class_name}</span></strong>
+                  <span className="text-muted">{h.to_record} of {h.students} to record · due {formatDate(h.due_date, { day: 'numeric', month: 'short' })}</span>
+                  <button type="button" className="secondary" onClick={() => onNavigate('homework', { homeworkId: h.id })} aria-label={`Record ${h.title}`}>Record</button>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+        )}
         {data.clubs?.length > 0 && (
           <Panel title="My clubs" wide menu={[{ label: 'Open Clubs', onClick: () => onNavigate('clubs') }]}>
             {data.clubs.map((c) => (

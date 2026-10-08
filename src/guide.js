@@ -113,6 +113,16 @@ export function guideSections(w, role) {
       ],
     },
     {
+      key: 'homework', title: 'Homework', for: 'all',
+      tour: 'Set homework for your classes and record who handed it in. Students and parents see it.',
+      steps: [
+        'Choose "Set homework", pick the class and subject, and give a title, instructions, an optional link and the due date. Add "marked out of" if you give a mark.',
+        'Students see it in their account and can mark it done, with a typed answer or a link to their work. Parents see it too.',
+        'After it is due, choose Record: mark each student handed in, late, missing or excused, and add a mark and a comment if you like. "Everyone else handed in" fills in the rest.',
+        'Your Dashboard lists homework you set that still has students to record.',
+      ],
+    },
+    {
       key: 'calendar', title: 'Calendar', for: 'all',
       tour: 'Term dates, school events and fixtures, month by month. You can add it to your phone\'s calendar.',
       steps: [

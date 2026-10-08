@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { FixtureLine } from './Clubs.jsx'
+import HomeworkList from './HomeworkList.jsx'
 import TermSummary from './TermSummary.jsx'
 import { formatDate as localDate, formatDateTime } from '../format.js'
 import { useSchool, useWithLevel, useVocab } from '../levels.js'
@@ -11,7 +12,7 @@ import WeekGrid from './WeekGrid.jsx'
 
 const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
 const MODES = { day: 'Day', boarding: 'Boarding' }
-const TABS = ['overview', 'progress', 'grades', 'timetable', 'attendance', 'reports', 'behaviour', 'clubs']
+const TABS = ['overview', 'progress', 'grades', 'homework', 'timetable', 'attendance', 'reports', 'behaviour', 'clubs']
 
 function formatDate(value) {
   return value ? localDate(value) : '—'
@@ -160,6 +161,7 @@ export default function GuardianStudents() {
           {tab === 'timetable' && <ChildTimetable studentId={selected.id} />}
           {tab === 'behaviour' && <ChildBehaviour rows={profile?.discipline} merits={profile?.merits} firstName={selected.first_name} />}
           {tab === 'clubs' && <ChildClubs clubs={profile?.clubs} firstName={selected.first_name} />}
+          {tab === 'homework' && <HomeworkList items={profile ? (profile.homework || []) : null} firstName={selected.first_name} />}
           {tab === 'boarding' && <ChildBoarding studentId={selected.id} firstName={selected.first_name} />}
           {tab === 'attendance' && profile && (
             <div className="card">
