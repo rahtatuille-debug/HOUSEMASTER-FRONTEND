@@ -18,6 +18,7 @@ export function perms(me) {
     nurse: false,
     all_registers: admin,
     school_dashboard: admin,
+    manage_cover: admin,
     ...(me?.permissions || {}),
   }
 }

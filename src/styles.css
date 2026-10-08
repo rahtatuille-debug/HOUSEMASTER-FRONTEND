@@ -1444,3 +1444,39 @@ form + .staff-sub { margin-top: 18px; }
 .approve-all-row .link-button { width: auto; padding: 0; font-weight: 600; }
 .approve-all-classes { margin: 8px 0 0 18px; }
 .approve-all-classes > li { padding: 6px 0; border-top: 1px dashed var(--rule); }
+
+/* Staff cover */
+.cover-day-nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+.cover-day-nav input[type="date"] { width: auto; }
+.cover-sub { font-size: 14px; margin: 14px 0 6px; }
+.cover-list { list-style: none; margin: 0; padding: 0; }
+.cover-row { display: grid; grid-template-columns: 70px minmax(160px, 1fr) minmax(240px, 2fr); gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--rule); }
+.cover-row.covered { opacity: 0.85; }
+.cover-when, .cover-what { display: flex; flex-direction: column; font-size: 14px; }
+.cover-pick { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cover-pick select { flex: 1 1 220px; width: auto; }
+.cover-pick input { flex: 1 1 140px; width: auto; }
+.cover-form .span-all { grid-column: 1 / -1; }
+.cover-form .check-row { display: inline-flex; gap: 6px; align-items: center; font-weight: 400; text-transform: none; letter-spacing: normal; margin-right: 14px; }
+.cover-form .check-row input { width: auto; }
+.cover-periods { border: 0; padding: 0; margin: 0; }
+@media (max-width: 640px) { .cover-row { grid-template-columns: 60px minmax(0, 1fr); } .cover-pick { grid-column: 1 / -1; min-width: 0; } .cover-pick select, .cover-pick input { flex: 1 1 100%; min-width: 0; } }
+.cover-row > * { min-width: 0; }
+.day-cover { margin-left: 6px; min-width: 0; }
+.day-note { display: block; font-size: 12px; }
+
+/* Class performance on the teacher dashboard */
+.perf-term { display: inline-flex; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 13px; }
+.perf-term select { width: auto; }
+.perf-list { list-style: none; margin: 0; padding: 0; }
+.perf-class { border-top: 1px solid var(--rule); }
+.perf-head { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: grid; grid-template-columns: minmax(120px, 1.4fr) 70px 110px minmax(90px, 1fr); gap: 8px; align-items: center; padding: 10px 2px; font-size: 14px; }
+.perf-head:focus-visible { outline: 2px solid var(--accent, #b8892b); outline-offset: 2px; }
+.perf-avg { font-weight: 600; }
+.perf-rank { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--surface); font-size: 13px; }
+.perf-rank.rank-top { background: #e3f1e6; color: #1f6b35; font-weight: 600; }
+.perf-rank.rank-bottom { background: #f6e3e3; color: var(--stamp-red); }
+.perf-year { font-size: 13px; }
+.perf-table { margin: 0 0 10px; }
+.perf-table tr.mine td { background: var(--surface); }
+@media (max-width: 640px) { .perf-head { grid-template-columns: 1fr auto auto; } .perf-year { display: none; } }

@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { formatDate } from '../format.js'
 import { useVocab } from '../levels.js'
 import Panel from './Panel.jsx'
+import ClassPerformance from './ClassPerformance.jsx'
 import { Bulletin, Greeting, MyDay, NeedsAttention, QuickFind } from './DashboardParts.jsx'
 
 // A teacher's dashboard: their day, the bulletin, what needs them, their
@@ -122,6 +123,7 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
             </div>
           )}
         </NeedsAttention>
+        <ClassPerformance onNavigate={onNavigate} />
         <Bulletin onNavigate={onNavigate} />
         <QuickFind onNavigate={onNavigate} />
         <Panel title={`My ${words.classes.toLowerCase()}`} wide>

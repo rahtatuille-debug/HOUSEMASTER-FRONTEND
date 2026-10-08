@@ -38,6 +38,7 @@ import Performance from './panels/Performance.jsx'
 import Support from './panels/Support.jsx'
 import Discipline from './panels/Discipline.jsx'
 import SickBay from './panels/SickBay.jsx'
+import Cover from './panels/Cover.jsx'
 import GovernorHome from './panels/GovernorHome.jsx'
 import { perms } from './permissions.js'
 import Timetable from './panels/Timetable.jsx'
@@ -53,6 +54,7 @@ const TABS = [
   { key: 'home', label: 'Dashboard', component: StaffHome },
   { key: 'students', label: 'Students', component: Students },
   { key: 'timetable', label: 'Timetable', component: Timetable },
+  { key: 'cover', label: 'Cover', component: Cover, need: 'manage_cover' },
   { key: 'attendance', label: 'Attendance', component: Attendance },
   { key: 'grades', label: 'Grades', component: Grades },
   { key: 'reports', label: 'Reports', component: Reports },

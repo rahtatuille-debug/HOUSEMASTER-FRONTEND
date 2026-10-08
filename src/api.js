@@ -697,6 +697,8 @@ export const api = {
   teacherHome: {
     get: () => request('/api/teacher-home/'),
     setHidden: (hidden) => request('/api/teacher-home/', { method: 'PATCH', body: { hidden } }),
+    // Each of my classes' average and position in its year group, overall and per subject.
+    performance: (term) => request('/api/teacher-home/performance/', { params: term ? { term } : undefined }),
   },
   tourSeen: () => request('/api/tour-seen/', { method: 'POST' }),
   checklist: {
@@ -994,6 +996,19 @@ export const api = {
   // The timetable: admins change it, all staff read it.
   timetable: {
     week: (params) => request('/api/timetable/week/', { params }),
+    // Staff cover (admins and leadership).
+    absences: {
+      list: (params) => request('/api/timetable/absences/', { params }),
+      // { teacher, start_date, end_date, periods: [ids] (one day only), reason, note }
+      create: (body) => request('/api/timetable/absences/', { method: 'POST', body }),
+      remove: (id) => request(`/api/timetable/absences/${id}/`, { method: 'DELETE' }),
+    },
+    cover: {
+      day: (date) => request('/api/timetable/cover/', { params: date ? { date } : undefined }),
+      // { lesson, date, cover_teacher (null: supervised another way), note }
+      arrange: (body) => request('/api/timetable/cover/', { method: 'POST', body }),
+      remove: (lesson, date) => request('/api/timetable/cover/', { method: 'DELETE', params: { lesson, date } }),
+    },
     // Lessons with no teacher, or a teacher whose account was deactivated.
     unstaffed: () => request('/api/timetable/unstaffed/'),
     schoolWeek: {
