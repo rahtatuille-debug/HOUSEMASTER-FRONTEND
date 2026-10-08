@@ -39,6 +39,7 @@ import Support from './panels/Support.jsx'
 import Discipline from './panels/Discipline.jsx'
 import SickBay from './panels/SickBay.jsx'
 import Cover from './panels/Cover.jsx'
+import Clubs from './panels/Clubs.jsx'
 import GovernorHome from './panels/GovernorHome.jsx'
 import { perms } from './permissions.js'
 import Timetable from './panels/Timetable.jsx'
@@ -61,6 +62,7 @@ const TABS = [
   { key: 'performance', label: 'Performance', component: Performance },
   { key: 'support', label: 'Needs support', component: Support },
   { key: 'discipline', label: 'Behaviour', component: Discipline },
+  { key: 'clubs', label: 'Clubs', component: Clubs },
   { key: 'sickbay', label: 'Sick bay', component: SickBay, need: 'nurse' },
   { key: 'boarding', label: 'Boarding', component: Boarding, boardingOnly: true },
   { key: 'announcements', label: 'Communications', component: Announcements },

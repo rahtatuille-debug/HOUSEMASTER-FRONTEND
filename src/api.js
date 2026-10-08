@@ -1045,6 +1045,32 @@ export const api = {
     update: (id, body) => request(`/api/discipline/incidents/${id}/`, { method: 'PATCH', body }),
     remove: (id) => request(`/api/discipline/incidents/${id}/`, { method: 'DELETE' }),
   },
+  // Clubs and activities. Every staff member sees them; a club's staff run it.
+  clubs: {
+    list: (params) => listRequest('/api/clubs/', { params }),
+    // { name, kind, description, meets, location, is_active, leaders: [user ids] }
+    create: (body) => request('/api/clubs/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/clubs/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/clubs/${id}/`, { method: 'DELETE' }),
+    staff: () => request('/api/clubs/staff/'),
+    members: (id) => request(`/api/clubs/${id}/members/`),
+    // { students: [ids], role }
+    addMembers: (id, body) => request(`/api/clubs/${id}/members/`, { method: 'POST', body }),
+    updateMember: (id, studentId, body) => request(`/api/clubs/${id}/members/${studentId}/`, { method: 'PATCH', body }),
+    removeMember: (id, studentId) => request(`/api/clubs/${id}/members/${studentId}/`, { method: 'DELETE' }),
+    candidates: (id, q) => request(`/api/clubs/${id}/candidates/`, { params: { q } }),
+    register: (id, date) => request(`/api/clubs/${id}/register/`, { params: { date } }),
+    // { date, note, marks: [{ student, status }] }
+    saveRegister: (id, body) => request(`/api/clubs/${id}/register/`, { method: 'POST', body }),
+    sessions: (id) => request(`/api/clubs/${id}/sessions/`),
+  },
+  // Fixtures and results. { club, upcoming, results, from, to }
+  fixtures: {
+    list: (params) => listRequest('/api/fixtures/', { params }),
+    create: (body) => request('/api/fixtures/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/fixtures/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/fixtures/${id}/`, { method: 'DELETE' }),
+  },
   // Students who need extra support: HouseMaster suggests, staff confirm.
   support: {
     suggestions: (term) => request('/api/support/suggestions/', { params: term ? { term } : undefined }),

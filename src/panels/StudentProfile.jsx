@@ -310,6 +310,12 @@ export default function StudentProfile({ studentId, me, onBack }) {
                     {profile.support?.open && (
                       <div style={{ marginBottom: 18 }}><SupportCard concern={profile.support.open} formatDate={formatDate} /></div>
                     )}
+                    {profile.clubs?.length > 0 && (
+                      <div style={{ marginBottom: 18 }}>
+                        <h3 style={{ fontSize: 15, marginBottom: 8 }}>Clubs and teams</h3>
+                        <p style={{ margin: 0 }}>{profile.clubs.map((c) => `${c.name}${c.role ? ` (${c.role})` : ''}`).join(', ')}</p>
+                      </div>
+                    )}
                     {profile.discipline?.count > 0 && (
                       <div style={{ marginBottom: 18 }}>
                         <h3 style={{ fontSize: 15, marginBottom: 8 }}>Behaviour ({profile.discipline.count})</h3>
