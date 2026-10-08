@@ -4,7 +4,7 @@
 
 export const STAFF_SECTIONS = [
   { key: 'home', label: 'Dashboard', icon: 'home', pages: ['home'] },
-  { key: 'registers', label: 'Registers', icon: 'register', pages: ['attendance', 'timetable', 'boarding'] },
+  { key: 'registers', label: 'Registers', icon: 'register', pages: ['attendance', 'timetable', 'cover', 'boarding'] },
   { key: 'reports', label: 'Reports', icon: 'reports', pages: ['grades', 'reports', 'performance', 'exports'] },
   { key: 'messages', label: 'Messages', icon: 'messages', pages: ['messages', 'announcements', 'alerts'] },
   { key: 'students', label: 'Students', icon: 'students', pages: ['students', 'support', 'discipline', 'sickbay', 'admissions'] },

@@ -184,6 +184,14 @@ export function guideSections(w, role) {
         'A Governor account is read-only: it sees the school\'s figures and never a named student.'],
     },
     {
+      key: 'cover', title: 'Cover', for: 'admin',
+      tour: 'When a teacher is away, record it here and choose who covers each of their lessons.',
+      steps: ['Choose "Record an absence": who is away, the dates, and the whole day or only some lessons.',
+        'Their lessons that day are listed. For each one, pick a member of staff who is free then (those with the lightest day come first), or mark it as supervised another way.',
+        'The cover teacher sees the lesson, and your note, in "My day" on their Dashboard.',
+        'Use the arrows to look at other days. Removing an absence also removes the cover arranged for it.'],
+    },
+    {
       key: 'sickbay', title: 'Sick bay', for: 'all',
       tour: 'For the school nurse: check any student into the sick bay, note what was given, and tell parents.',
       steps: ['Choose "Check a boarder in" and search for the student by name or admission number. Day students are included.',

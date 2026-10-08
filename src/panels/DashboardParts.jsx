@@ -35,9 +35,13 @@ export function MyDay({ lessons, onNavigate }) {
       ) : (
         <ol className="day-list">
           {lessons.map((l) => (
-            <li key={l.id}>
+            <li key={`${l.id}${l.cover ? '-cover' : ''}`}>
               <span className="tt-time">{l.start_time}–{l.end_time}</span>
-              <span className="day-what"><strong>{l.class_name} {l.label}</strong>{l.room_name ? <span className="text-muted"> · {l.room_name}</span> : null}</span>
+              <span className="day-what">
+                <strong>{l.class_name} {l.label}</strong>{l.room_name ? <span className="text-muted"> · {l.room_name}</span> : null}
+                {l.cover && <span className="badge pending day-cover">Cover{l.cover_for ? ` for ${l.cover_for}` : ''}</span>}
+                {l.cover && l.note && <span className="text-muted day-note">{l.note}</span>}
+              </span>
               <button type="button" className="secondary day-action" aria-label={`Take the register for ${l.class_name} ${l.label}`}
                 onClick={() => onNavigate('attendance')}>Register</button>
             </li>
