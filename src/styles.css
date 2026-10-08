@@ -1435,3 +1435,12 @@ body { background: var(--surface); }
 .staff-sub + .chip-list, .staff-sub + .hint { margin-top: 0; }
 form + .staff-sub { margin-top: 18px; }
 .responsive-table select[aria-label^="Role for"] { min-width: 150px; }
+
+/* Approve all reports in a year group or class */
+.approve-all-list, .approve-all-classes { list-style: none; margin: 0; padding: 0; }
+.approve-all-list > li { border-top: 1px solid var(--rule); padding: 8px 0; }
+.approve-all-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.approve-all-row > :nth-child(2) { flex: 1 1 160px; font-size: 14px; }
+.approve-all-row .link-button { width: auto; padding: 0; font-weight: 600; }
+.approve-all-classes { margin: 8px 0 0 18px; }
+.approve-all-classes > li { padding: 6px 0; border-top: 1px dashed var(--rule); }

@@ -4,6 +4,7 @@ import { formatDateTime } from '../format.js'
 import { api } from '../api.js'
 import { usePagedList } from '../usePagedList.js'
 import ShowMore from './ShowMore.jsx'
+import ApproveAll from './ApproveAll.jsx'
 
 const FILTERS = [
   { key: 'pending', label: 'Waiting' },
@@ -107,6 +108,8 @@ export default function Approvals({ me, onCountsChanged }) {
           settings all need an admin's approval. Your requests and their answers show here.
         </p>
       )}
+
+      {reviewsReports && <ApproveAll onDone={() => { load(); onCountsChanged?.() }} />}
 
       {reviewsReports && (
         <div className="card">
