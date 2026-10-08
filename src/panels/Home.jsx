@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
 import { api } from '../api.js'
@@ -67,6 +68,7 @@ export default function Home({ me, onNavigate, onStartTour }) {
   )
 
   const expired = data.invites.items.filter((i) => i.status === 'expired').length
+  const canParents = perms(me).manage_parents
   const attention = [
     att.classes_not_taken.length > 0 && {
       key: 'registers', alert: true, action: 'Registers', onClick: () => onNavigate('attendance'),
@@ -80,15 +82,15 @@ export default function Home({ me, onNavigate, onStartTour }) {
       key: 'requests', action: 'Review', onClick: () => onNavigate('approvals'),
       text: `${data.requests_waiting} teacher request${data.requests_waiting === 1 ? '' : 's'} to approve`,
     },
-    data.parent_signups_waiting > 0 && {
+    canParents && data.parent_signups_waiting > 0 && {
       key: 'signups', action: 'Parents', onClick: () => onNavigate('parents'),
       text: `${data.parent_signups_waiting} parent sign-up${data.parent_signups_waiting === 1 ? '' : 's'} to approve`,
     },
-    data.invites.items.length > 0 && {
+    me?.role === 'admin' && data.invites.items.length > 0 && {
       key: 'invites', action: 'Staff', onClick: () => onNavigate('staff'),
       text: `${data.invites.items.length} invite${data.invites.items.length === 1 ? '' : 's'} not accepted${expired ? ` (${expired} expired)` : ''}`,
     },
-    noParent.count > 0 && {
+    canParents && noParent.count > 0 && {
       key: 'noparent', action: 'Invite parents', onClick: () => onNavigate('parents'),
       text: `${noParent.count} student${noParent.count === 1 ? '' : 's'} with no parent account`,
     },
@@ -113,7 +115,8 @@ export default function Home({ me, onNavigate, onStartTour }) {
         </div>
       )}
 
-      <FirstWeekChecklist onNavigate={onNavigate} />
+      {/* The setup checklist is the admin's; leadership shares the rest of this page. */}
+      {me?.role === 'admin' && <FirstWeekChecklist onNavigate={onNavigate} />}
 
       <div className="stat-row">
         <StatTile
@@ -143,7 +146,7 @@ export default function Home({ me, onNavigate, onStartTour }) {
             ? `${data.parent_signups_waiting} parent sign-up${data.parent_signups_waiting === 1 ? '' : 's'} to approve`
             : `of ${noParent.total_students} active students`}
           alert={data.parent_signups_waiting > 0}
-          onClick={() => onNavigate('parents')}
+          onClick={canParents ? () => onNavigate('parents') : undefined}
         />
       </div>
 

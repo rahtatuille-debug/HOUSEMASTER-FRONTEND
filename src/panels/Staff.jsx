@@ -197,6 +197,7 @@ export default function Staff({ me }) {
         {loading ? (
           <p className="text-muted">Loading…</p>
         ) : (
+          <div className="table-scroll">
           <table className="responsive-table">
             <thead>
               <tr>
@@ -380,6 +381,7 @@ export default function Staff({ me }) {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
