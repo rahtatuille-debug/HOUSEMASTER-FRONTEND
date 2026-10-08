@@ -1067,6 +1067,19 @@ export const api = {
       remove: (id) => request(`/api/calendar/events/${id}/`, { method: 'DELETE' }),
     },
   },
+  // Homework: teachers set it and record how each student did.
+  homework: {
+    // { school_class, subject, mine, when: upcoming|past }
+    list: (params) => listRequest('/api/homework/', { params }),
+    choices: () => request('/api/homework/choices/'),
+    // { school_class, subject, title, instructions, link, due_date, out_of }
+    create: (body) => request('/api/homework/', { method: 'POST', body }),
+    update: (id, body) => request(`/api/homework/${id}/`, { method: 'PATCH', body }),
+    remove: (id) => request(`/api/homework/${id}/`, { method: 'DELETE' }),
+    records: (id) => request(`/api/homework/${id}/records/`),
+    // { records: [{ student, status, mark, comment }] }
+    saveRecords: (id, body) => request(`/api/homework/${id}/records/`, { method: 'POST', body }),
+  },
   // Clubs and activities. Every staff member sees them; a club's staff run it.
   clubs: {
     list: (params) => listRequest('/api/clubs/', { params }),

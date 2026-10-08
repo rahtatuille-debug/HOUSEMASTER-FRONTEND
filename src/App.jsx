@@ -41,6 +41,7 @@ import SickBay from './panels/SickBay.jsx'
 import Cover from './panels/Cover.jsx'
 import Clubs from './panels/Clubs.jsx'
 import Calendar from './panels/Calendar.jsx'
+import Homework from './panels/Homework.jsx'
 import GovernorHome from './panels/GovernorHome.jsx'
 import { perms } from './permissions.js'
 import Timetable from './panels/Timetable.jsx'
@@ -60,6 +61,7 @@ const TABS = [
   { key: 'cover', label: 'Cover', component: Cover, need: 'manage_cover' },
   { key: 'attendance', label: 'Attendance', component: Attendance },
   { key: 'grades', label: 'Grades', component: Grades },
+  { key: 'homework', label: 'Homework', component: Homework },
   { key: 'reports', label: 'Reports', component: Reports },
   { key: 'performance', label: 'Performance', component: Performance },
   { key: 'support', label: 'Needs support', component: Support },

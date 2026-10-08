@@ -5,7 +5,7 @@
 export const STAFF_SECTIONS = [
   { key: 'home', label: 'Dashboard', icon: 'home', pages: ['home', 'calendar'] },
   { key: 'registers', label: 'Registers', icon: 'register', pages: ['attendance', 'timetable', 'cover', 'boarding'] },
-  { key: 'reports', label: 'Reports', icon: 'reports', pages: ['grades', 'reports', 'performance', 'exports'] },
+  { key: 'reports', label: 'Reports', icon: 'reports', pages: ['grades', 'homework', 'reports', 'performance', 'exports'] },
   { key: 'messages', label: 'Messages', icon: 'messages', pages: ['messages', 'announcements', 'alerts'] },
   { key: 'students', label: 'Students', icon: 'students', pages: ['students', 'support', 'discipline', 'clubs', 'sickbay', 'admissions'] },
   // Teachers reach Setup and their requests from the profile menu and the quick links.
