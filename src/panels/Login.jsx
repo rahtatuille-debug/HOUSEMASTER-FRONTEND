@@ -31,10 +31,14 @@ export default function Login({ onLoggedIn, onForgotPassword, onRegister, succes
         {error && <div className="error-banner">{error}</div>}
         <form onSubmit={handleSubmit}>
           <div className="field">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="email">Email or student username</label>
             <input
               id="email"
-              type="email"
+              type="text"
+              inputMode="email"
+              autoComplete="username"
+              autoCapitalize="none"
+              spellCheck={false}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               autoFocus

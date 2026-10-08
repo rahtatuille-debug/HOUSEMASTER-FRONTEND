@@ -748,6 +748,27 @@ export const api = {
     decide: (ids, decision) => request('/api/signup-requests/', { method: 'POST', body: { ids, decision } }),
   },
   guardianMe: () => request('/api/guardian-me/'),
+  // A student's own account (studentaccounts).
+  student: {
+    me: () => request('/api/student/me/'),
+    // { current_password, new_password }: answers with new sign-in tokens, kept here.
+    changePassword: async (body) => {
+      const tokens = await request('/api/student/password/', { method: 'POST', body })
+      if (tokens?.access) setTokens(tokens)
+      return tokens
+    },
+    // { done, answer }
+    handIn: (assignmentId, body) => request(`/api/student/homework/${assignmentId}/`, { method: 'POST', body }),
+  },
+  // Staff making and managing student logins.
+  studentAccounts: {
+    list: (params) => request('/api/student-accounts/', { params }),
+    create: (students) => request('/api/student-accounts/', { method: 'POST', body: { students } }),
+    reset: (studentId) => request(`/api/student-accounts/${studentId}/reset/`, { method: 'POST' }),
+    disable: (studentId) => request(`/api/student-accounts/${studentId}/disable/`, { method: 'POST' }),
+    enable: (studentId) => request(`/api/student-accounts/${studentId}/enable/`, { method: 'POST' }),
+    remove: (studentId) => request(`/api/student-accounts/${studentId}/`, { method: 'DELETE' }),
+  },
   updateGuardianMe: (body) => request('/api/guardian-me/', { method: 'PATCH', body }),
   // Phone and browser notifications for this device (src/push.js).
   push: {

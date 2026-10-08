@@ -107,8 +107,33 @@ describe('identity fork', () => {
   })
 
   it('goes back to sign-in when neither identity works', async () => {
-    mockApi.current = deepApiMock({ isLoggedIn: () => true, me: forbidden, guardianMe: forbidden })
+    mockApi.current = deepApiMock({ isLoggedIn: () => true, me: forbidden, guardianMe: forbidden, 'student.me': forbidden })
     const { findByRole } = render(<App />)
     expect(await findByRole('button', { name: /sign in/i })).toBeInTheDocument()
+  })
+
+  it('a student account must choose a password first, then sees My work and Calendar', async () => {
+    const student = { id: 50, role: 'student', name: 'Amina K', first_name: 'Amina', student_id: 7, username: 'amina.k4821',
+      class_name: '2 East', must_change_password: true, school: { name: 'Alpha', setup_completed: true } }
+    const changePassword = vi.fn(() => Promise.resolve({ access: 'a', refresh: 'r' }))
+    let calls = 0
+    mockApi.current = deepApiMock({
+      isLoggedIn: () => true, me: forbidden, guardianMe: forbidden,
+      'student.me': () => Promise.resolve(calls++ === 0 ? student : { ...student, must_change_password: false }),
+      'student.changePassword': changePassword,
+      'guardianStudents.profile': () => Promise.resolve({ student: { id: 7, first_name: 'Amina', last_name: 'K' }, age: 12, teachers: [],
+        subjects: [], attendance: null, performance: [], support: null, discipline: [], merits: [], clubs: [], homework: [] }),
+      'guardianStudents.grades': () => Promise.resolve([]), 'guardianStudents.reports': () => Promise.resolve([]),
+    })
+    const { findByText, findByLabelText, getByLabelText, getByRole, findByRole } = render(<App />)
+    expect(await findByText(/amina.k4821/)).toBeInTheDocument()
+    fireEvent.change(await findByLabelText('The password you were given'), { target: { value: 'river-tiger-47' } })
+    fireEvent.change(getByLabelText('New password'), { target: { value: 'Correct-Horse-9' } })
+    fireEvent.change(getByLabelText('New password again'), { target: { value: 'Correct-Horse-9' } })
+    fireEvent.click(getByRole('button', { name: 'Save and continue' }))
+    await waitFor(() => expect(changePassword).toHaveBeenCalledWith({ current_password: 'river-tiger-47', new_password: 'Correct-Horse-9' }))
+    expect(await findByText('My work', { selector: '.eyebrow' })).toBeInTheDocument()
+    expect((await screen.findAllByRole('button', { name: /Calendar/ })).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: /Students/ })).toBeNull()
   })
 })

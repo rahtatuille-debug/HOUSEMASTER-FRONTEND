@@ -9,12 +9,18 @@ export const STAFF_SECTIONS = [
   { key: 'messages', label: 'Messages', icon: 'messages', pages: ['messages', 'announcements', 'alerts'] },
   { key: 'students', label: 'Students', icon: 'students', pages: ['students', 'support', 'discipline', 'clubs', 'sickbay', 'admissions'] },
   // Teachers reach Setup and their requests from the profile menu and the quick links.
-  { key: 'admin', label: 'Admin', icon: 'admin', pages: ['setup', 'staff', 'parents', 'approvals', 'activity'], adminOnly: true },
+  { key: 'admin', label: 'Admin', icon: 'admin', pages: ['setup', 'staff', 'parents', 'studentaccounts', 'approvals', 'activity'], adminOnly: true },
 ]
 
 // A governor's read-only account: the school's figures, nothing else.
 export const GOVERNOR_SECTIONS = [{ key: 'home', label: 'Dashboard', icon: 'home', pages: ['home'] }]
 export const GOVERNOR_PAGES = ['home', 'profile']
+
+// A student's own account: their work, and the calendar.
+export const STUDENT_SECTIONS = [
+  { key: 'mywork', label: 'My work', icon: 'students', pages: ['mywork'] },
+  { key: 'calendar', label: 'Calendar', icon: 'calendar', pages: ['calendar'] },
+]
 
 export const GUARDIAN_SECTIONS = [
   { key: 'students', label: 'My children', icon: 'students', pages: ['students'] },
