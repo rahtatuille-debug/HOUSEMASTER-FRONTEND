@@ -1529,3 +1529,4 @@ form + .staff-sub { margin-top: 18px; }
 .club-marks button.mark-excused { background: var(--navy); border-color: var(--navy); color: #fff; }
 .club-squad { margin-top: 6px; }
 .club-squad-names { white-space: normal; }
+.home-club + .home-club { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--rule); }

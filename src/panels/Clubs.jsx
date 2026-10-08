@@ -307,7 +307,7 @@ function SquadPicker({ fixture, members, onSubmit, onCancel }) {
   const toggle = (id) => setPicked(picked.includes(id) ? picked.filter((p) => p !== id) : [...picked, id])
   return (
     <div className="club-squad">
-      <p className="hint" style={{ margin: '0 0 4px' }}>Pick the squad. Their parents see that they were picked. {picked.length} picked.</p>
+      <p className="hint" style={{ margin: '0 0 4px' }}>Pick the squad. Parents of anyone newly picked for a fixture still to come get a short email. {picked.length} picked.</p>
       <div className="checkbox-list">
         {members.map((m) => <label key={m.student}><input type="checkbox" checked={picked.includes(m.student)} onChange={() => toggle(m.student)} /> {m.name}</label>)}
       </div>
@@ -335,9 +335,10 @@ function Fixtures({ club, setError, setNotice }) {
   async function act(fn, message) {
     setError('')
     try {
-      await fn()
+      const result = await fn()
       setOpen(null)
-      setNotice(message)
+      const emailed = result?.parents_emailed
+      setNotice(`${message}${emailed ? ` ${emailed} parent${emailed === 1 ? ' has' : 's have'} been emailed that their child was picked.` : ''}`)
       await load()
     } catch (err) {
       setError(fieldError(err))

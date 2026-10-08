@@ -91,7 +91,7 @@ describe('A club', () => {
   })
 
   it('records a result and picks a squad', async () => {
-    const update = vi.fn(() => Promise.resolve({}))
+    const update = vi.fn((id, body) => Promise.resolve(body.players ? { parents_emailed: 1 } : {}))
     setup({ 'fixtures.update': update })
     fireEvent.click(await screen.findByRole('button', { name: /Football/ }))
     fireEvent.click(await screen.findByRole('tab', { name: 'Fixtures and results' }))
@@ -104,6 +104,7 @@ describe('A club', () => {
     fireEvent.click(screen.getByLabelText('Ben O'))
     fireEvent.click(screen.getByRole('button', { name: 'Save squad' }))
     await waitFor(() => expect(update).toHaveBeenLastCalledWith(9, { players: [7, 8] }))
+    expect(await screen.findByText('Squad saved. 1 parent has been emailed that their child was picked.')).toBeInTheDocument()
   })
 
   it('other teachers see the club without the register or management buttons', async () => {
@@ -136,5 +137,23 @@ describe('Parents', () => {
   it('result text', () => {
     expect(resultText({ outcome: 'draw', our_score: 0, their_score: 0, result_note: 'Won on penalties' })).toBe('Drew 0–0 · Won on penalties')
     expect(resultText({ outcome: null, result_note: '3rd of 12' })).toBe('3rd of 12')
+  })
+})
+
+describe('Teacher home', () => {
+  it('shows the clubs I run with fixtures coming up', async () => {
+    const { default: TeacherHome } = await import('./TeacherHome.jsx')
+    const navigate = vi.fn()
+    mockApi.current = deepApiMock({
+      'teacherHome.get': () => Promise.resolve({ classes: [], checklist: { items: [], hidden: true }, today: null, support: null, boarding: null,
+        clubs: [{ id: 1, name: 'Football', meets: 'Tuesdays', member_count: 23, fixtures: [fixture] }] }),
+    })
+    render(<TeacherHome me={{ role: 'teacher', name: 'Mr Coach' }} onNavigate={navigate} />)
+    const panel = await screen.findByRole('region', { name: 'My clubs' })
+    expect(within(panel).getByText('Football')).toBeInTheDocument()
+    expect(within(panel).getByText("v St Mary's")).toBeInTheDocument()
+    fireEvent.click(within(panel).getByRole('button', { name: 'More for My clubs' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Open Clubs' }))
+    expect(navigate).toHaveBeenCalledWith('clubs')
   })
 })
