@@ -5,6 +5,7 @@ import { useVocab } from '../levels.js'
 import Panel from './Panel.jsx'
 import AllClasses from './AllClasses.jsx'
 import ClassPerformance from './ClassPerformance.jsx'
+import { FixtureLine } from './Clubs.jsx'
 import { Bulletin, Greeting, MyDay, NeedsAttention, QuickFind } from './DashboardParts.jsx'
 
 // A teacher's dashboard: their day, the bulletin, what needs them, their
@@ -126,6 +127,18 @@ export default function TeacherHome({ me, onNavigate, onStartTour }) {
         </NeedsAttention>
         <ClassPerformance onNavigate={onNavigate} />
         <AllClasses />
+        {data.clubs?.length > 0 && (
+          <Panel title="My clubs" wide menu={[{ label: 'Open Clubs', onClick: () => onNavigate('clubs') }]}>
+            {data.clubs.map((c) => (
+              <div key={c.id} className="home-club">
+                <p style={{ margin: '0 0 4px' }}><strong>{c.name}</strong> <span className="text-muted">· {[c.meets, `${c.member_count} member${c.member_count === 1 ? '' : 's'}`].filter(Boolean).join(' · ')}</span></p>
+                {c.fixtures.length === 0 ? <p className="text-muted dash-empty">No fixtures in the next two weeks.</p> : (
+                  <ul className="fixture-list">{c.fixtures.map((f) => <FixtureLine key={f.id} fixture={f} />)}</ul>
+                )}
+              </div>
+            ))}
+          </Panel>
+        )}
         <Bulletin onNavigate={onNavigate} />
         <QuickFind onNavigate={onNavigate} />
         <Panel title={`My ${words.classes.toLowerCase()}`} wide>
