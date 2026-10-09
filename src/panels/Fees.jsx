@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { formatDate, formatDateTime } from '../format.js'
 import { PAY_METHODS, amount, balanceText, fieldError } from './ChildFees.jsx'
+import FeesMpesa from './FeesMpesa.jsx'
 
-const VIEWS = [['balances', 'Balances'], ['structure', 'Fee structure'], ['claims', 'To confirm'], ['settings', 'Settings']]
+const VIEWS = [['balances', 'Balances'], ['structure', 'Fee structure'], ['claims', 'To confirm'], ['mpesa', 'M-Pesa'], ['settings', 'Settings']]
 const APPLIES = [['all', 'Everyone'], ['boarding', 'Boarders only'], ['day', 'Day students only']]
 const localToday = () => {
   const d = new Date()
@@ -41,6 +42,7 @@ export default function Fees() {
       {view === 'balances' && <Balances onOpen={setStudentId} onClaims={setOpenClaims} />}
       {view === 'structure' && <Structure currency={currency} />}
       {view === 'claims' && <Claims onChange={setOpenClaims} onOpen={setStudentId} />}
+      {view === 'mpesa' && <FeesMpesa />}
       {view === 'settings' && <Settings onSaved={(s) => setCurrency(s.currency)} />}
     </div>
   )
