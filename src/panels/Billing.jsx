@@ -8,6 +8,9 @@ const INVOICE_BADGE = { open: 'pending', paid: 'finalized' }
 
 export const money = (amount, currency) => (amount === null || amount === undefined ? 'Price not set'
   : `${currency || ''} ${Number(amount).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`.trim())
+// A plan's price: per student (the usual one) or a flat price a month.
+export const planPrice = (p) => (p.monthly_price == null && p.price_per_student != null
+  ? `${money(p.price_per_student, p.currency)} per student` : money(p.monthly_price, p.currency))
 const size = (t, prev) => (t.max_students ? `${prev ? prev + 1 : 1}–${t.max_students} students` : `${prev ? prev + 1 : 1}+ students`)
 const fieldError = (err) => Object.values(err.data || {}).flat().find((v) => typeof v === 'string') || err.message
 
@@ -97,7 +100,7 @@ export default function Billing() {
       <div className="panel-header">
         <div>
           <h2>Billing</h2>
-          <p className="text-muted" style={{ margin: '4px 0 0' }}>Your school&apos;s monthly HouseMaster subscription. The price depends on how many students you have.</p>
+          <p className="text-muted" style={{ margin: '4px 0 0' }}>Your school&apos;s monthly HouseMaster subscription. The price is for each active student, each month.</p>
         </div>
       </div>
       {error && <div className="error-banner" role="alert">{error}</div>}
@@ -108,13 +111,16 @@ export default function Billing() {
         <p style={{ margin: '8px 0 0' }}>{billingSentence(data)}</p>
         <dl className="billing-facts">
           <div><dt>Students</dt><dd>{data.students}</dd></div>
-          {!data.exempt && <div><dt>Your tier</dt><dd>{data.plan ? `${data.plan.name}: ${money(data.plan.monthly_price, data.plan.currency)} a month` : 'None'}</dd></div>}
+          {!data.exempt && <div><dt>Price</dt><dd>{data.plan ? `${planPrice(data.plan)} a month` : 'None'}</dd></div>}
+          {!data.exempt && data.plan?.monthly_amount != null && (
+            <div><dt>A month for your school</dt><dd>{money(data.plan.monthly_amount, data.plan.currency)}</dd></div>
+          )}
           {data.paid_until && <div><dt>Paid up to</dt><dd>{formatDate(data.paid_until)}</dd></div>}
           {!data.exempt && <div><dt>Grace period</dt><dd>{data.grace_days} days after the due date</dd></div>}
         </dl>
       </div>
 
-      {!data.exempt && data.tiers.length > 0 && (
+      {!data.exempt && data.tiers.length > 1 && (
         <div className="card table-scroll">
           <h3 style={{ marginTop: 0 }}>Prices</h3>
           <table className="dash-table">
@@ -124,7 +130,7 @@ export default function Billing() {
                 <tr key={t.name} className={data.plan?.name === t.name ? 'billing-current' : ''}>
                   <td>{t.name}{data.plan?.name === t.name && <span className="text-muted"> (you)</span>}</td>
                   <td>{size(t, data.tiers[n - 1]?.max_students)}</td>
-                  <td>{money(t.monthly_price, t.currency)}</td>
+                  <td>{planPrice(t)}</td>
                 </tr>
               ))}
             </tbody>
@@ -153,7 +159,7 @@ export default function Billing() {
             <tbody>
               {data.invoices.map((i) => (
                 <tr key={i.id}>
-                  <td>{i.number}<div className="text-muted">{i.plan_name} · {i.students} students</div></td>
+                  <td>{i.number}<div className="text-muted">{i.students} students</div></td>
                   <td>{formatDate(i.period_start, { day: 'numeric', month: 'short' })} to {formatDate(i.period_end, { day: 'numeric', month: 'short', year: 'numeric' })}</td>
                   <td>{money(i.amount, i.currency)}</td>
                   <td>{formatDate(i.due_on)}</td>

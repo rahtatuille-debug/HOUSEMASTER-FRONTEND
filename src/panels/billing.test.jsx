@@ -19,12 +19,14 @@ const tiers = [
   { name: 'Medium', max_students: 1000, monthly_price: '12000.00', currency: 'KES' },
   { name: 'Large', max_students: null, monthly_price: null, currency: 'KES' },
 ]
-const invoice = { id: 4, number: 'HM-202610-0007-1', plan_name: 'Small', students: 240, amount: '5000.00', currency: 'KES',
+// The owner's price: KES 50 a month for each active student.
+const perStudent = { name: 'Per student', max_students: null, monthly_price: null, price_per_student: '50.00', currency: 'KES' }
+const invoice = { id: 4, number: 'HM-202610-0007-1', plan_name: 'Per student', students: 240, amount: '12000.00', currency: 'KES',
   period_start: '2026-10-01', period_end: '2026-10-31', issued_on: '2026-10-01', due_on: '2026-10-01', status: 'open',
   status_label: 'Open', paid_on: null, payment_method: '', payment_reference: '', school_reported_at: null }
 const billing = {
   status: 'overdue', label: 'Payment overdue', locked_from: '2026-10-15', days_left: 7, invoice: 4, exempt: false, grace_days: 14,
-  students: 240, paid_until: null, plan: tiers[0], tiers, payment_instructions: 'M-Pesa Paybill 123456\nAccount: your invoice number',
+  students: 240, paid_until: null, plan: { ...perStudent, monthly_amount: '12000.00' }, tiers: [perStudent], payment_instructions: 'M-Pesa Paybill 123456\nAccount: your invoice number',
   invoices: [invoice, { ...invoice, id: 3, number: 'HM-202609-0007-1', status: 'paid', status_label: 'Paid', paid_on: '2026-09-03' }],
 }
 
@@ -38,19 +40,27 @@ function forbidden(code) {
 }
 
 describe('Billing page', () => {
-  it('shows the status, tier, prices, how to pay and the invoices', async () => {
+  it('shows the status, the price per student, how to pay and the invoices', async () => {
     mockApi.current = deepApiMock({ 'billing.get': () => Promise.resolve(billing) })
     render(<Billing />)
     expect(await screen.findByText('Payment overdue')).toBeInTheDocument()
     expect(screen.getByText(/pause for everyone at your school/)).toBeInTheDocument()
-    expect(screen.getByText('Small: KES 5,000 a month')).toBeInTheDocument()
-    expect(screen.getByText('301–1000 students')).toBeInTheDocument()
-    expect(screen.getByText('1001+ students')).toBeInTheDocument()
-    expect(screen.getByText('Price not set')).toBeInTheDocument()
+    expect(screen.getByText('KES 50 per student a month')).toBeInTheDocument()
+    expect(screen.getAllByText('KES 12,000')).toHaveLength(3) // a month for the school, and each invoice
+    expect(screen.queryByText('Prices')).toBeNull() // one price: no table
     expect(screen.getByText(/M-Pesa Paybill 123456/)).toBeInTheDocument()
     expect(screen.getByText('HM-202610-0007-1')).toBeInTheDocument()
     // Only the open invoice can be reported as paid.
     expect(screen.getAllByRole('button', { name: "We've paid" })).toHaveLength(1)
+  })
+
+  it('size tiers, if the owner switches them back on', async () => {
+    mockApi.current = deepApiMock({ 'billing.get': () => Promise.resolve({ ...billing, plan: { ...tiers[0], monthly_amount: '5000.00' }, tiers }) })
+    render(<Billing />)
+    expect(await screen.findByText('KES 5,000 a month')).toBeInTheDocument()
+    expect(screen.getByText('301–1000 students')).toBeInTheDocument()
+    expect(screen.getByText('1001+ students')).toBeInTheDocument()
+    expect(screen.getByText('Price not set')).toBeInTheDocument()
   })
 
   it("tells HouseMaster it's paid, then shows it's being checked", async () => {
