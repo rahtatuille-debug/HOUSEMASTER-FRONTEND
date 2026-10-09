@@ -51,6 +51,8 @@ export default function Attendance({ me }) {
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [history, setHistory] = useState(null) // { student, records }
+  // studentId -> what a parent reported for this day (absences), shown on the register.
+  const [reported, setReported] = useState({})
   // Every class's register for the date, for the class tabs and the overview.
   const [summary, setSummary] = useState(null)
   const loadSummary = useCallback(() => {
@@ -88,19 +90,26 @@ export default function Attendance({ me }) {
       setNotice('')
       setHistory(null)
       try {
-        const [list, records] = await Promise.all([
+        const [list, records, reports] = await Promise.all([
           api.students.list({ school_class: classId, is_active: true }),
           api.attendance.list({ date }),
+          // An older server has no absence reports: the register still works.
+          api.absenceReports.list({ date, school_class: classId }).catch(() => []),
         ])
         if (cancelled) return
         const byStudent = Object.fromEntries(records.map((r) => [r.student, r]))
+        const parentSaid = Object.fromEntries((Array.isArray(reports) ? reports : []).map((r) => [r.student, r]))
         const next = {}
         for (const s of list) {
           const r = byStudent[s.id]
+          const said = parentSaid[s.id]
           next[s.id] = r
             ? { id: r.id, status: r.status, notes: r.notes || '', savedStatus: r.status, savedNotes: r.notes || '' }
-            : { id: null, status: 'present', notes: '', savedStatus: null, savedNotes: '' }
+            // A parent said they'd be away: start them as excused (the teacher can change it).
+            : said ? { id: null, status: 'excused', notes: `Parent: ${said.reason_label}`, savedStatus: null, savedNotes: '' }
+              : { id: null, status: 'present', notes: '', savedStatus: null, savedNotes: '' }
         }
+        setReported(parentSaid)
         const draft = loadDraft(me?.id, `attendance:${classId}:${date}`) || {}
         let restored = 0
         const overtaken = []
@@ -351,6 +360,12 @@ export default function Attendance({ me }) {
                         <button type="button" className="link-button" style={{ display: 'inline', width: 'auto', padding: 0, textAlign: 'left' }} onClick={() => showHistory(s)}>
                           {s.first_name} {s.last_name}
                         </button>
+                        {reported[s.id] && (
+                          <div className="hint register-reported" style={{ margin: '2px 0 0' }}>
+                            <span className="badge excused">Parent: {reported[s.id].reason_label}</span>
+                            {reported[s.id].details && <span> {reported[s.id].details}</span>}
+                          </div>
+                        )}
                       </td>
                       <td>
                         <div className="register-status" role="group" aria-label={`Status for ${s.first_name} ${s.last_name}`}>

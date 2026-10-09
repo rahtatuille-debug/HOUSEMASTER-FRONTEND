@@ -133,6 +133,15 @@ export function guideSections(w, role) {
       ],
     },
     {
+      key: 'absences', title: 'Absences', for: 'all',
+      tour: 'Absences parents have reported, and the alerts parents get when their child is marked absent.',
+      steps: [
+        'Parents tell the school here when their child is ill or will be away. You see the reports for the classes whose register you take, grouped into today, coming up and last week. Press "Seen" once you have read one.',
+        'They also show on the register for that day: the student starts as Excused, with the parent\'s reason. Change it if the student turns up.',
+        admin ? 'When a student is marked absent at today\'s register, their parents get an email the same day (and a phone notification if they have turned those on), unless they already told the school. Correcting the mark sends a short correction. You can turn these alerts off at the top of this page.' : 'When you mark a student absent at today\'s register, their parents get an alert the same day, unless they already told the school. If you correct the mark, they get a short correction, so check the register before saving.',
+      ],
+    },
+    {
       key: 'calendar', title: 'Calendar', for: 'all',
       tour: 'Term dates, school events and fixtures, month by month. You can add it to your phone\'s calendar.',
       steps: [
