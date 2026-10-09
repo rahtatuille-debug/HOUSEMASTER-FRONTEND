@@ -45,6 +45,7 @@ import Homework from './panels/Homework.jsx'
 import StudentAccounts from './panels/StudentAccounts.jsx'
 import Billing, { billingSentence } from './panels/Billing.jsx'
 import Absences from './panels/Absences.jsx'
+import Fees from './panels/Fees.jsx'
 import StudentProfile, { ChooseFirstPassword } from './panels/StudentPassword.jsx'
 import GovernorHome from './panels/GovernorHome.jsx'
 import { perms } from './permissions.js'
@@ -84,6 +85,7 @@ const TABS = [
   { key: 'parents', label: 'Parents', component: GuardianInvites, need: 'manage_parents' },
   { key: 'studentaccounts', label: 'Student accounts', component: StudentAccounts, need: 'manage_student_accounts' },
   { key: 'admissions', label: 'Admissions', component: Admissions, need: 'manage_admissions' },
+  { key: 'fees', label: 'Fees', component: Fees, need: 'manage_fees' },
   { key: 'activity', label: 'Activity log', component: Activity, adminOnly: true },
   { key: 'billing', label: 'Billing', component: Billing, adminOnly: true },
   { key: 'guide', label: 'Guide', component: Guide },

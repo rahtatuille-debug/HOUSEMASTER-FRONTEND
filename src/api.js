@@ -810,6 +810,10 @@ export const api = {
     absences: (id) => request(`/api/guardian-students/${id}/absences/`),
     reportAbsence: (id, body) => request(`/api/guardian-students/${id}/absences/`, { method: 'POST', body }),
     cancelAbsence: (id, reportId) => request(`/api/guardian-students/${id}/absences/${reportId}/cancel/`, { method: 'POST' }),
+    // Fees (parents): balance, charges, receipts; "we've paid" { amount, paid_on, method, reference, note }.
+    fees: (id) => request(`/api/guardian-students/${id}/fees/`),
+    feeClaim: (id, body) => request(`/api/guardian-students/${id}/fees/claims/`, { method: 'POST', body }),
+    feeReceipt: (id, paymentId) => downloadFile(`/api/guardian-students/${id}/fees/receipts/${paymentId}/`),
     // A parent's suggestion for the health notes, which the school approves.
     suggestHealthNotes: (id, body) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'POST', body }),
     withdrawHealthNotes: (id) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'DELETE' }),
@@ -1098,6 +1102,31 @@ export const api = {
     // { method, reference, note }: tells HouseMaster the school has paid; it's checked and recorded by hand.
     reportPaid: (id, body) => request(`/api/billing/invoices/${id}/paid/`, { method: 'POST', body }),
     invoicePdf: (id) => downloadFile(`/api/billing/invoices/${id}/pdf/`),
+  },
+  // School fees (the bursar and admins).
+  fees: {
+    settings: () => request('/api/fees/settings/'),
+    saveSettings: (body) => request('/api/fees/settings/', { method: 'PATCH', body }),
+    items: (term) => request('/api/fee-items/', { params: { term } }),
+    // { term, name, amount, year_group, applies_to }
+    addItem: (body) => request('/api/fee-items/', { method: 'POST', body }),
+    updateItem: (id, body) => request(`/api/fee-items/${id}/`, { method: 'PATCH', body }),
+    removeItem: (id) => request(`/api/fee-items/${id}/`, { method: 'DELETE' }),
+    billTerm: (term) => request('/api/fees/bill-term/', { method: 'POST', body: { term } }),
+    // { school_class, owing, search }
+    balances: (params) => request('/api/fees/students/', { params }),
+    statement: (studentId) => request(`/api/fees/students/${studentId}/`),
+    // { kind: 'extra' | 'discount', description, amount }
+    addCharge: (studentId, body) => request(`/api/fees/students/${studentId}/charges/`, { method: 'POST', body }),
+    removeCharge: (id) => request(`/api/fees/charges/${id}/`, { method: 'DELETE' }),
+    // { amount, paid_on, method, reference, payer_name }
+    addPayment: (studentId, body) => request(`/api/fees/students/${studentId}/payments/`, { method: 'POST', body }),
+    voidPayment: (id, reason) => request(`/api/fees/payments/${id}/void/`, { method: 'POST', body: { reason } }),
+    receipt: (id) => downloadFile(`/api/fees/payments/${id}/receipt/`),
+    claims: (status) => request('/api/fees/claims/', { params: { status } }),
+    confirmClaim: (id, amount) => request(`/api/fees/claims/${id}/confirm/`, { method: 'POST', body: amount ? { amount } : {} }),
+    rejectClaim: (id, reason) => request(`/api/fees/claims/${id}/reject/`, { method: 'POST', body: { reason } }),
+    remind: (schoolClass) => request('/api/fees/remind/', { method: 'POST', body: schoolClass ? { school_class: schoolClass } : {} }),
   },
   // Absences parents have reported (staff), and whether parents get same-day absence alerts.
   absenceReports: {

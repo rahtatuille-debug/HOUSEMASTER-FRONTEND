@@ -45,6 +45,7 @@ export const ROLE_OPTIONS = [
   ['nurse', 'Nurse', null],
   ['admissions', 'Admissions Officer', null],
   ['secretary', 'Secretary', null],
+  ['bursar', 'Bursar', null],
 ]
 
 // "Head of Year (Form 2), Nurse"

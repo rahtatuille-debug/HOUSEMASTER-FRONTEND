@@ -1632,3 +1632,9 @@ form + .staff-sub { margin-top: 18px; }
 /* Absences parents reported: new ones stand out until someone has read them. */
 .support-list li.absence-unseen { border-left: 3px solid var(--gold-2); padding-left: 12px; }
 .register-reported .badge { font-size: 11px; }
+
+/* Fees: what's still owed stands out; a cancelled payment is struck through. */
+.fees-owing { color: var(--stamp-red); }
+.fees-voided td:first-child, .fees-voided td:nth-child(2) { text-decoration: line-through; color: var(--navy-2); }
+.fees-instructions { white-space: pre-line; }
+.fees-stats .stat-value { font-size: 20px; line-height: 1.25; }
