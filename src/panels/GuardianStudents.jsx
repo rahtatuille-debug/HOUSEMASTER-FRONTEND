@@ -10,6 +10,7 @@ import HealthNotesCard from './HealthNotesCard.jsx'
 import SupportCard from './SupportCard.jsx'
 import WeekGrid from './WeekGrid.jsx'
 import ChildAbsences from './ChildAbsences.jsx'
+import ChildFees from './ChildFees.jsx'
 
 const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
 const MODES = { day: 'Day', boarding: 'Boarding' }
@@ -129,7 +130,7 @@ export default function GuardianStudents({ student = null }) {
           <p className="text-muted">{selected.school_class_name || 'Class not assigned'}{selected.house ? ` · Sports house: ${selected.house}` : ''}</p>
           {profile?.support && <div style={{ margin: '12px 0' }}><SupportCard concern={profile.support} forParents /></div>}
           <div className="guardian-subtabs" role="tablist" aria-label="Student information">
-            {[...TABS, ...(school?.has_boarding && selected.mode_of_learning === 'boarding' ? ['boarding'] : [])].map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
+            {[...TABS, ...(student ? [] : ['fees']), ...(school?.has_boarding && selected.mode_of_learning === 'boarding' ? ['boarding'] : [])].map((name) => <button key={name} type="button" role="tab" aria-selected={tab === name} className={tab === name ? 'active-filter' : 'secondary'} onClick={() => setTab(name)}>{name[0].toUpperCase() + name.slice(1)}</button>)}
           </div>
           {tab === 'overview' && profile && (
             <>
@@ -184,6 +185,7 @@ export default function GuardianStudents({ student = null }) {
           {tab === 'clubs' && <ChildClubs clubs={profile?.clubs} firstName={selected.first_name} />}
           {tab === 'homework' && <HomeworkList items={profile ? (profile.homework || []) : null} firstName={student ? null : selected.first_name}
             onHandIn={student ? handIn : undefined} />}
+          {tab === 'fees' && !student && <ChildFees studentId={selected.id} firstName={selected.first_name} />}
           {tab === 'boarding' && <ChildBoarding studentId={selected.id} firstName={selected.first_name} readOnly={Boolean(student)} />}
           {tab === 'attendance' && <ChildAbsences studentId={selected.id} firstName={selected.first_name} readOnly={Boolean(student)}
             startOn={absenceLink?.id === selected.id ? absenceLink.date : null} />}

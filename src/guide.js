@@ -232,7 +232,7 @@ export function guideSections(w, role) {
       steps: ['Invite someone by email, or import a spreadsheet of staff with what they teach.',
         `Assign ${classes} and ${subjects}: a teacher only sees the students in their own ${classes}.`,
         'Make someone an admin, or deactivate an account when they leave.',
-        'Give extra roles under "Classes & roles": Leadership (the whole school), Head of Year, Class Teacher, Head of Department, Nurse, Secretary or Admissions Officer. One person can hold several.',
+        'Give extra roles under "Classes & roles": Leadership (the whole school), Head of Year, Class Teacher, Head of Department, Nurse, Secretary, Admissions Officer or Bursar (fees). One person can hold several.',
         'A Governor account is read-only: it sees the school\'s figures and never a named student.'],
     },
     {
@@ -271,6 +271,18 @@ export function guideSections(w, role) {
       key: 'activity', title: 'Activity log', for: 'admin',
       tour: 'A record of who did what and when, for accountability.',
       steps: ['Filter by person or type of action to see what changed.'],
+    },
+    {
+      key: 'fees', title: 'Fees', for: 'admin',
+      tour: 'School fees: charge each term, record payments, send receipts, and see who still owes.',
+      steps: [
+        'Admins and anyone with the Bursar role (given in Staff, under "Classes & roles") manage fees.',
+        'In Settings, set the currency and how parents pay (e.g. your M-Pesa paybill). Parents see it, and it goes in reminders.',
+        'In Fee structure, choose the term and add its fee items: tuition, boarding, lunch and so on, for every year group or one, and for everyone, boarders or day students. Then press "Bill this term". Billing again later only charges students who don\'t have an item yet, such as new students.',
+        'In Balances, open a student to see their statement. "Record a payment" gives it the next receipt number and emails the receipt to the parents. "Add a discount or charge" is for bursaries, sibling discounts or extras like a lost book. A payment entered by mistake is cancelled with a reason, never deleted, so receipt numbers stay in order.',
+        'Parents can say "We\'ve paid" with the M-Pesa code. These wait in To confirm: check each against your statement, then Confirm (records it and sends the receipt) or "Can\'t find it" with a reason the parent sees.',
+        '"Email reminders" sends each family that owes their balance and how to pay (for one class, or the whole school).',
+      ],
     },
     {
       key: 'billing', title: 'Billing', for: 'admin',
