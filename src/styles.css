@@ -1638,3 +1638,9 @@ form + .staff-sub { margin-top: 18px; }
 .fees-voided td:first-child, .fees-voided td:nth-child(2) { text-decoration: line-through; color: var(--navy-2); }
 .fees-instructions { white-space: pre-line; }
 .fees-stats .stat-value { font-size: 20px; line-height: 1.25; }
+
+/* M-Pesa: the account to pay, and choosing the student for a paybill payment. */
+.mpesa-account strong { white-space: nowrap; }
+.mpesa-card { border-left: 3px solid var(--stamp-green); }
+.mpesa-assign { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-top: 8px; }
+.mpesa-assign label { flex: 1 1 220px; margin: 0; }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { formatDate } from '../format.js'
+import MpesaPay from './MpesaPay.jsx'
 
 export const PAY_METHODS = [['mpesa', 'M-Pesa'], ['bank', 'Bank transfer'], ['cash', 'Cash'], ['cheque', 'Cheque'], ['card', 'Card'], ['other', 'Other']]
 
@@ -25,6 +26,7 @@ export default function ChildFees({ studentId, firstName }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const [paying, setPaying] = useState(false)
 
   const load = () => api.guardianStudents.fees(studentId).then(setData).catch((err) => setError(err.message))
   useEffect(() => { load() }, [studentId]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -68,14 +70,30 @@ export default function ChildFees({ studentId, firstName }) {
           <div className="stat-tile"><div className="stat-label">Charged</div><div className="stat-value">{amount(data.charged, cur)}</div></div>
           <div className="stat-tile"><div className="stat-label">Paid</div><div className="stat-value">{amount(data.paid, cur)}</div></div>
         </div>
-        {data.payment_instructions && (
-          <>
-            <h3 style={{ fontSize: 15, margin: '12px 0 4px' }}>How to pay</h3>
-            <p className="fees-instructions" style={{ margin: 0 }}>{data.payment_instructions}</p>
-          </>
+        {(data.payment_instructions || data.mpesa) && <h3 style={{ fontSize: 15, margin: '12px 0 4px' }}>How to pay</h3>}
+        {data.mpesa && (
+          <p className="mpesa-account" style={{ margin: '0 0 6px' }}>
+            M-Pesa {data.mpesa.kind === 'till' ? <>Buy Goods, till <strong>{data.mpesa.number}</strong></>
+              : <>Paybill <strong>{data.mpesa.number}</strong>, account <strong>{data.mpesa.account}</strong></>}
+            <span className="hint"> · recorded by itself, with a receipt</span>
+          </p>
         )}
-        {!form && (
-          <button type="button" style={{ width: 'auto', marginTop: 12 }}
+        {data.payment_instructions && <p className="fees-instructions" style={{ margin: 0 }}>{data.payment_instructions}</p>}
+        {data.mpesa && !paying && !form && (
+          <button type="button" style={{ width: 'auto', marginTop: 12, marginRight: 8 }} onClick={() => { setNotice(''); setPaying(true) }}>
+            Pay with M-Pesa
+          </button>
+        )}
+        {paying && (
+          <div style={{ marginTop: 12 }}>
+            <MpesaPay defaultAmount={Number(data.balance) > 0 ? String(Math.ceil(Number(data.balance))) : ''}
+              start={(body) => api.guardianStudents.payMpesa(studentId, body)}
+              check={(id) => api.guardianStudents.mpesaStatus(studentId, id)}
+              onPaid={() => load()} onClose={() => setPaying(false)} />
+          </div>
+        )}
+        {!form && !paying && (
+          <button type="button" className={data.mpesa ? 'secondary' : ''} style={{ width: 'auto', marginTop: 12 }}
             onClick={() => { setNotice(''); setForm({ amount: '', paid_on: localToday(), method: 'mpesa', reference: '', note: '' }) }}>
             We&apos;ve paid
           </button>

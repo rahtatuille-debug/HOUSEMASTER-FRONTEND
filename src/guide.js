@@ -282,6 +282,7 @@ export function guideSections(w, role) {
         'In Balances, open a student to see their statement. "Record a payment" gives it the next receipt number and emails the receipt to the parents. "Add a discount or charge" is for bursaries, sibling discounts or extras like a lost book. A payment entered by mistake is cancelled with a reason, never deleted, so receipt numbers stay in order.',
         'Parents can say "We\'ve paid" with the M-Pesa code. These wait in To confirm: check each against your statement, then Confirm (records it and sends the receipt) or "Can\'t find it" with a reason the parent sees.',
         '"Email reminders" sends each family that owes their balance and how to pay (for one class, or the whole school).',
+        'M-Pesa: in the M-Pesa tab, add your paybill or till with the keys from Safaricom\'s Daraja portal, then press "Connect". Parents can then press "Pay with M-Pesa" (a PIN prompt on their phone), or pay your paybill with the student\'s admission number as the account; both are recorded with a receipt by themselves. Payments with an account number that isn\'t a student\'s wait in the M-Pesa tab for you to choose the student.',
       ],
     },
     {

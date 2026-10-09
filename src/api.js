@@ -814,6 +814,9 @@ export const api = {
     fees: (id) => request(`/api/guardian-students/${id}/fees/`),
     feeClaim: (id, body) => request(`/api/guardian-students/${id}/fees/claims/`, { method: 'POST', body }),
     feeReceipt: (id, paymentId) => downloadFile(`/api/guardian-students/${id}/fees/receipts/${paymentId}/`),
+    // M-Pesa: { phone, amount } sends the PIN prompt; then ask how it went.
+    payMpesa: (id, body) => request(`/api/guardian-students/${id}/fees/mpesa/`, { method: 'POST', body }),
+    mpesaStatus: (id, requestId) => request(`/api/guardian-students/${id}/fees/mpesa/${requestId}/`),
     // A parent's suggestion for the health notes, which the school approves.
     suggestHealthNotes: (id, body) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'POST', body }),
     withdrawHealthNotes: (id) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'DELETE' }),
@@ -1102,6 +1105,9 @@ export const api = {
     // { method, reference, note }: tells HouseMaster the school has paid; it's checked and recorded by hand.
     reportPaid: (id, body) => request(`/api/billing/invoices/${id}/paid/`, { method: 'POST', body }),
     invoicePdf: (id) => downloadFile(`/api/billing/invoices/${id}/pdf/`),
+    // M-Pesa: { phone } sends the PIN prompt for the invoice; then ask how it went.
+    payMpesa: (id, body) => request(`/api/billing/invoices/${id}/mpesa/`, { method: 'POST', body }),
+    mpesaStatus: (requestId) => request(`/api/billing/mpesa/${requestId}/`),
   },
   // School fees (the bursar and admins).
   fees: {
@@ -1127,6 +1133,14 @@ export const api = {
     confirmClaim: (id, amount) => request(`/api/fees/claims/${id}/confirm/`, { method: 'POST', body: amount ? { amount } : {} }),
     rejectClaim: (id, reason) => request(`/api/fees/claims/${id}/reject/`, { method: 'POST', body: { reason } }),
     remind: (schoolClass) => request('/api/fees/remind/', { method: 'POST', body: schoolClass ? { school_class: schoolClass } : {} }),
+    // The school's own M-Pesa paybill or till. The keys are write-only.
+    mpesa: () => request('/api/fees/mpesa/'),
+    saveMpesa: (body) => request('/api/fees/mpesa/', { method: 'PUT', body }),
+    connectMpesa: () => request('/api/fees/mpesa/connect/', { method: 'POST' }),
+    // Payments made straight to the paybill: 'unmatched' (default) or 'all'.
+    mpesaPayments: (status) => request('/api/fees/mpesa/payments/', { params: { status } }),
+    assignMpesa: (id, student) => request(`/api/fees/mpesa/payments/${id}/assign/`, { method: 'POST', body: { student } }),
+    ignoreMpesa: (id) => request(`/api/fees/mpesa/payments/${id}/ignore/`, { method: 'POST' }),
   },
   // Absences parents have reported (staff), and whether parents get same-day absence alerts.
   absenceReports: {

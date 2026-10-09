@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { formatDate, formatDateTime } from '../format.js'
+import MpesaPay from './MpesaPay.jsx'
 
 export const PAY_METHODS = [['mpesa', 'M-Pesa'], ['bank', 'Bank transfer'], ['cash', 'Cash'], ['card', 'Card'], ['other', 'Other']]
 const STATE_BADGE = { exempt: 'finalized', active: 'finalized', due: 'pending', overdue: 'draft', locked: 'inactive' }
@@ -70,6 +71,7 @@ export default function Billing() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [paying, setPaying] = useState(null)
+  const [mpesaFor, setMpesaFor] = useState(null) // the invoice being paid by M-Pesa
 
   const load = useCallback(() => {
     api.billing.get().then(setData).catch((err) => setError(err.message))
@@ -141,9 +143,21 @@ export default function Billing() {
       {!data.exempt && open.length > 0 && (
         <div className="card">
           <h3 style={{ marginTop: 0 }}>How to pay</h3>
-          <p className="billing-instructions">{data.payment_instructions || 'Payment details will be sent to you by email.'}</p>
-          <p className="hint" style={{ marginBottom: 0 }}>Use the invoice number as the reference, then press &quot;We&apos;ve paid&quot; below.</p>
+          {data.mpesa && (
+            <p className="mpesa-account">
+              Quickest: press <strong>Pay with M-Pesa</strong> next to the invoice, or pay M-Pesa Paybill <strong>{data.mpesa.paybill}</strong>,
+              account <strong>{data.mpesa.account}</strong>. Either way it&apos;s recorded by itself.
+            </p>
+          )}
+          <p className="billing-instructions">{data.payment_instructions || (data.mpesa ? '' : 'Payment details will be sent to you by email.')}</p>
+          <p className="hint" style={{ marginBottom: 0 }}>Paid another way? Use the invoice number as the reference, then press &quot;We&apos;ve paid&quot; below.</p>
         </div>
+      )}
+
+      {mpesaFor && (
+        <MpesaPay fixedAmount={Math.ceil(Number(mpesaFor.amount))}
+          start={(body) => api.billing.payMpesa(mpesaFor.id, body)} check={(id) => api.billing.mpesaStatus(id)}
+          onPaid={() => load()} onClose={() => { setMpesaFor(null); load() }} />
       )}
 
       {paying && (
@@ -169,8 +183,12 @@ export default function Billing() {
                   </td>
                   <td className="sa-actions">
                     <button type="button" className="link-button" style={{ width: 'auto' }} onClick={() => pdf(i)} aria-label={`Download ${i.number}`}>PDF</button>
+                    {i.status === 'open' && data.mpesa && i.currency === 'KES' && (
+                      <button type="button" style={{ width: 'auto' }} onClick={() => { setNotice(''); setPaying(null); setMpesaFor(i) }}
+                        aria-label={`Pay ${i.number} with M-Pesa`}>Pay with M-Pesa</button>
+                    )}
                     {i.status === 'open' && !i.school_reported_at && (
-                      <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => { setNotice(''); setPaying(i) }}>We&apos;ve paid</button>
+                      <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => { setNotice(''); setMpesaFor(null); setPaying(i) }}>We&apos;ve paid</button>
                     )}
                   </td>
                 </tr>
