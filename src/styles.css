@@ -1628,3 +1628,7 @@ form + .staff-sub { margin-top: 18px; }
 .billing-facts dd { margin: 2px 0 0; font-weight: 600; }
 .billing-instructions { white-space: pre-line; }
 .billing-current td { font-weight: 600; }
+
+/* Absences parents reported: new ones stand out until someone has read them. */
+.support-list li.absence-unseen { border-left: 3px solid var(--gold-2); padding-left: 12px; }
+.register-reported .badge { font-size: 11px; }

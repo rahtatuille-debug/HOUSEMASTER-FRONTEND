@@ -44,6 +44,7 @@ import Calendar from './panels/Calendar.jsx'
 import Homework from './panels/Homework.jsx'
 import StudentAccounts from './panels/StudentAccounts.jsx'
 import Billing, { billingSentence } from './panels/Billing.jsx'
+import Absences from './panels/Absences.jsx'
 import StudentProfile, { ChooseFirstPassword } from './panels/StudentPassword.jsx'
 import GovernorHome from './panels/GovernorHome.jsx'
 import { perms } from './permissions.js'
@@ -63,6 +64,7 @@ const TABS = [
   { key: 'timetable', label: 'Timetable', component: Timetable },
   { key: 'cover', label: 'Cover', component: Cover, need: 'manage_cover' },
   { key: 'attendance', label: 'Attendance', component: Attendance },
+  { key: 'absences', label: 'Absences', component: Absences },
   { key: 'grades', label: 'Grades', component: Grades },
   { key: 'homework', label: 'Homework', component: Homework },
   { key: 'reports', label: 'Reports', component: Reports },

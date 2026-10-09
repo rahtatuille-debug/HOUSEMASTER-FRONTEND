@@ -806,6 +806,10 @@ export const api = {
     boarding: (id) => request(`/api/guardian-students/${id}/boarding/`),
     requestLeave: (id, body) => request(`/api/guardian-students/${id}/leave-requests/`, { method: 'POST', body }),
     cancelLeave: (id, leaveId) => request(`/api/guardian-students/${id}/leave-requests/${leaveId}/cancel/`, { method: 'POST' }),
+    // Absences: what's been reported for this child; a parent reports one { start_date, end_date, reason, details }.
+    absences: (id) => request(`/api/guardian-students/${id}/absences/`),
+    reportAbsence: (id, body) => request(`/api/guardian-students/${id}/absences/`, { method: 'POST', body }),
+    cancelAbsence: (id, reportId) => request(`/api/guardian-students/${id}/absences/${reportId}/cancel/`, { method: 'POST' }),
     // A parent's suggestion for the health notes, which the school approves.
     suggestHealthNotes: (id, body) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'POST', body }),
     withdrawHealthNotes: (id) => request(`/api/guardian-students/${id}/health-notes-request/`, { method: 'DELETE' }),
@@ -1094,6 +1098,14 @@ export const api = {
     // { method, reference, note }: tells HouseMaster the school has paid; it's checked and recorded by hand.
     reportPaid: (id, body) => request(`/api/billing/invoices/${id}/paid/`, { method: 'POST', body }),
     invoicePdf: (id) => downloadFile(`/api/billing/invoices/${id}/pdf/`),
+  },
+  // Absences parents have reported (staff), and whether parents get same-day absence alerts.
+  absenceReports: {
+    // { date, school_class, unseen, from }
+    list: (params) => request('/api/absence-reports/', { params }),
+    seen: (id) => request(`/api/absence-reports/${id}/seen/`, { method: 'POST' }),
+    settings: () => request('/api/absences/settings/'),
+    setAlerts: (on) => request('/api/absences/settings/', { method: 'PATCH', body: { alerts_enabled: on } }),
   },
   // Homework: teachers set it and record how each student did.
   homework: {

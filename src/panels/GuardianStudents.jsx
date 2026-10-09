@@ -9,6 +9,7 @@ import PerformanceChart from './PerformanceChart.jsx'
 import HealthNotesCard from './HealthNotesCard.jsx'
 import SupportCard from './SupportCard.jsx'
 import WeekGrid from './WeekGrid.jsx'
+import ChildAbsences from './ChildAbsences.jsx'
 
 const GENDERS = { female: 'Female', male: 'Male', other: 'Other' }
 const MODES = { day: 'Day', boarding: 'Boarding' }
@@ -51,6 +52,11 @@ export default function GuardianStudents({ student = null }) {
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState('')
+  // From an absence alert's link (/?absence=<child>&date=<day>): open that child's attendance with the form.
+  const [absenceLink] = useState(() => {
+    const q = new URLSearchParams(window.location.search)
+    return !student && q.get('absence') ? { id: Number(q.get('absence')), date: q.get('date') || null } : null
+  })
 
   async function loadStudents() {
     setLoading(true)
@@ -65,6 +71,11 @@ export default function GuardianStudents({ student = null }) {
   }
 
   useEffect(() => { if (student) openStudent(student.student_id); else loadStudents() }, [student?.student_id])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!absenceLink) return
+    window.history.replaceState({}, '', window.location.pathname)
+    openStudent(absenceLink.id, 'attendance')
+  }, [absenceLink])  // eslint-disable-line react-hooks/exhaustive-deps
 
   async function downloadCard(report) {
     setError('')
@@ -82,7 +93,7 @@ export default function GuardianStudents({ student = null }) {
     setProfile(fresh)
   }
 
-  async function openStudent(id) {
+  async function openStudent(id, openTab = 'overview') {
     setDetailLoading(true)
     setError('')
     try {
@@ -97,7 +108,7 @@ export default function GuardianStudents({ student = null }) {
       setReports(studentReports)
       setPhotoUrl((old) => (old && URL.revokeObjectURL(old), null))
       if (studentProfile.student.has_photo) setPhotoUrl(await api.guardianStudents.photoUrl(id))
-      setTab('overview')
+      setTab(openTab)
     } catch (err) {
       setError(err.status === 404 ? 'This student is unavailable.' : err.message)
     } finally {
@@ -174,6 +185,8 @@ export default function GuardianStudents({ student = null }) {
           {tab === 'homework' && <HomeworkList items={profile ? (profile.homework || []) : null} firstName={student ? null : selected.first_name}
             onHandIn={student ? handIn : undefined} />}
           {tab === 'boarding' && <ChildBoarding studentId={selected.id} firstName={selected.first_name} readOnly={Boolean(student)} />}
+          {tab === 'attendance' && <ChildAbsences studentId={selected.id} firstName={selected.first_name} readOnly={Boolean(student)}
+            startOn={absenceLink?.id === selected.id ? absenceLink.date : null} />}
           {tab === 'attendance' && profile && (
             <div className="card">
               <div className="stat-row">
