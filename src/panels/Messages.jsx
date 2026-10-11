@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { classesFor, perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { formatDateTime } from '../format.js'
@@ -22,6 +22,9 @@ export default function Messages({ me, identityKind }) {
   const [error, setError] = useState('')
   const [activeId, setActiveId] = useState(null)
   const [messages, setMessages] = useState([])
+  // The newest message stays in view, just above the box for writing one.
+  const threadEnd = useRef(null)
+  useEffect(() => { threadEnd.current?.scrollIntoView?.({ block: 'end' }) }, [messages])
   const [thread, setThread] = useState(null)
   const [body, setBody] = useState('')
   const [sending, setSending] = useState(false)
@@ -245,7 +248,7 @@ export default function Messages({ me, identityKind }) {
           )}
         </div>
 
-        <div className="card messages-detail-pane">
+        <div className={`card messages-detail-pane${!composing && thread ? ' has-thread' : ''}`}>
           {(composing || thread) && (
             <button type="button" className="secondary back-to-list" onClick={goBackToList}>
               ← Back to conversations
@@ -376,7 +379,7 @@ export default function Messages({ me, identityKind }) {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: 420, overflowY: 'auto', marginBottom: 14 }}>
+              <div className="messages-thread">
                 {messages.map((m) => {
                   const isMine = m.sender === me?.id
                   return (
@@ -397,21 +400,22 @@ export default function Messages({ me, identityKind }) {
                     </div>
                   )
                 })}
+                <div ref={threadEnd} />
               </div>
 
               {thread.can_reply === false ? (
-                <p className="hint" style={{ margin: 0 }}>
+                <p className="hint messages-composer" style={{ margin: 0 }}>
                   This is a one-way class notice, so replies are turned off. To ask the teacher something, start a
                   new message to them.
                 </p>
               ) : (
-              <form onSubmit={handleSend} className="form-row">
+              <form onSubmit={handleSend} className="messages-composer">
                 <input
                   type="text"
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   placeholder="Write a message…"
-                  style={{ flex: 1 }}
+                  aria-label="Write a message"
                   required
                 />
                 <button type="submit" disabled={sending}>
