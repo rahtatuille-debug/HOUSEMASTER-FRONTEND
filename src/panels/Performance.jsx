@@ -213,7 +213,8 @@ export default function Performance({ me }) {
     setLoading(true)
     setError('')
     api.performance({ scope, id, term })
-      .then((d) => !cancelled && setData(d))
+      // Remember which student or group these figures are for: the extra charts load for the same one.
+      .then((d) => !cancelled && setData({ ...d, requested_id: id }))
       .catch((err) => !cancelled && (setError(err.message), setData(null)))
       .finally(() => !cancelled && setLoading(false))
     return () => {
@@ -281,14 +282,14 @@ export default function Performance({ me }) {
       {data && data.terms.length > 0 && (
         // Levels follow the grading of the section this view is about (e.g. IGCSE 9–1 for a Year 10 class).
         <ScaleContext.Provider value={data.grading?.scale || null}>
-          <Charts data={data} termName={termName} onOpenStudent={openStudent} targetId={id} />
+          <Charts data={data} termName={termName} onOpenStudent={openStudent} />
         </ScaleContext.Provider>
       )}
     </div>
   )
 }
 
-function Charts({ data, termName, onOpenStudent, targetId }) {
+function Charts({ data, termName, onOpenStudent }) {
   const words = useVocab()
   const byLevel = useSchoolLevels().length > 0
   if (data.scope === 'student') {
@@ -308,7 +309,7 @@ function Charts({ data, termName, onOpenStudent, targetId }) {
         <ChartCard title={`Subjects, ${termName}`} hint="Each subject against the class average." table={<RowsTable rows={rows} bars={bars} />}>
           <BarChart rows={rows} bars={bars} label={`${data.name} by subject, ${termName}`} />
         </ChartCard>
-        <StudentCharts studentId={targetId} termId={data.term} />
+        <StudentCharts studentId={data.requested_id} termId={data.term} />
       </div>
     )
   }
@@ -362,7 +363,7 @@ function Charts({ data, termName, onOpenStudent, targetId }) {
           </ChartCard>
         )}
 
-        <GroupSubjectTrends scope={data.scope} id={data.scope === 'school' ? null : targetId} name={data.name} />
+        <GroupSubjectTrends scope={data.scope} id={data.scope === 'school' ? null : data.requested_id} name={data.name} />
 
         <ChartCard title={`Subjects, ${termName}`} hint={subjectBars.length > 1 ? `Each subject against the ${subjectBars[1].label.toLowerCase()}.` : 'Average in each subject.'}
           table={<RowsTable rows={subjectRows} bars={subjectBars} />}>
