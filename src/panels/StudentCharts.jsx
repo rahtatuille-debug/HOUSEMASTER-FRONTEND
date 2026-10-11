@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { ScaleContext, useVocab, useWithLevel } from '../levels.js'
 import ChartCard from './ChartCard.jsx'
-import { CATEGORICAL, LineChart, MARKERS } from './charts.jsx'
+import { BarChart, CATEGORICAL, COMPARE, LineChart, MARKERS } from './charts.jsx'
 
 // Five more graphs about one student (P-1 … P-5), and subject trends for a group (P-1). The numbers come from
 // /api/analytics/charts/ (staff) or the child's /charts/ (parents), which work them out exactly as the rest of the
@@ -132,6 +132,62 @@ export function GroupSubjectTrends({ scope, id, name }) {
   )
 }
 
+// ---- P-2 ------------------------------------------------------------------------------------------------------
+
+export function AssessmentTypes({ studentId, termId }) {
+  const fmt = useWithLevel()
+  const words = useVocab()
+  const [subject, setSubject] = useState('')
+  const state = useChart(() => api.charts({ chart: 'assessment_types', scope: 'student', id: studentId, ...(termId ? { term: termId } : {}), ...(subject ? { subject } : {}) }),
+    [studentId, termId, subject])
+  const data = state.data
+  const shown = (data?.types || []).filter((t) => t.student != null)
+  const rows = shown.map((t) => ({ label: t.name, student: t.student, class: t.class }))
+  let note = ''
+  if (shown.length >= 2) {
+    const hi = shown.reduce((a, b) => (b.student > a.student ? b : a))
+    const lo = shown.reduce((a, b) => (b.student < a.student ? b : a))
+    const gap = Math.round(hi.student - lo.student)
+    if (gap >= 10) note = `Averages ${gap} points lower in ${lo.name} than in ${hi.name}.`
+  }
+  const table = data && (
+    <table>
+      <thead><tr><th>Assessment type</th><th>Weight</th><th>Marks</th><th>{data.name}</th><th>Class average</th></tr></thead>
+      <tbody>{data.types.map((t) => (
+        <tr key={t.id ?? 'none'}><td>{t.name}</td><td>{t.weight == null ? '—' : `${t.weight}%`}</td><td>{t.marks}</td>
+          <td>{t.student != null ? fmt(t.student, 1) : <span className="text-muted">{t.reason || 'no marks'}</span>}</td>
+          <td>{t.class == null ? <span className="text-muted">not shown</span> : fmt(t.class, 1)}</td></tr>
+      ))}</tbody>
+    </table>
+  )
+  return (
+    <ChartCard title={`Assessment types${data?.term ? `, ${data.term.name}` : ''}`} table={table}
+      hint={data?.weighted ? `The school weights these types (see the table) when it works out a ${words.subject.toLowerCase()} result; here each is shown on its own.` : null}
+      actions={data && (
+        <div className="field chart-controls" style={{ maxWidth: 260 }}>
+          <label htmlFor={`p2-subject-${studentId}`}>{words.subject}</label>
+          <select id={`p2-subject-${studentId}`} value={subject} onChange={(e) => setSubject(e.target.value)}>
+            <option value="">All {words.subjects.toLowerCase()}</option>
+            {data.subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      )}>
+      <Quiet state={state}>
+        {data && (!rows.length ? <p className="text-muted" style={{ margin: 0 }}>Not enough marks of any one type{subject ? ` in ${subject}` : ''} yet.</p> : (
+          <>
+            <BarChart rows={rows} bars={[{ key: 'student', label: data.name, color: COMPARE[0] }, { key: 'class', label: 'Class average', color: COMPARE[1] }]}
+              label={`${data.name} by assessment type: ${rows.map((r) => `${r.label} ${fmt(r.student, 1)}`).join('; ')}`} />
+            {note && <p className="chart-summary">{note}</p>}
+            {data.types.some((t) => t.reason) && (
+              <p className="hint" style={{ marginBottom: 0 }}>Not shown: {data.types.filter((t) => t.reason).map((t) => `${t.name} (${t.reason.toLowerCase()})`).join(', ')}.</p>
+            )}
+          </>
+        ))}
+      </Quiet>
+    </ChartCard>
+  )
+}
+
 // ---- Putting them together ---------------------------------------------------------------------------------------
 
 // Staff: everything about one student. `only="trends"` for the student profile (P-1 alone).
@@ -143,6 +199,11 @@ export default function StudentCharts({ studentId, termId, only }) {
       <Quiet state={trends}>
         {trends.data && <SubjectTrends key={studentId} data={trends.data} />}
       </Quiet>
+      {only !== 'trends' && (
+        <>
+          <AssessmentTypes studentId={studentId} termId={termId} />
+        </>
+      )}
     </ScaleContext.Provider>
   )
 }

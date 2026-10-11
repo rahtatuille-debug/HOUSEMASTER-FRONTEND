@@ -1,10 +1,17 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
+import { deepApiMock } from '../test/apiMock.js'
 import { LineChart } from './charts.jsx'
 
-vi.mock('../api.js', async (importOriginal) => ({ ...(await importOriginal()) }))
+const mockApi = { current: null }
+vi.mock('../api.js', async (importOriginal) => ({
+  ...(await importOriginal()),
+  get api() {
+    return mockApi.current
+  },
+}))
 
-const { SubjectTrends } = await import('./StudentCharts.jsx')
+const { SubjectTrends, AssessmentTypes } = await import('./StudentCharts.jsx')
 
 afterEach(() => { try { localStorage.clear() } catch { /* ignore */ } })
 
@@ -71,6 +78,31 @@ describe('LineChart options', () => {
     const xs = [...container.querySelectorAll('circle')].map((c) => Number(c.getAttribute('cx')))
     expect(xs).toEqual([40, 530])
     expect(container.textContent).toContain('Feb')
+  })
+})
+
+describe('P-2 assessment types', () => {
+  it('compares types, notes a large gap, and names the ones without enough marks', async () => {
+    mockApi.current = deepApiMock({
+      charts: () => Promise.resolve({
+        name: 'Ann X', term: { id: 1, name: 'T1' }, subjects: ['English', 'Maths'], weighted: true, types: [
+          { id: 1, name: 'Classwork', weight: 40, student: 72, marks: 6, class: 65, reason: '' },
+          { id: 2, name: 'Assessment week', weight: 60, student: 60, marks: 4, class: null, reason: '' },
+          { id: 3, name: 'Quiz', weight: 5, student: null, marks: 1, class: null, reason: 'Not enough data (1 mark; needs 3)' },
+        ],
+      }),
+    })
+    render(<AssessmentTypes studentId={1} termId={1} />)
+    expect(await screen.findByText('Averages 12 points lower in Assessment week than in Classwork.')).toBeInTheDocument()
+    expect(screen.getByText(/Quiz \(not enough data \(1 mark; needs 3\)\)/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show as table' }))
+    expect(screen.getByText('40%')).toBeInTheDocument()
+  })
+
+  it('is quietly unavailable against an older server', async () => {
+    mockApi.current = deepApiMock({ charts: () => Promise.reject(Object.assign(new Error('Not found'), { status: 404 })) })
+    render(<AssessmentTypes studentId={1} termId={1} />)
+    expect(await screen.findByText('Not available yet.')).toBeInTheDocument()
   })
 })
 
