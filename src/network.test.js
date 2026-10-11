@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { api, network } from './api.js'
-import { connection } from './connection.js'
 
 const TOKEN_KEY = 'housemaster_tokens'
 const saved = { ...network }
@@ -34,7 +33,6 @@ beforeEach(() => {
   vi.restoreAllMocks()
   localStorage.clear()
   Object.assign(network, { timeoutMs: 50, writeTimeoutMs: 50, retryDelaysMs: [1, 1] })
-  connection.reset()
   store({ access: 'a', refresh: 'r' })
 })
 
@@ -88,13 +86,6 @@ describe('saving on a weak signal', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
   })
 
-  it('says plainly that nothing was saved when the phone is offline', async () => {
-    vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
-    globalThis.fetch = vi.fn(offlineError)
-    const err = await api.grades.create({ score: 5 }).catch((e) => e)
-    expect(err.message).toMatch(/offline/i)
-    expect(err.message).toMatch(/not saved/i)
-  })
 })
 
 describe('staying signed in on a weak signal', () => {
@@ -123,20 +114,5 @@ describe('staying signed in on a weak signal', () => {
   it('explains a failed sign-in caused by the connection, not the password', async () => {
     globalThis.fetch = vi.fn(offlineError)
     await expect(api.login('a@example.com', 'pw')).rejects.toThrow(/reach the server|offline/i)
-  })
-})
-
-describe('connection status', () => {
-  it('is marked unreachable when requests cannot get through, and reachable again after an answer', async () => {
-    const seen = []
-    const stop = connection.subscribe((s) => seen.push(s.reachable))
-    globalThis.fetch = vi.fn(offlineError)
-    await api.me().catch(() => {})
-    expect(connection.get().reachable).toBe(false)
-    globalThis.fetch = vi.fn(() => json(200, { id: 1 }))
-    await api.me()
-    expect(connection.get().reachable).toBe(true)
-    expect(seen).toContain(false)
-    stop()
   })
 })

@@ -99,7 +99,7 @@ describe('Phone and browser notifications', () => {
   })
 
   it('the service worker shows the notice and opens HouseMaster on a tap, never another site', () => {
-    const sw = serviceWorkerSource(['/'])
+    const sw = serviceWorkerSource('<html>')
     expect(sw).toContain("self.addEventListener('push'")
     expect(sw).toContain('showNotification')
     expect(sw).toContain("self.addEventListener('notificationclick'")

@@ -1,9 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { classesFor, perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { formatDate } from '../format.js'
 import { api } from '../api.js'
-import { loadDraft, saveDraft } from '../drafts.js'
 
 const STATUSES = [
   { key: 'present', label: 'Present' },
@@ -16,22 +15,6 @@ function todayLocal() {
   const d = new Date()
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
-// The changes a teacher made that aren't saved yet, kept on the phone so a
-// weak signal or a closed app doesn't lose a register (drafts.js). Only what
-// differs from what's saved (or, for a new register, from "Present").
-function unsavedChanges(marks) {
-  const out = {}
-  for (const [id, m] of Object.entries(marks)) {
-    const changed = m.id === null
-      ? m.status !== 'present' || m.notes !== ''
-      : m.status !== m.savedStatus || m.notes !== m.savedNotes
-    // `base`: what the server had when the change was made, so a register someone else saved in the
-    // meantime is noticed instead of overwritten (G).
-    if (changed) out[id] = { status: m.status, notes: m.notes, base: m.id === null ? null : { status: m.savedStatus, notes: m.savedNotes } }
-  }
-  return out
 }
 
 // Daily class register. Pick a class and a date; everyone starts as
@@ -60,15 +43,6 @@ export default function Attendance({ me }) {
     api.attendance.summary(date).then((d) => setSummary(Array.isArray(d?.classes) ? d : null)).catch(() => setSummary(null))
   }, [date])
   useEffect(() => { loadSummary() }, [loadSummary])
-  const draftName = `attendance:${classId}:${date}`
-  const loadedFor = useRef(null) // the register whose marks are on screen
-
-  useEffect(() => {
-    if (loadedFor.current !== draftName) return
-    const changes = unsavedChanges(marks)
-    saveDraft(me?.id, draftName, Object.keys(changes).length ? changes : null)
-  }, [me?.id, draftName, marks])
-
   useEffect(() => {
     api.schoolClasses
       .list()
@@ -84,7 +58,6 @@ export default function Attendance({ me }) {
     if (!classId || !date) return
     let cancelled = false
     async function load() {
-      loadedFor.current = null
       setLoading(true)
       setError('')
       setNotice('')
@@ -110,34 +83,8 @@ export default function Attendance({ me }) {
               : { id: null, status: 'present', notes: '', savedStatus: null, savedNotes: '' }
         }
         setReported(parentSaid)
-        const draft = loadDraft(me?.id, `attendance:${classId}:${date}`) || {}
-        let restored = 0
-        const overtaken = []
-        for (const [id, change] of Object.entries(draft)) {
-          if (!next[id]) continue
-          const now = next[id].id === null ? null : { status: next[id].savedStatus, notes: next[id].savedNotes }
-          const base = change.base ?? null
-          const same = (base === null && now === null) || (base && now && base.status === now.status && base.notes === now.notes)
-          if (!same) {
-            // Someone else saved this student since the change was kept here: their mark stays.
-            const s = list.find((x) => String(x.id) === String(id))
-            if (s) overtaken.push(`${s.first_name} ${s.last_name}`)
-            continue
-          }
-          next[id] = { ...next[id], status: change.status, notes: change.notes }
-          restored += 1
-        }
         setStudents(list)
         setMarks(next)
-        loadedFor.current = `attendance:${classId}:${date}`
-        const parts = []
-        if (restored) {
-          parts.push(`Restored ${restored} unsaved change${restored === 1 ? '' : 's'} from earlier. Tap Save register to save ${restored === 1 ? 'it' : 'them'}.`)
-        }
-        if (overtaken.length) {
-          parts.push(`${overtaken.join(', ')}: changed by someone else since your unsaved change, so this shows what they saved. Change it again if needed.`)
-        }
-        if (parts.length) setNotice(parts.join(' '))
       } catch (err) {
         if (!cancelled) setError(err.message)
       } finally {
@@ -148,7 +95,7 @@ export default function Attendance({ me }) {
     return () => {
       cancelled = true
     }
-  }, [classId, date, me?.id])
+  }, [classId, date])
 
   function setMark(studentId, change) {
     setMarks((m) => ({ ...m, [studentId]: { ...m[studentId], ...change } }))

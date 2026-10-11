@@ -1,22 +1,10 @@
 // @vitest-environment node
 import { readFileSync, existsSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { precacheList, serviceWorkerSource } from '../vite.config.js'
+import { serviceWorkerSource } from '../vite.config.js'
 
 const root = new URL('../', import.meta.url)
 const read = (path) => readFileSync(new URL(path, root), 'utf8')
-
-// A small stand-in for Rollup's output bundle.
-const bundle = {
-  'assets/index-abc123.js': { type: 'chunk', isEntry: true, imports: ['assets/vendor-def456.js'], dynamicImports: ['assets/pdf-999.js'] },
-  'assets/vendor-def456.js': { type: 'chunk', isEntry: false, imports: [] },
-  'assets/pdf-999.js': { type: 'chunk', isEntry: false, imports: [] },
-  'assets/pdf.worker.min-777.mjs': { type: 'asset' },
-  'assets/index-aaa111.css': { type: 'asset' },
-  'assets/index-abc123.js.map': { type: 'asset' },
-  'assets/inter-latin-wght-normal-xyz.woff2': { type: 'asset' },
-  'index.html': { type: 'asset' },
-}
 
 describe('installable app', () => {
   it('has a web app manifest the browser can install from', () => {
@@ -47,28 +35,22 @@ describe('installable app', () => {
   })
 })
 
-describe('service worker', () => {
-  it('stores the page and the files it needs to start, not the large PDF viewer or source maps', () => {
-    const list = precacheList(bundle, '/')
-    expect(list).toEqual(expect.arrayContaining([
-      '/', '/index.html', '/manifest.webmanifest', '/housemaster-logo.png', '/housemaster-mark-light.png',
-      '/assets/index-abc123.js', '/assets/vendor-def456.js', '/assets/index-aaa111.css',
-    ]))
-    expect(list.some((f) => f.includes('pdf'))).toBe(false)
-    expect(list.some((f) => f.endsWith('.map'))).toBe(false)
+describe('service worker: online only', () => {
+  const src = serviceWorkerSource('<html>')
+
+  it('keeps no copy of the app: it never answers page or file requests itself', () => {
+    expect(src).not.toMatch(/addEventListener\('fetch'/)
+    expect(src).not.toMatch(/cache\.(put|addAll)\(/)
   })
 
-  it('gets a new cache name whenever the app changes, so phones pick up new versions', () => {
-    const a = serviceWorkerSource(['/', '/assets/index-abc123.js'])
-    const b = serviceWorkerSource(['/', '/assets/index-new999.js'])
-    const name = (src) => src.match(/const CACHE = '([^']+)'/)[1]
-    expect(name(a)).not.toBe(name(b))
-    expect(name(a)).toBe(name(serviceWorkerSource(['/', '/assets/index-abc123.js'])))
+  it('removes the copies the old offline version left on phones, and takes over straight away', () => {
+    expect(src).toMatch(/caches\.delete/)
+    expect(src).toMatch(/k\.startsWith\('housemaster-'\)/)
+    expect(src).toMatch(/skipWaiting\(\)/)
+    expect(src).toMatch(/clients\.claim\(\)/)
   })
 
-  it('only handles this site’s own GET requests, never the API or anything being saved', () => {
-    const src = serviceWorkerSource(['/'])
-    expect(src).toMatch(/request\.method !== 'GET'/)
-    expect(src).toMatch(/url\.origin !== self\.location\.origin/)
+  it('changes whenever the app changes, so browsers fetch the new worker', () => {
+    expect(serviceWorkerSource('<html>a</html>')).not.toBe(serviceWorkerSource('<html>b</html>'))
   })
 })

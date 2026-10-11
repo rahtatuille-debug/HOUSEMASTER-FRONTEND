@@ -36,7 +36,7 @@ beforeEach(() => {
   localStorage.clear()
 })
 
-describe('taking the register on a weak signal', () => {
+describe('taking the register when some saves fail', () => {
   it('keeps the students that failed to save, and says how many did save', async () => {
     const created = { student: 1, id: 11, status: 'present', notes: '' }
     let serverRecords = []
@@ -78,64 +78,18 @@ describe('taking the register on a weak signal', () => {
     expect(update).not.toHaveBeenCalled()
   })
 
-  it('keeps changes that weren’t saved when the app is closed and opened again', async () => {
-    mockApi.current = register()
-    const first = render(<Attendance me={admin} />)
-    fireEvent.click(await waitFor(() => statusButton('Brian Kamau', 'Absent')))
-    first.unmount()
-
-    render(<Attendance me={admin} />)
-    await waitFor(() => expect(statusButton('Brian Kamau', 'Absent')).toHaveAttribute('aria-pressed', 'true'))
-    expect(screen.getByText(/unsaved change/i)).toBeInTheDocument()
-  })
-
-  it('forgets the kept changes once the register is saved', async () => {
-    mockApi.current = register({
-      'attendance.create': (body) => Promise.resolve({ ...body, id: 10 + body.student }),
-    })
-    const first = render(<Attendance me={admin} />)
-    fireEvent.click(await waitFor(() => statusButton('Brian Kamau', 'Absent')))
-    fireEvent.click(screen.getByRole('button', { name: 'Save register (2)' }))
-    await screen.findByRole('button', { name: 'All saved' })
-    first.unmount()
-
-    render(<Attendance me={admin} />)
-    await waitFor(() => expect(statusButton('Brian Kamau', 'Present')).toHaveAttribute('aria-pressed', 'true'))
-    expect(screen.queryByText(/unsaved change/i)).toBeNull()
-  })
 })
 
-describe('G: a register someone else saved while this phone was offline', () => {
-  it('does not silently overwrite the other teacher\'s mark with the kept change', async () => {
-    let onServer = []
-    const update = vi.fn((id, body) => Promise.resolve({ id, student: 2, ...body }))
-    mockApi.current = register({ 'attendance.list': () => Promise.resolve(onServer), 'attendance.update': update,
-      'attendance.create': (body) => Promise.resolve({ ...body, id: 30 + body.student }) })
-    // Offline: Brian marked absent, not saved, app closed.
-    const first = render(<Attendance me={admin} />)
-    fireEvent.click(await waitFor(() => statusButton('Brian Kamau', 'Absent')))
-    first.unmount()
-    // Meanwhile another teacher saved the register: Brian late.
-    onServer = [{ id: 21, student: 2, status: 'late', notes: 'Bus', date: '2026-10-05' }]
-    render(<Attendance me={admin} />)
-    await waitFor(() => expect(statusButton('Brian Kamau', 'Late')).toHaveAttribute('aria-pressed', 'true'))
-    expect(screen.getByText(/Brian Kamau.*changed by someone else/)).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: /Save register/ }))
-    await waitFor(() => expect(screen.queryByRole('button', { name: /Save register/ })).toBeNull())
-    expect(update).not.toHaveBeenCalled()  // the other teacher's 'late' stays
-  })
-})
-
-describe('entering a mark on a weak signal', () => {
+describe('entering a mark when the save fails', () => {
   const options = () => deepApiMock({
     'students.list': () => Promise.resolve([students[0]]),
     'subjects.list': () => Promise.resolve([{ id: 2, name: 'Maths' }]),
     'terms.list': () => Promise.resolve([{ id: 3, name: 'Term 1' }]),
     'grades.page': () => Promise.resolve({ count: 0, next: null, previous: null, results: [] }),
-    'grades.create': () => Promise.reject(new Error('You’re offline, so this was not saved.')),
+    'grades.create': () => Promise.reject(new Error('Could not reach the server. Please try again.')),
   })
 
-  it('keeps what was typed when the save fails, and after the app is reopened', async () => {
+  it('keeps what was typed on screen when the save fails, so it can be sent again', async () => {
     mockApi.current = options()
     const first = render(<Grades me={admin} />)
     await screen.findAllByRole('option', { name: 'Amina Otieno' })
@@ -144,12 +98,8 @@ describe('entering a mark on a weak signal', () => {
     fireEvent.change(screen.getByLabelText(/Term/), { target: { value: '3' } })
     fireEvent.change(screen.getByLabelText(/Score/), { target: { value: '77' } })
     fireEvent.submit(screen.getByLabelText(/Score/).closest('form'))
-    expect(await screen.findByText(/offline, so this was not saved/)).toBeInTheDocument()
+    expect(await screen.findByText(/Could not reach the server/)).toBeInTheDocument()
     expect(screen.getByLabelText(/Score/)).toHaveValue(77)
     first.unmount()
-
-    render(<Grades me={admin} />)
-    await screen.findAllByRole('option', { name: 'Amina Otieno' })
-    await waitFor(() => expect(screen.getByLabelText(/Score/)).toHaveValue(77))
   })
 })

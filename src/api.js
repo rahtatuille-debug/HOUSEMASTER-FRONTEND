@@ -1,16 +1,13 @@
 import { reportApiError } from './sentry.js'
-import { browserOffline, connection } from './connection.js'
-import { clearDrafts } from './drafts.js'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 
 const TOKEN_KEY = 'housemaster_tokens'
 
-// Weak-signal handling. A request that gets no answer is given up after
-// timeoutMs; loading data is then tried again after each retryDelaysMs
-// (together about a minute, long enough for a sleeping Render server to
-// wake). Saves are never sent twice by the app itself: one that reached the
-// server but lost its answer would otherwise be made twice.
+// A request that gets no answer is given up after timeoutMs; loading data is
+// then tried again after each retryDelaysMs (long enough for a sleeping
+// Render server to wake). Saves are never sent twice by the app itself: one
+// that reached the server but lost its answer would otherwise be made twice.
 export const network = { timeoutMs: 20000, writeTimeoutMs: 30000, retryDelaysMs: [1000, 3000] }
 
 // Answers from a proxy while the server is starting or overloaded.
@@ -41,11 +38,7 @@ async function fetchWithTimeout(url, init, ms) {
 function networkFailure(cause, isRead) {
   let message
   let uncertain = false
-  if (browserOffline()) {
-    message = isRead
-      ? 'You’re offline. This will load when you’re back online.'
-      : 'You’re offline, so this was not saved. Try again when you’re back online.'
-  } else if (isRead) {
+  if (isRead) {
     message = cause?.timedOut
       ? 'The connection is weak and this took too long to load. Please try again.'
       : 'Could not reach the server. Please try again.'
@@ -58,6 +51,18 @@ function networkFailure(cause, isRead) {
   err.network = true
   err.uncertain = uncertain
   return err
+}
+
+// Unsaved work the old offline version kept on the phone: removed on sign-out.
+function clearOldDrafts() {
+  try {
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i)
+      if (key?.startsWith('housemaster_draft:')) localStorage.removeItem(key)
+    }
+  } catch {
+    // storage unavailable
+  }
 }
 
 function getTokens() {
@@ -86,12 +91,8 @@ async function login(email, password) {
       body: JSON.stringify({ email, password }),
     }, network.writeTimeoutMs)
   } catch {
-    connection.report(false)
-    throw new Error(browserOffline()
-      ? 'You’re offline. Connect to the internet to sign in.'
-      : 'Could not reach the server. Check your connection and try again.')
+    throw new Error('Could not reach the server. Check your internet connection and try again.')
   }
-  connection.report(true)
   if (!res.ok) {
     throw new Error('Incorrect email or password.')
   }
@@ -108,7 +109,7 @@ function logout() {
   const refresh = getTokens()?.refresh
   clearTokens()
   clearLease()
-  clearDrafts()
+  clearOldDrafts()
   if (!refresh) return
   try {
     fetch(`${API_BASE}/api/logout/`, {
@@ -459,16 +460,14 @@ async function request(path, { method = 'GET', body, params } = {}) {
       try {
         res = await fetchWithTimeout(url, init, isRead ? network.timeoutMs : network.writeTimeoutMs)
       } catch (networkErr) {
-        // No answer at all: offline, a weak signal, or the server asleep.
-        connection.report(false)
+        // No answer at all: no internet, a weak signal, or the server asleep.
         if (attempt < delays.length) {
           await wait(delays[attempt])
           continue
         }
-        if (!browserOffline()) reportApiError(networkErr, { method, path })
+        reportApiError(networkErr, { method, path })
         throw networkFailure(networkErr, isRead)
       }
-      connection.report(true)
       if (RETRY_STATUSES.has(res.status) && attempt < delays.length) {
         await wait(delays[attempt])
         continue
@@ -484,7 +483,6 @@ async function request(path, { method = 'GET', body, params } = {}) {
     try {
       newAccess = await refreshAccessToken(tokens?.access)
     } catch (networkErr) {
-      connection.report(false)
       throw networkFailure(networkErr, isRead)
     }
     if (newAccess) {
@@ -650,21 +648,8 @@ async function postForm(path, form) {
   return data
 }
 
-// Is the server answering at all? Used by the offline banner to notice the
-// signal coming back. /healthz sends no CORS headers, so the answer is read
-// as opaque: any answer counts, only no answer means unreachable.
-async function ping() {
-  try {
-    await fetchWithTimeout(`${API_BASE}/healthz`, { method: 'GET', mode: 'no-cors', cache: 'no-store' }, 8000)
-    connection.report(true)
-    return true
-  } catch {
-    return false
-  }
-}
 
 export const api = {
-  ping,
   login,
   logout,
   isLoggedIn: () => !!getTokens()?.access,
