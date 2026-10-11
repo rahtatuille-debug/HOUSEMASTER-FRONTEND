@@ -3,7 +3,7 @@ import { api } from '../api.js'
 import { ScaleContext, useVocab, useWithLevel } from '../levels.js'
 import { formatDate } from '../format.js'
 import ChartCard from './ChartCard.jsx'
-import { BarChart, CATEGORICAL, COMPARE, LineChart, MARKERS } from './charts.jsx'
+import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, LineChart, MARKERS } from './charts.jsx'
 
 // Five more graphs about one student (P-1 … P-5), and subject trends for a group (P-1). The numbers come from
 // /api/analytics/charts/ (staff) or the child's /charts/ (parents), which work them out exactly as the rest of the
@@ -35,6 +35,12 @@ function Quiet({ state, children }) {
 function subjectStyle(subject, all) {
   const i = Math.max(0, all.indexOf(subject))
   return { color: CATEGORICAL[i % CATEGORICAL.length], marker: MARKERS[i % MARKERS.length] }
+}
+
+const ordinal = (n) => {
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`
 }
 
 function readChosen() {
@@ -247,6 +253,53 @@ export function MarksInTerm({ load, deps, idKey, showTypes = true }) {
   )
 }
 
+// ---- P-4 ------------------------------------------------------------------------------------------------------
+
+const RANK_SERIES = [
+  { key: 'class', label: 'In class', color: COMPARE[0], marker: 'circle' },
+  { key: 'year_group', label: 'In year group', color: COMPARE[1], marker: 'square' },
+  { key: 'school', label: 'In school', color: BENCHMARK, marker: 'triangle' },
+]
+
+export function RankOverTime({ load, deps, quietWhenUnranked = false }) {
+  const words = useVocab()
+  const state = useChart(load, deps)
+  const data = state.data
+  if (quietWhenUnranked && (state.unavailable || (data && !data.ranked))) return null
+  const keys = data ? RANK_SERIES.filter((s) => data.points.some((p) => p[s.key] !== undefined)) : []
+  const series = keys.map((s) => ({ ...s, label: s.key === 'year_group' ? `In ${words.year_group.toLowerCase()}` : s.key === 'class' ? `In ${words.class.toLowerCase()}` : s.label }))
+  const rows = (data?.points || []).map((p) => {
+    const row = { term: p.term }
+    for (const s of keys) {
+      row[s.key] = p[s.key]?.position ?? null
+      row[`${s.key}_of`] = p[s.key]?.of ?? null
+      row[`${s.key}_why`] = p[s.key]?.reason || ''
+    }
+    return row
+  })
+  const most = Math.max(2, ...rows.flatMap((r) => keys.map((s) => r[`${s.key}_of`] || 0)))
+  const ticks = [...new Set([1, Math.ceil(most / 4), Math.ceil(most / 2), Math.ceil((most * 3) / 4), most])].filter((v) => v >= 1).sort((a, b) => a - b)
+  const place = (row, s) => (row[s.key] == null ? (row[`${s.key}_why`] || 'not ranked') : `${ordinal(row[s.key])} of ${row[`${s.key}_of`]}`)
+  const ranked = rows.filter((r) => keys.some((s) => r[s.key] != null)).length
+  const table = data?.ranked && (
+    <table>
+      <thead><tr><th>{words.term}</th>{series.map((s) => <th key={s.key}>{s.label}</th>)}</tr></thead>
+      <tbody>{rows.map((r) => <tr key={r.term}><td>{r.term}</td>{series.map((s) => <td key={s.key}>{r[s.key] == null ? <span className="text-muted">{place(r, s)}</span> : place(r, s)}</td>)}</tr>)}</tbody>
+    </table>
+  )
+  return (
+    <ChartCard title={`Position over ${words.terms.toLowerCase()}`} table={table} hint={data?.ranked ? `1st is at the top. ${data.basis_note || ''}` : null}>
+      <Quiet state={state}>
+        {data && (!data.ranked ? <p className="text-muted" style={{ margin: 0 }}>{data.reason}</p>
+          : ranked < MIN_TERMS ? <p className="text-muted" style={{ margin: 0 }}>Not enough {words.terms.toLowerCase()} yet. Show as table to see what there is.</p>
+            : <LineChart data={rows} series={series} gaps yAxis={{ min: 1, max: most, reverse: true, ticks, format: (v) => ordinal(v) }}
+              valueText={(row, s) => place(row, s)} pointLabel={(row, s) => `${s.label}, ${row.term}: ${place(row, s)}`}
+              label={`${data.name}: position each ${words.term.toLowerCase()}`} />)}
+      </Quiet>
+    </ChartCard>
+  )
+}
+
 // ---- Putting them together ---------------------------------------------------------------------------------------
 
 // Staff: everything about one student. `only="trends"` for the student profile (P-1 alone).
@@ -262,6 +315,7 @@ export default function StudentCharts({ studentId, termId, only }) {
         <>
           <AssessmentTypes studentId={studentId} termId={termId} />
           <MarksInTerm idKey={studentId} load={() => api.charts({ chart: 'marks', scope: 'student', id: studentId, ...(termId ? { term: termId } : {}) })} deps={[studentId, termId]} />
+          <RankOverTime load={() => api.charts({ chart: 'ranks', scope: 'student', id: studentId })} deps={[studentId]} />
         </>
       )}
     </ScaleContext.Provider>
@@ -293,6 +347,7 @@ export function ChildCharts({ studentId, terms }) {
           <MarksInTerm idKey={`child-${studentId}`} showTypes={false} load={() => api.guardianStudents.charts(studentId, { chart: 'marks', term })} deps={[studentId, term]} />
         </>
       )}
+      <RankOverTime quietWhenUnranked load={() => api.guardianStudents.charts(studentId, { chart: 'ranks' })} deps={[studentId]} />
     </>
   )
 }

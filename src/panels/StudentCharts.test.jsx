@@ -11,7 +11,7 @@ vi.mock('../api.js', async (importOriginal) => ({
   },
 }))
 
-const { SubjectTrends, AssessmentTypes, MarksInTerm } = await import('./StudentCharts.jsx')
+const { SubjectTrends, AssessmentTypes, MarksInTerm, RankOverTime } = await import('./StudentCharts.jsx')
 
 afterEach(() => { try { localStorage.clear() } catch { /* ignore */ } })
 
@@ -129,6 +129,35 @@ describe('P-3 marks within a term', () => {
     unmount()
     render(<MarksInTerm idKey="c" load={load({ points: [], subjects: [] })} deps={[]} />)
     expect(await screen.findByText('No marks recorded in this term yet.')).toBeInTheDocument()
+  })
+})
+
+describe('P-4 rank over time', () => {
+  const ranks = {
+    name: 'Ann X', ranked: true, basis_note: 'Positions compare students in the same curriculum only.', points: [
+      { term: 'T1', term_id: 1, class: { position: 4, of: 38 }, year_group: { position: 10, of: 120 } },
+      { term: 'T2', term_id: 2, class: { position: null, reason: 'Not ranked: incomplete marks (3 of 8 subjects)' }, year_group: { position: null, reason: 'No marks this term' } },
+      { term: 'T3', term_id: 3, class: { position: 2, of: 38 }, year_group: { position: 6, of: 120 } },
+    ],
+  }
+
+  it('shows "4th of 38", gaps with their reason, and the basis note', async () => {
+    render(<RankOverTime load={() => Promise.resolve(ranks)} deps={[]} />)
+    expect(await screen.findByRole('img', { name: /In class, T1: 4th of 38/ })).toBeInTheDocument()
+    expect(screen.getByText(/same curriculum only/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Show as table' }))
+    expect(screen.getByText('Not ranked: incomplete marks (3 of 8 subjects)')).toBeInTheDocument()
+    expect(screen.getByText('6th of 120')).toBeInTheDocument()
+  })
+
+  it('explains to staff why there are no positions, and shows parents nothing', async () => {
+    const unranked = { name: 'Ann X', ranked: false, points: [], reason: "CBC learners aren't ranked, so there are no positions to show." }
+    const { unmount } = render(<RankOverTime load={() => Promise.resolve(unranked)} deps={[]} />)
+    expect(await screen.findByText(/CBC learners aren't ranked/)).toBeInTheDocument()
+    unmount()
+    const { container } = render(<RankOverTime quietWhenUnranked load={() => Promise.resolve(unranked)} deps={[]} />)
+    await new Promise((r) => setTimeout(r, 10))
+    expect(container.textContent).toBe('')
   })
 })
 
