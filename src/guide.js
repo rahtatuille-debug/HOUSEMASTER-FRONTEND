@@ -216,7 +216,7 @@ export function guideSections(w, role) {
         : ['When a change needs approval, HouseMaster sends it to an admin for you and it appears here until they decide.'],
     },
     {
-      key: 'setup', title: 'Setup', for: 'all',
+      key: 'setup', title: 'Setup', for: 'admin',
       tour: admin
         ? `The school's details, ${w.year_groups.toLowerCase()}, ${classes}, ${subjects}, ${w.terms.toLowerCase()}, grading, and imports from Excel.`
         : `The school's ${classes}, ${subjects} and ${w.terms.toLowerCase()}. You can ask an admin to change them.`,
@@ -296,9 +296,10 @@ export function guideSections(w, role) {
       ],
     },
     {
-      key: 'profile', title: 'Profile', for: 'all',
-      tour: 'Your name, password and privacy information.',
-      steps: ['Change the name others see, and your password.'],
+      key: 'settings', title: 'Settings', for: 'all',
+      tour: 'Your details, contact info, notifications and password, under your profile picture.',
+      steps: ['Tap your profile picture, then Settings.', 'Change your name and title, your phone and an emergency contact (only admins see them), and which emails you get.',
+        'Change your password, or sign out of HouseMaster on your other phones and computers.'],
     },
   ]
   return sections.filter((s) => s.for === 'all' || s.for === role)

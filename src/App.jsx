@@ -26,7 +26,6 @@ import Staff from './panels/Staff.jsx'
 import GuardianInvites from './panels/GuardianInvites.jsx'
 import Announcements from './panels/Announcements.jsx'
 import Messages from './panels/Messages.jsx'
-import Profile from './panels/Profile.jsx'
 import Attendance from './panels/Attendance.jsx'
 import Approvals from './panels/Approvals.jsx'
 import Activity from './panels/Activity.jsx'
@@ -45,7 +44,7 @@ import StudentAccounts from './panels/StudentAccounts.jsx'
 import Billing, { billingSentence } from './panels/Billing.jsx'
 import Absences from './panels/Absences.jsx'
 import Fees from './panels/Fees.jsx'
-import StudentProfile, { ChooseFirstPassword } from './panels/StudentPassword.jsx'
+import { ChooseFirstPassword } from './panels/StudentPassword.jsx'
 import GovernorHome from './panels/GovernorHome.jsx'
 import { perms } from './permissions.js'
 import Timetable from './panels/Timetable.jsx'
@@ -82,7 +81,8 @@ const TABS = [
   { key: 'alerts', label: 'Urgent alerts', component: Alerts },
   { key: 'exports', label: 'Exports', component: Exports },
   { key: 'approvals', label: 'Approvals', teacherLabel: 'My requests', component: Approvals },
-  { key: 'setup', label: 'Setup', component: Setup },
+  // Admins only: teachers used to be able to ask for changes here, which nobody needed.
+  { key: 'setup', label: 'Setup', component: Setup, adminOnly: true },
   { key: 'staff', label: 'Staff', component: Staff, adminOnly: true },
   { key: 'parents', label: 'Parents', component: GuardianInvites, need: 'manage_parents' },
   { key: 'studentaccounts', label: 'Student accounts', component: StudentAccounts, need: 'manage_student_accounts' },
@@ -91,7 +91,6 @@ const TABS = [
   { key: 'activity', label: 'Activity log', component: Activity, adminOnly: true },
   { key: 'billing', label: 'Billing', component: Billing, adminOnly: true },
   { key: 'guide', label: 'Guide', component: Guide },
-  { key: 'profile', label: 'Profile', component: Profile },
   { key: 'settings', label: 'Settings', component: Settings },
 ]
 
@@ -118,7 +117,7 @@ function tourSteps(me, sections, pageLabel) {
       text: `A quick tour of everything you can do here. The menu has a few sections; each opens with its pages as tabs along the top. It takes about two minutes, and you can leave it whenever you like.` },
     ...stops,
     { key: 'guide', title: 'Settings', targets: ['.topbar [aria-label="Your profile"]'],
-      text: 'Your profile, the school\'s setup and the guide (step-by-step instructions for every page) are in Settings, under your profile picture. You can take this tour again from there too.' },
+      text: 'Your details, password and notifications, and the guide (step-by-step instructions for every page), are in Settings, under your profile picture. You can take this tour again from there too.' },
     { key: 'end', title: "You're ready",
       text: role === 'admin'
         ? 'Your Dashboard shows what needs you today and your school\'s first-week checklist.'
@@ -130,7 +129,6 @@ function tourSteps(me, sections, pageLabel) {
 const STUDENT_TABS = [
   { key: 'mywork', label: 'My work', component: (props) => <GuardianStudents student={props.me} /> },
   { key: 'calendar', label: 'Calendar', component: Calendar },
-  { key: 'profile', label: 'Profile', component: StudentProfile },
   { key: 'settings', label: 'Settings', component: Settings },
 ]
 
@@ -139,7 +137,6 @@ const GUARDIAN_TABS = [
   { key: 'announcements', label: 'Communications', component: GuardianAnnouncements },
   { key: 'calendar', label: 'Calendar', component: Calendar },
   { key: 'messages', label: 'Messages', component: Messages },
-  { key: 'profile', label: 'Profile', component: Profile },
   { key: 'settings', label: 'Settings', component: Settings },
 ]
 
@@ -546,7 +543,7 @@ export default function App() {
   const governor = identityKind === 'staff' && p.is_governor
   // A page shows when its role allows it (`need`), admins see admin pages,
   // and a governor sees only the school's figures and their profile.
-  const visibleTabs = tabSet.filter((t) => (billingLocked ? ['billing', 'profile', 'settings'].includes(t.key) : governor ? GOVERNOR_PAGES.includes(t.key)
+  const visibleTabs = tabSet.filter((t) => (billingLocked ? ['billing', 'settings'].includes(t.key) : governor ? GOVERNOR_PAGES.includes(t.key)
     : (!t.adminOnly || isAdmin) && (!t.need || p[t.need]) && (!t.boardingOnly || me?.is_boarding_staff)))
   const pageKeys = visibleTabs.map((t) => t.key)
   // Pages a role opens inside the Admin section (e.g. Parents for the Secretary, Approvals for leaders).
@@ -558,9 +555,6 @@ export default function App() {
   const ActivePanel = visibleTabs.find((t) => t.key === activeKey)?.component
   const activeSection = sections.find((s) => s.pages.includes(activeKey)) || null
   const identityLine = identityKind === 'guardian' ? guardianIdentity(me) : identityKind === 'student' ? studentIdentity(me) : personIdentity(me)
-  // Settings has nowhere sensible to send a guardian yet (no Setup-equivalent
-  // for them), so it's staff-only — same gate as the Setup tab itself.
-  const showSettings = identityKind === 'staff' && !billingLocked
   const pageLabel = (key) => {
     const t = visibleTabs.find((x) => x.key === key)
     return t ? (!(p.approve_requests || p.approve_reports) && t.teacherLabel ? t.teacherLabel : t.label) : key
@@ -569,9 +563,8 @@ export default function App() {
   const extraPages = pageKeys.filter((k) => !sections.some((s) => s.pages.includes(k)))
   // What Settings lists: the profile, Setup, a teacher's requests and the guide (the tour is a button there).
   const settingsPages = [
-    'profile',
-    ...(showSettings && pageKeys.includes('setup') ? ['setup'] : []),
-    ...extraPages.filter((k) => !['profile', 'setup', 'guide', 'settings'].includes(k)),
+    ...(isAdmin ? ['setup', 'billing'] : []),
+    ...extraPages.filter((k) => !['setup', 'guide', 'settings'].includes(k)),
     ...(pageKeys.includes('guide') ? ['guide'] : []),
   ].filter((k) => pageKeys.includes(k)).map((key) => ({ key, label: pageLabel(key) }))
   // A page opened from Settings (and not from a section) leads back to it.

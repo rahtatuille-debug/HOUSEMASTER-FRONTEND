@@ -680,6 +680,17 @@ export const api = {
   downloadStaffTemplate: () => downloadFile('/api/import/staff-template/'),
   download: downloadFile,
   updateMe: (body) => request('/api/me/', { method: 'PATCH', body }),
+  // Staff and parents: { current_password, new_password }. Other devices are signed out; this one gets new tokens.
+  changePassword: async (body) => {
+    const tokens = await request('/api/me/password/', { method: 'POST', body })
+    if (tokens?.access) setTokens(tokens)
+    return tokens
+  },
+  signOutOtherDevices: async () => {
+    const tokens = await request('/api/me/sign-out-others/', { method: 'POST' })
+    if (tokens?.access) setTokens(tokens)
+    return tokens
+  },
   registerSchool,
   teacherHome: {
     get: () => request('/api/teacher-home/'),
