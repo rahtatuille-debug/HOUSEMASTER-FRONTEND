@@ -22,7 +22,7 @@ export function guideSections(w, role) {
           'The first-week checklist shows what to set up next. Each step has a Go button, and ticks itself once done.']
         : [`Each of your ${classes} has buttons to take the register or enter marks.`,
           'The getting-started checklist walks you through your first week. Each step ticks itself once you have done it.',
-          'You can take this tour again at any time from the Home page or the Guide.'],
+          'You can take this tour again at any time from Settings, under your profile picture.'],
     },
     {
       key: 'students', title: 'Students', for: 'all',

@@ -1,6 +1,6 @@
 // How the pages are grouped. The left rail (laptop) and bottom bar (phone)
 // show sections; the pages of the open section are tabs along the top of the
-// page. Guide and Profile sit in the top bar instead.
+// page. Settings (the profile, Setup, the guide and the tour) opens from the profile picture.
 
 export const STAFF_SECTIONS = [
   { key: 'home', label: 'Dashboard', icon: 'home', pages: ['home', 'calendar'] },
@@ -8,13 +8,13 @@ export const STAFF_SECTIONS = [
   { key: 'reports', label: 'Reports', icon: 'reports', pages: ['grades', 'homework', 'reports', 'performance', 'exports'] },
   { key: 'messages', label: 'Messages', icon: 'messages', pages: ['messages', 'announcements', 'alerts'] },
   { key: 'students', label: 'Students', icon: 'students', pages: ['students', 'support', 'discipline', 'clubs', 'sickbay', 'admissions'] },
-  // Teachers reach Setup and their requests from the profile menu and the quick links.
+  // Teachers reach Setup and their requests from Settings (under the profile picture) and the quick links.
   { key: 'admin', label: 'Admin', icon: 'admin', pages: ['setup', 'staff', 'parents', 'studentaccounts', 'approvals', 'fees', 'activity', 'billing'], adminOnly: true },
 ]
 
 // A governor's read-only account: the school's figures, nothing else.
 export const GOVERNOR_SECTIONS = [{ key: 'home', label: 'Dashboard', icon: 'home', pages: ['home'] }]
-export const GOVERNOR_PAGES = ['home', 'profile']
+export const GOVERNOR_PAGES = ['home', 'profile', 'settings']
 
 // A student's own account: their work, and the calendar.
 export const STUDENT_SECTIONS = [

@@ -5,7 +5,8 @@ import Panel, { PanelTabs } from './Panel.jsx'
 
 // Pieces shared by the admin and teacher dashboards.
 
-export function Greeting({ me, onStartTour, onNavigate }) {
+// The tour and the guide are in Settings, under the profile picture.
+export function Greeting({ me }) {
   const first = me?.name?.split(' ')[0]
   const today = formatDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long' })
   return (
@@ -13,10 +14,6 @@ export function Greeting({ me, onStartTour, onNavigate }) {
       <div>
         <h2>Good {new Date().getHours() < 12 ? 'morning' : 'afternoon'}{first ? `, ${first}` : ''}</h2>
         <p className="text-muted">{me?.school?.name} · {today}</p>
-      </div>
-      <div className="dash-greeting-actions">
-        <button type="button" className="link-button" onClick={onStartTour}>Take the tour</button>
-        {onNavigate && <button type="button" className="link-button" onClick={() => onNavigate('guide')}>Open the guide</button>}
       </div>
     </div>
   )
