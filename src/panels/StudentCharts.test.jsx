@@ -11,7 +11,7 @@ vi.mock('../api.js', async (importOriginal) => ({
   },
 }))
 
-const { SubjectTrends, AssessmentTypes } = await import('./StudentCharts.jsx')
+const { SubjectTrends, AssessmentTypes, MarksInTerm } = await import('./StudentCharts.jsx')
 
 afterEach(() => { try { localStorage.clear() } catch { /* ignore */ } })
 
@@ -103,6 +103,32 @@ describe('P-2 assessment types', () => {
     mockApi.current = deepApiMock({ charts: () => Promise.reject(Object.assign(new Error('Not found'), { status: 404 })) })
     render(<AssessmentTypes studentId={1} termId={1} />)
     expect(await screen.findByText('Not available yet.')).toBeInTheDocument()
+  })
+})
+
+describe('P-3 marks within a term', () => {
+  const points = [
+    { subject: 'Maths', assessment_type: 'CAT', percent: 60, date: '2026-02-01' },
+    { subject: 'English', assessment_type: 'CAT', percent: 80, date: '2026-02-01' },
+    { subject: 'Maths', assessment_type: 'Exam', percent: 90, date: '2026-03-10' },
+  ]
+  const load = (extra = {}) => () => Promise.resolve({ name: 'Ann X', term: { id: 1, name: 'T1', start: '2026-01-05', end: '2026-03-31' },
+    time_zone: 'Africa/Nairobi', points, subjects: ['English', 'Maths'], outside_term: 0, ...extra })
+
+  it('averages each day across subjects, or shows one subject’s marks, each point focusable', async () => {
+    const { container } = render(<MarksInTerm idKey="a" load={load()} deps={[]} />)
+    expect(await screen.findByRole('img', { name: /(1 Feb|Feb 1): average 70.0% of 2 marks/ })).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Subject'), { target: { value: 'Maths' } })
+    expect(screen.getByRole('img', { name: /Maths, Exam, recorded (10 Mar|Mar 10): 90.0%/ })).toBeInTheDocument()
+    expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(2)
+  })
+
+  it('notes marks recorded outside the term, and an empty term', async () => {
+    const { unmount } = render(<MarksInTerm idKey="b" load={load({ outside_term: 2 })} deps={[]} />)
+    expect(await screen.findByText(/2 marks were recorded outside this term's dates/)).toBeInTheDocument()
+    unmount()
+    render(<MarksInTerm idKey="c" load={load({ points: [], subjects: [] })} deps={[]} />)
+    expect(await screen.findByText('No marks recorded in this term yet.')).toBeInTheDocument()
   })
 })
 

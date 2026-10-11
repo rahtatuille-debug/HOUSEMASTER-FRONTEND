@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from '../api.js'
 import { ScaleContext, useVocab, useWithLevel } from '../levels.js'
+import { formatDate } from '../format.js'
 import ChartCard from './ChartCard.jsx'
 import { BarChart, CATEGORICAL, COMPARE, LineChart, MARKERS } from './charts.jsx'
 
@@ -188,6 +189,64 @@ export function AssessmentTypes({ studentId, termId }) {
   )
 }
 
+// ---- P-3 ------------------------------------------------------------------------------------------------------
+
+export function MarksInTerm({ load, deps, idKey, showTypes = true }) {
+  const fmt = useWithLevel()
+  const words = useVocab()
+  const [subject, setSubject] = useState('')
+  const state = useChart(load, deps)
+  const data = state.data
+  const dayText = (iso) => formatDate(iso, { day: 'numeric', month: 'short' })
+  const rows = useMemo(() => {
+    if (!data) return []
+    if (subject) {
+      return data.points.filter((p) => p.subject === subject).map((p) => ({ ...p, label: dayText(p.date), value: p.percent }))
+    }
+    // All subjects: the average of the marks recorded each day.
+    const days = {}
+    for (const p of data.points) (days[p.date] ||= []).push(p.percent)
+    return Object.entries(days).sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, values]) => ({ date, label: dayText(date), value: Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10, count: values.length }))
+  }, [data, subject]) // eslint-disable-line react-hooks/exhaustive-deps
+  const series = [{ key: 'value', label: subject || `Average of the day's marks`, color: COMPARE[0] }]
+  const table = data && (
+    <table>
+      <thead><tr><th>Recorded</th><th>{words.subject}</th>{showTypes && <th>Type</th>}<th>Mark</th></tr></thead>
+      <tbody>{data.points.filter((p) => !subject || p.subject === subject).map((p, k) => (
+        <tr key={k}><td>{dayText(p.date)}</td><td>{p.subject}</td>{showTypes && <td>{p.assessment_type}</td>}<td>{fmt(p.percent, 1)}</td></tr>
+      ))}</tbody>
+    </table>
+  )
+  return (
+    <ChartCard title={`Marks through the ${words.term.toLowerCase()}${data?.term ? `, ${data.term.name}` : ''}`} table={table}
+      hint={data ? `Each mark by the day it was recorded (school time${data.time_zone ? `, ${data.time_zone}` : ''}), which may be after the assessment itself.` : null}
+      actions={data?.subjects?.length > 0 && (
+        <div className="field chart-controls" style={{ maxWidth: 260 }}>
+          <label htmlFor={`p3-subject-${idKey}`}>{words.subject}</label>
+          <select id={`p3-subject-${idKey}`} value={subject} onChange={(e) => setSubject(e.target.value)}>
+            <option value="">All {words.subjects.toLowerCase()} (average each day)</option>
+            {data.subjects.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
+      )}>
+      <Quiet state={state}>
+        {data && (!rows.length ? <p className="text-muted" style={{ margin: 0 }}>No marks recorded in this {words.term.toLowerCase()} yet.</p> : (
+          <LineChart data={rows} series={series} dates={data.term?.start && data.term?.end ? { start: data.term.start, end: data.term.end } : { start: rows[0].date, end: rows[rows.length - 1].date }}
+            label={`${data.name}: marks recorded through ${data.term?.name || 'the term'}`}
+            pointLabel={(row) => subject ? `${row.subject}${showTypes ? `, ${row.assessment_type}` : ''}, recorded ${row.label}: ${fmt(row.value, 1)}`
+              : `${row.label}: average ${fmt(row.value, 1)} of ${row.count} mark${row.count === 1 ? '' : 's'}`} />
+        ))}
+        {data?.outside_term > 0 && (
+          <p className="hint" style={{ marginBottom: 0 }}>
+            {data.outside_term} mark{data.outside_term === 1 ? ' was' : 's were'} recorded outside this {words.term.toLowerCase()}&apos;s dates (for example, entered later) and {data.outside_term === 1 ? "isn't" : "aren't"} shown.
+          </p>
+        )}
+      </Quiet>
+    </ChartCard>
+  )
+}
+
 // ---- Putting them together ---------------------------------------------------------------------------------------
 
 // Staff: everything about one student. `only="trends"` for the student profile (P-1 alone).
@@ -202,6 +261,7 @@ export default function StudentCharts({ studentId, termId, only }) {
       {only !== 'trends' && (
         <>
           <AssessmentTypes studentId={studentId} termId={termId} />
+          <MarksInTerm idKey={studentId} load={() => api.charts({ chart: 'marks', scope: 'student', id: studentId, ...(termId ? { term: termId } : {}) })} deps={[studentId, termId]} />
         </>
       )}
     </ScaleContext.Provider>
@@ -213,6 +273,7 @@ export default function StudentCharts({ studentId, termId, only }) {
 // has them. No class comparisons.
 export function ChildCharts({ studentId, terms }) {
   const words = useVocab()
+  const [term, setTerm] = useState(terms[terms.length - 1]?.id || '')
   const trends = useChart(() => api.guardianStudents.charts(studentId, { chart: 'subject_trends' }), [studentId])
   return (
     <>
@@ -221,6 +282,17 @@ export function ChildCharts({ studentId, terms }) {
           <SubjectTrends data={trends.data} allowCompare={false} />
         ) : <p className="hint">{words.subjects} over time appear once the school shares a finalized report.</p>)}
       </Quiet>
+      {terms.length > 0 && (
+        <>
+          <div className="field" style={{ maxWidth: 260, marginTop: 12 }}>
+            <label htmlFor={`child-term-${studentId}`}>{words.term} for the marks chart</label>
+            <select id={`child-term-${studentId}`} value={term} onChange={(e) => setTerm(e.target.value)}>
+              {terms.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            </select>
+          </div>
+          <MarksInTerm idKey={`child-${studentId}`} showTypes={false} load={() => api.guardianStudents.charts(studentId, { chart: 'marks', term })} deps={[studentId, term]} />
+        </>
+      )}
     </>
   )
 }
