@@ -14,6 +14,7 @@ import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
 import AcceptGuardianInvite from './panels/AcceptGuardianInvite.jsx'
 import JoinClass from './panels/JoinClass.jsx'
+import StaffJoin from './panels/StaffJoin.jsx'
 import Apply from './panels/Apply.jsx'
 import ConfirmApplication from './panels/ConfirmApplication.jsx'
 import ForgotPassword from './panels/ForgotPassword.jsx'
@@ -154,6 +155,11 @@ function getGuardianInviteToken() {
   return match ? match[1] : null
 }
 
+function getStaffJoinToken() {
+  const match = window.location.pathname.match(/^\/staff-join\/([^/]+)\/?$/)
+  return match ? match[1] : null
+}
+
 function getJoinToken() {
   const match = window.location.pathname.match(/^\/join\/([^/]+)\/?$/)
   return match ? match[1] : null
@@ -207,6 +213,7 @@ export default function App() {
   const [guardianInviteToken, setGuardianInviteToken] = useState(getGuardianInviteToken())
   const [resetToken, setResetToken] = useState(getResetToken())
   const [joinToken, setJoinToken] = useState(getJoinToken())
+  const [staffJoinToken, setStaffJoinToken] = useState(getStaffJoinToken())
   const [applyToken, setApplyToken] = useState(getApplyToken())
   const [confirmApplicationToken, setConfirmApplicationToken] = useState(getConfirmApplicationToken())
   const [loggedIn, setLoggedIn] = useState(api.isLoggedIn())
@@ -413,6 +420,10 @@ export default function App() {
 
   if (applyToken) {
     return <Apply token={applyToken} onSignIn={() => { window.history.replaceState({}, '', '/'); setApplyToken(null) }} />
+  }
+
+  if (staffJoinToken) {
+    return <StaffJoin token={staffJoinToken} onSignIn={() => { window.history.replaceState({}, '', '/'); setStaffJoinToken(null) }} />
   }
 
   if (joinToken) {

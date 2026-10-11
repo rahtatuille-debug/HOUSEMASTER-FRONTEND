@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react'
 import { useVocab } from '../levels.js'
 import { formatDate as localDate } from '../format.js'
 import StaffImportCard from './StaffImportCard.jsx'
+import StaffJoinCard from './StaffJoinCard.jsx'
 import { api } from '../api.js'
 import { displayRole, personIdentity } from '../user.js'
 import { ROLE_OPTIONS } from '../permissions.js'
@@ -184,6 +185,8 @@ export default function Staff({ me }) {
 
       {error && <div className="error-banner">{error}</div>}
       {notice && <div className="success-banner">{notice}</div>}
+
+      <StaffJoinCard schoolName={me?.school?.name} onChanged={load} />
 
       <div className="card">
         <h3 style={{ marginBottom: 6, fontSize: 15 }}>Staff members</h3>
