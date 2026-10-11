@@ -5,4 +5,5 @@ import { cleanup } from '@testing-library/react'
 afterEach(() => {
   cleanup()
   globalThis.localStorage?.clear()
+  globalThis.sessionStorage?.clear()
 })

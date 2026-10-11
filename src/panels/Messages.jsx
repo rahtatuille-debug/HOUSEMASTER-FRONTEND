@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useRemembered } from '../remember.js'
 import { classesFor, perms } from '../permissions.js'
 import { useVocab } from '../levels.js'
 import { formatDateTime } from '../format.js'
@@ -20,7 +21,9 @@ export default function Messages({ me, identityKind }) {
   const [conversations, setConversations] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeId, setActiveId] = useState(null)
+  // The open conversation survives a refresh: it's reopened once the list has loaded.
+  const [activeId, setActiveId] = useRemembered('panel.messages.open', null)
+  const reopen = useRef(activeId)
   const [messages, setMessages] = useState([])
   // The newest message stays in view, just above the box for writing one.
   const threadEnd = useRef(null)
@@ -53,6 +56,14 @@ export default function Messages({ me, identityKind }) {
   useEffect(() => {
     loadConversations()
   }, [])
+
+  useEffect(() => {
+    if (loading || !reopen.current) return
+    const conv = conversations.find((c) => c.id === reopen.current)
+    reopen.current = null
+    if (conv) openConversation(conv)
+    else setActiveId(null)
+  }, [loading])  // eslint-disable-line react-hooks/exhaustive-deps
 
   async function openConversation(conv) {
     setActiveId(conv.id)

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { keep, recall } from '../remember.js'
 import { FixtureLine } from './Clubs.jsx'
 import HomeworkList from './HomeworkList.jsx'
 import TermSummary from './TermSummary.jsx'
@@ -71,7 +72,17 @@ export default function GuardianStudents({ student = null }) {
     }
   }
 
-  useEffect(() => { if (student) openStudent(student.student_id); else loadStudents() }, [student?.student_id])  // eslint-disable-line react-hooks/exhaustive-deps
+  // The child and tab open before a refresh.
+  const [restore] = useState(() => ({ id: recall('panel.child'), tab: recall('panel.childTab', 'overview') }))
+  useEffect(() => { if (selected) keep('panel.childTab', tab) }, [selected, tab])
+
+  useEffect(() => {
+    if (student) openStudent(student.student_id, restore.tab)
+    else {
+      loadStudents()
+      if (restore.id && !absenceLink) openStudent(restore.id, restore.tab)
+    }
+  }, [student?.student_id])  // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!absenceLink) return
     window.history.replaceState({}, '', window.location.pathname)
@@ -110,7 +121,9 @@ export default function GuardianStudents({ student = null }) {
       setPhotoUrl((old) => (old && URL.revokeObjectURL(old), null))
       if (studentProfile.student.has_photo) setPhotoUrl(await api.guardianStudents.photoUrl(id))
       setTab(openTab)
+      if (!student) keep('panel.child', id)
     } catch (err) {
+      if (!student) keep('panel.child', null)
       setError(err.status === 404 ? 'This student is unavailable.' : err.message)
     } finally {
       setDetailLoading(false)
@@ -121,7 +134,7 @@ export default function GuardianStudents({ student = null }) {
     return (
       <section>
         <div className="panel-header">
-          {!student && <button type="button" className="back-button" onClick={() => { setSelected(null); setError('') }}>← Students</button>}
+          {!student && <button type="button" className="back-button" onClick={() => { setSelected(null); setError(''); keep('panel.child', null) }}>← Students</button>}
         </div>
         {error && <div className="error-banner">{error}</div>}
         <article className="card guardian-student-detail">

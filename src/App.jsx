@@ -56,6 +56,7 @@ import GuardianAnnouncements from './panels/GuardianAnnouncements.jsx'
 import { personIdentity, guardianIdentity, studentIdentity } from './user.js'
 import { GOVERNOR_PAGES, GOVERNOR_SECTIONS, GUARDIAN_SECTIONS, STAFF_SECTIONS, STUDENT_SECTIONS, bottomBarSections, sectionOf, visibleSections } from './nav.js'
 import { NavIcon } from './icons.jsx'
+import { forget, useRemembered } from './remember.js'
 
 const TABS = [
   { key: 'home', label: 'Dashboard', component: StaffHome },
@@ -224,11 +225,12 @@ export default function App() {
   const [me, setMe] = useState(null)
   // 'staff' | 'guardian' | null (unknown until /api/me/ or /api/guardian-me/ resolves)
   const [identityKind, setIdentityKind] = useState(null)
-  const [activeTab, setActiveTab] = useState('home')
+  // Kept for this browser tab, so a refresh stays on the same page.
+  const [activeTab, setActiveTab] = useRemembered('tab', 'home')
   // Extra details for the page being opened, e.g. which student (the dashboard's search).
   const [navParams, setNavParams] = useState(null)
   // The last page used in each section, so a section opens where you left it.
-  const [lastPage, setLastPage] = useState({})
+  const [lastPage, setLastPage] = useRemembered('sections', {})
   // Phone: the "More" sheet. Laptop: the quick-links bar on the right (remembered per browser).
   const [moreOpen, setMoreOpen] = useState(false)
   const [quickLinks, setQuickLinks] = useState(() => {
@@ -378,6 +380,9 @@ export default function App() {
 
   function handleLogout() {
     api.logout()
+    forget()
+    setActiveTab('home')
+    setLastPage({})
     setMe(null)
     setIdentityKind(null)
     setLoggedIn(false)
@@ -573,6 +578,7 @@ export default function App() {
   const badgeFor = (section) => (section.pages.includes('approvals') && waitingCount > 0 ? waitingCount : 0)
 
   function selectTab(key, params = null) {
+    if (key !== activeKey) forget('panel.')
     setActiveTab(key)
     setNavParams(params)
     setMoreOpen(false)

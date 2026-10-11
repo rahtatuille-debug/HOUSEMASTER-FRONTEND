@@ -3,6 +3,7 @@ import { api } from '../api.js'
 import { formatDate, formatDateTime } from '../format.js'
 import { PAY_METHODS, amount, balanceText, fieldError } from './ChildFees.jsx'
 import FeesMpesa from './FeesMpesa.jsx'
+import { useRemembered } from '../remember.js'
 
 const VIEWS = [['balances', 'Balances'], ['structure', 'Fee structure'], ['claims', 'To confirm'], ['mpesa', 'M-Pesa'], ['settings', 'Settings']]
 const APPLIES = [['all', 'Everyone'], ['boarding', 'Boarders only'], ['day', 'Day students only']]
@@ -14,8 +15,8 @@ const localToday = () => {
 // School fees for the bursar and admins: balances, one student's statement, the fee structure per term,
 // payments parents say they've made, and the payment details parents see.
 export default function Fees() {
-  const [view, setView] = useState('balances')
-  const [studentId, setStudentId] = useState(null)
+  const [view, setView] = useRemembered('panel.fees.view', 'balances')
+  const [studentId, setStudentId] = useRemembered('panel.fees.student', null)
   const [openClaims, setOpenClaims] = useState(0)
   const [currency, setCurrency] = useState('')
 

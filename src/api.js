@@ -1,4 +1,5 @@
 import { reportApiError } from './sentry.js'
+import { forget } from './remember.js'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 
@@ -110,6 +111,7 @@ function logout() {
   clearTokens()
   clearLease()
   clearOldDrafts()
+  forget()
   if (!refresh) return
   try {
     fetch(`${API_BASE}/api/logout/`, {

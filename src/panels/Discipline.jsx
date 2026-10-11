@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api.js'
+import { useRemembered } from '../remember.js'
 import { formatDate } from '../format.js'
 import Merits from './Merits.jsx'
 import StudentSelect from './StudentSelect.jsx'
@@ -105,7 +106,7 @@ export function IncidentCard({ incident: i, showStudent = true, actions }) {
 // Behaviour: merits (rewards) and incidents, so a student's record isn't
 // only negative. Teachers see their own classes.
 export default function Discipline({ me, navParams }) {
-  const [view, setView] = useState(navParams?.view === 'merits' ? 'merits' : 'incidents')
+  const [view, setView] = useRemembered('panel.discipline.view', 'incidents', navParams?.view === 'merits' ? 'merits' : null)
   const [students, setStudents] = useState([])
   const [classNames, setClassNames] = useState({})
   useEffect(() => {
