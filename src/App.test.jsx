@@ -58,7 +58,7 @@ describe('identity fork', () => {
     expect(tabs.getByRole('tab', { name: 'Setup' })).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('a teacher sees five sections; Setup, their requests, the guide and the tour are in Settings', async () => {
+  it('a teacher sees five sections; their details, requests, the guide and the tour are in Settings, and there is no Setup', async () => {
     mockApi.current = deepApiMock({
       isLoggedIn: () => true,
       me: () => Promise.resolve({ id: 2, name: 'Tom', role: 'teacher', tour_seen: true, school, assignments: [] }),
@@ -78,8 +78,13 @@ describe('identity fork', () => {
     expect(screen.queryByRole('button', { name: 'View profile' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
     const settings = await screen.findByRole('heading', { name: 'Settings' })
+    const page = within(settings.closest('section'))
+    for (const heading of ['Personal info', 'Contact info', 'Notifications', 'Password and security']) {
+      expect(page.getByRole('heading', { name: heading })).toBeInTheDocument()
+    }
     const rows = [...settings.closest('section').querySelectorAll('.settings-row strong')].map((r) => r.textContent)
-    expect(rows).toEqual(['View profile', 'Setup', 'My requests', 'Guide', 'Take the tour'])
+    expect(rows).toEqual(['My requests', 'Guide', 'Take the tour'])
+    expect(page.queryByText('Setup')).toBeNull()
     // A page opened from Settings leads back to it.
     fireEvent.click(screen.getByRole('button', { name: /Guide/ }))
     fireEvent.click(await screen.findByRole('button', { name: '← Settings' }))

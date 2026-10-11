@@ -1707,3 +1707,21 @@ form + .staff-sub { margin-top: 18px; }
 .pull-refresh.refreshing svg { animation: pull-spin 0.8s linear infinite; }
 @keyframes pull-spin { to { transform: rotate(360deg); } }
 @media (pointer: coarse) { html, body { overscroll-behavior-y: contain; } }
+
+/* Settings page sections */
+.settings-page { max-width: 760px; }
+.settings-card h3 { font-size: 16px; margin: 0 0 12px; }
+.settings-who { display: flex; align-items: center; gap: 14px; }
+.settings-who strong { font-size: 17px; }
+.settings-avatar {
+  flex: 0 0 auto; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--navy); color: #fff; font-weight: 600; font-size: 18px;
+}
+.settings-group { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 22px 0 8px; }
+.settings-divider { border-top: 1px solid var(--rule); margin: 18px 0 14px; }
+.settings-details > summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 16px 18px; }
+.settings-details > summary::-webkit-details-marker { display: none; }
+.settings-details > summary::after { content: '›'; font-size: 22px; color: var(--muted); transition: transform .15s; }
+.settings-details[open] > summary::after { transform: rotate(90deg); }
+.settings-details-body { padding: 0 18px 16px; font-size: 14px; }
+.settings-who strong, .settings-who .settings-hint { overflow-wrap: anywhere; }

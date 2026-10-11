@@ -12,7 +12,7 @@ vi.mock('./api.js', async (importOriginal) => ({
   },
 }))
 
-const { default: Profile } = await import('./panels/Profile.jsx')
+const { default: Profile } = await import('./panels/Profile.jsx') // the account part of Settings
 const { urlBase64ToBytes } = await import('./push.js')
 
 const me = { name: 'Pat', school: { name: 'Alpha Academy' }, students: [], contact: { email_notifications: true } }
@@ -72,7 +72,7 @@ describe('Phone and browser notifications', () => {
     fakeBrowser()
     mockApi.current = deepApiMock({ 'push.settings': () => Promise.resolve({ enabled: false, public_key: '', subscribed: false }) })
     const { unmount } = render(<Profile me={me} identityKind="guardian" onUserUpdated={() => {}} />)
-    await screen.findByText('Your contact details')
+    await screen.findByText('Contact info')
     await new Promise((r) => setTimeout(r, 20))
     expect(screen.queryByLabelText(/Notify me on this phone or browser/)).toBeNull()
     unmount()
@@ -80,7 +80,7 @@ describe('Phone and browser notifications', () => {
     const settings = vi.fn(() => Promise.resolve({ enabled: true, public_key: 'BAAA', subscribed: false }))
     mockApi.current = deepApiMock({ 'push.settings': settings })
     render(<Profile me={me} identityKind="guardian" onUserUpdated={() => {}} />)
-    await screen.findByText('Your contact details')
+    await screen.findByText('Contact info')
     await new Promise((r) => setTimeout(r, 20))
     expect(screen.queryByLabelText(/Notify me on this phone or browser/)).toBeNull()
   })

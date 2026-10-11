@@ -202,7 +202,7 @@ export default function Staff({ me }) {
             <thead>
               <tr>
                 <th>Name</th>
-                <th>Email</th>
+                <th>Contact</th>
                 <th>Role</th>
                 <th>Teaches</th>
                 <th>Roles</th>
@@ -224,7 +224,15 @@ export default function Staff({ me }) {
                         {m.name}
                         {isMe && <span className="text-muted"> (you)</span>}
                       </td>
-                      <td>{m.email || '—'}</td>
+                      <td>
+                        {m.email || '—'}
+                        {m.phone && <div className="text-muted" style={{ fontSize: 12 }}>{m.phone}</div>}
+                        {(m.emergency_contact_name || m.emergency_contact_phone) && (
+                          <div className="text-muted" style={{ fontSize: 12 }}>
+                            Emergency: {[m.emergency_contact_name, m.emergency_contact_phone].filter(Boolean).join(', ')}
+                          </div>
+                        )}
+                      </td>
                       <td>
                         {isMe ? (
                           displayRole(m.role)

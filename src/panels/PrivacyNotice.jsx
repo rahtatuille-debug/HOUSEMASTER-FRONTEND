@@ -18,7 +18,7 @@ export default function PrivacyNotice({ schoolName, contact, country, audience =
       <h4>What is held</h4>
       <p>
         {audience === 'staff'
-          ? 'Your name, email address, role and the classes you teach, and the work you record: grades, attendance, reports, notes about students who need extra support, and messages.'
+          ? 'Your name, email address, role and the classes you teach, any phone number and emergency contact you add (seen only by the school\'s administrators), and the work you record: grades, attendance, reports, notes about students who need extra support, and messages.'
           : "Your name, email address and any contact details you or the school add, and your children's details: name, class, date of birth, health notes, photo, grades, attendance, reports, any extra support the school is giving, and messages with the school."}
       </p>
       <h4>Who can see it</h4>

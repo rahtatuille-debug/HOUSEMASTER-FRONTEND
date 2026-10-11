@@ -62,17 +62,19 @@ export function ChooseFirstPassword({ me, onDone, onLogout }) {
 }
 
 // A student's Profile page: who they are and changing their password.
-export default function StudentProfile({ me }) {
+export default function StudentProfile({ me, embedded = false }) {
   const [done, setDone] = useState(false)
   return (
     <div>
-      <div className="panel-header"><div><h2>Profile</h2></div></div>
-      <div className="card">
-        <p style={{ margin: 0 }}><strong>{me?.name}</strong>{me?.class_name ? ` · ${me.class_name}` : ''}</p>
-        <p className="text-muted" style={{ margin: '4px 0 0' }}>Username: {me?.username}</p>
-      </div>
-      <div className="card" style={{ maxWidth: 480 }}>
-        <h3 style={{ fontSize: 15, marginBottom: 8 }}>Change your password</h3>
+      {!embedded && <div className="panel-header"><div><h2>Profile</h2></div></div>}
+      {!embedded && (
+        <div className="card">
+          <p style={{ margin: 0 }}><strong>{me?.name}</strong>{me?.class_name ? ` · ${me.class_name}` : ''}</p>
+          <p className="text-muted" style={{ margin: '4px 0 0' }}>Username: {me?.username}</p>
+        </div>
+      )}
+      <div className="card settings-card">
+        <h3>Change your password</h3>
         {done && <div className="success-banner" role="status">Your password was changed.</div>}
         <PasswordForm onDone={() => setDone(true)} />
       </div>
