@@ -310,6 +310,8 @@ const RANK_SERIES = [
 export function RankOverTime({ load, deps, quietWhenUnranked = false }) {
   const words = useVocab()
   const state = useChart(load, deps)
+  // One group at a time: a class of 25 and a school of 600 on one axis would squash the class to a line at the top.
+  const [pick, setPick] = useState('')
   const data = state.data
   if (quietWhenUnranked && (state.unavailable || (data && !data.ranked))) return null
   const keys = data ? RANK_SERIES.filter((s) => data.points.some((p) => p[s.key] !== undefined)) : []
@@ -323,10 +325,12 @@ export function RankOverTime({ load, deps, quietWhenUnranked = false }) {
     }
     return row
   })
-  const most = Math.max(2, ...rows.flatMap((r) => keys.map((s) => r[`${s.key}_of`] || 0)))
+  const current = series.find((s) => s.key === pick) || series[0]
+  const shown = current ? [current] : []
+  const most = Math.max(2, ...rows.map((r) => (current ? r[`${current.key}_of`] || 0 : 0)))
   const ticks = [...new Set([1, Math.ceil(most / 4), Math.ceil(most / 2), Math.ceil((most * 3) / 4), most])].filter((v) => v >= 1).sort((a, b) => a - b)
   const place = (row, s) => (row[s.key] == null ? (row[`${s.key}_why`] || 'not ranked') : `${ordinal(row[s.key])} of ${row[`${s.key}_of`]}`)
-  const ranked = rows.filter((r) => keys.some((s) => r[s.key] != null)).length
+  const ranked = rows.filter((r) => current && r[current.key] != null).length
   const table = data?.ranked && (
     <table>
       <thead><tr><th>{words.term}</th>{series.map((s) => <th key={s.key}>{s.label}</th>)}</tr></thead>
@@ -334,11 +338,19 @@ export function RankOverTime({ load, deps, quietWhenUnranked = false }) {
     </table>
   )
   return (
-    <ChartCard title={`Position over ${words.terms.toLowerCase()}`} table={table} hint={data?.ranked ? `1st is at the top. ${data.basis_note || ''}` : null}>
+    <ChartCard title={`Position over ${words.terms.toLowerCase()}`} table={table} hint={data?.ranked ? `1st is at the top. ${data.basis_note || ''}` : null}
+      actions={data?.ranked && series.length > 1 && (
+        <div className="scope-tabs filter-row chart-controls" role="group" aria-label="Position within">
+          {series.map((s) => (
+            <button key={s.key} type="button" aria-pressed={current?.key === s.key} className={`secondary${current?.key === s.key ? ' active' : ''}`}
+              onClick={() => setPick(s.key)}>{s.label}</button>
+          ))}
+        </div>
+      )}>
       <Quiet state={state}>
         {data && (!data.ranked ? <p className="text-muted" style={{ margin: 0 }}>{data.reason}</p>
           : ranked < MIN_TERMS ? <p className="text-muted" style={{ margin: 0 }}>Not enough {words.terms.toLowerCase()} yet. Show as table to see what there is.</p>
-            : <LineChart data={rows} series={series} gaps yAxis={{ min: 1, max: most, reverse: true, ticks, format: (v) => ordinal(v) }}
+            : <LineChart data={rows} series={shown} gaps yAxis={{ min: 1, max: most, reverse: true, ticks, format: (v) => ordinal(v) }}
               valueText={(row, s) => place(row, s)} pointLabel={(row, s) => `${s.label}, ${row.term}: ${place(row, s)}`}
               label={`${data.name}: position each ${words.term.toLowerCase()}`} />)}
       </Quiet>

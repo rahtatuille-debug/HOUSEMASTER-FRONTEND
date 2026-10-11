@@ -190,6 +190,10 @@ describe('P-4 rank over time', () => {
     render(<RankOverTime load={() => Promise.resolve(ranks)} deps={[]} />)
     expect(await screen.findByRole('img', { name: /In class, T1: 4th of 38/ })).toBeInTheDocument()
     expect(screen.getByText(/same curriculum only/)).toBeInTheDocument()
+    // One group at a time, each on its own scale.
+    fireEvent.click(screen.getByRole('button', { name: 'In year group' }))
+    expect(await screen.findByRole('img', { name: /In year group, T1: 10th of 120/ })).toBeInTheDocument()
+    expect(screen.queryByRole('img', { name: /In class, T1/ })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Show as table' }))
     expect(screen.getByText('Not ranked: incomplete marks (3 of 8 subjects)')).toBeInTheDocument()
     expect(screen.getByText('6th of 120')).toBeInTheDocument()
