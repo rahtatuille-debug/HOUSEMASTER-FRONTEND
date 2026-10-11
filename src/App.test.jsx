@@ -137,3 +137,21 @@ describe('identity fork', () => {
     expect(screen.queryByRole('button', { name: /Students/ })).toBeNull()
   })
 })
+
+describe('online only', () => {
+  it("says when HouseMaster can't be reached, keeps the person signed in, and tries again when asked", async () => {
+    let calls = 0
+    const me = vi.fn(() => {
+      calls += 1
+      if (calls === 1) return Promise.reject(Object.assign(new Error('Could not reach the server.'), { network: true }))
+      return Promise.resolve({ id: 1, name: 'Amina', role: 'admin', tour_seen: true, school, assignments: [] })
+    })
+    mockApi.current = deepApiMock({ isLoggedIn: () => true, me, dashboard: () => Promise.resolve(dashboard),
+      'checklist.get': () => Promise.resolve(checklist) })
+    const { container } = render(<App />)
+    expect(await screen.findByText('Can’t reach HouseMaster')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /sign in/i })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(container.querySelector('.rail [data-section="admin"]')).toBeInTheDocument())
+  })
+})

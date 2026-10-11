@@ -9,7 +9,6 @@ import Guide from './panels/Guide.jsx'
 import TeacherHome from './panels/TeacherHome.jsx'
 import Tour from './panels/Tour.jsx'
 import { api, countOf } from './api.js'
-import { connection } from './connection.js'
 import { LogoFull } from './panels/Logo.jsx'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
@@ -259,22 +258,22 @@ export default function App() {
   const notifRef = useRef(null)
   const profileRef = useRef(null)
 
-  // Opening the app with no signal: the phone is still signed in, so wait for
-  // a connection (and say so) rather than asking for the password again.
-  const [identityOffline, setIdentityOffline] = useState(false)
+  // HouseMaster is online only. If the server can't be reached when the app opens, the person is
+  // still signed in: say so and offer to try again, rather than asking for the password again.
+  const [cantReach, setCantReach] = useState(false)
   const [identityAttempt, setIdentityAttempt] = useState(0)
   // The school's subscription is overdue past its grace period: only its admins can sign in, to pay.
   const [schoolLocked, setSchoolLocked] = useState('')
 
   useEffect(() => {
     if (!loggedIn) return
-    setIdentityOffline(false)
+    setCantReach(false)
     setSchoolLocked('')
     const failed = (err) => {
       if (err?.data?.code === 'school_locked') { setSchoolLocked(err.data.detail || 'HouseMaster is paused for your school.'); return }
-      // No signal, or the server itself down: wait. Anything else (an
+      // No internet, or the server itself down: say so. Anything else (an
       // expired session) goes back to sign-in.
-      if (err?.network || err?.status >= 500) setIdentityOffline(true)
+      if (err?.network || err?.status >= 500) setCantReach(true)
       else setLoggedIn(false)
     }
     // A logged-in account is either staff (has a Profile, /api/me/ works)
@@ -309,17 +308,6 @@ export default function App() {
         }
       })
   }, [loggedIn, identityAttempt])
-
-  useEffect(() => {
-    if (!identityOffline) return undefined
-    const retry = () => setIdentityAttempt((n) => n + 1)
-    const stop = connection.subscribe((s) => { if (s.reachable) retry() })
-    window.addEventListener('online', retry)
-    return () => {
-      stop()
-      window.removeEventListener('online', retry)
-    }
-  }, [identityOffline])
 
   function refreshWaitingCount() {
     if (identityKind !== 'staff' || me?.role !== 'admin' || me?.billing?.status === 'locked') {
@@ -492,15 +480,14 @@ export default function App() {
         </div>
       )
     }
-    if (identityOffline) {
+    if (cantReach) {
       return (
         <div className="login-wrap">
           <div className="login-card">
             <LogoFull />
-            <p className="tagline">Waiting for a connection</p>
+            <p className="tagline">Can’t reach HouseMaster</p>
             <p>
-              You’re still signed in, but your phone can’t reach HouseMaster right now. Check your
-              signal: this page will load by itself when the connection is back.
+              HouseMaster needs an internet connection. Check yours, then try again. You’re still signed in.
             </p>
             <button type="button" onClick={() => setIdentityAttempt((n) => n + 1)}>Try again</button>
             <button type="button" className="link-button" onClick={handleLogout}>Sign out</button>
