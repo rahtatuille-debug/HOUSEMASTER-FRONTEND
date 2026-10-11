@@ -7,6 +7,7 @@ import { formatDate as localDate, formatDateTime } from '../format.js'
 import { useSchool, useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import PerformanceChart from './PerformanceChart.jsx'
+import { ChildCharts } from './StudentCharts.jsx'
 import HealthNotesCard from './HealthNotesCard.jsx'
 import SupportCard from './SupportCard.jsx'
 import WeekGrid from './WeekGrid.jsx'
@@ -39,6 +40,16 @@ function ReportResults({ studentId, term }) {
 // Parents see their children; a student signed in to their own account
 // (`student` = /api/student/me/) sees just their own record, can hand in
 // homework, and doesn't get the parents-only parts (health notes, leave).
+// The terms the child has marks in (the marks list carries each term's id and name), in the school's term order
+// (the profile's performance list is in that order), so the latest term comes last.
+export function gradeTerms(grades, performance) {
+  const order = (performance || []).map((p) => p.term)
+  const seen = new Map()
+  for (const g of grades || []) if (!seen.has(g.term)) seen.set(g.term, { id: g.term, name: g.term_name })
+  const place = (t) => (order.includes(t.name) ? order.indexOf(t.name) : order.length + t.id)
+  return [...seen.values()].sort((a, b) => place(a) - place(b))
+}
+
 export default function GuardianStudents({ student = null }) {
   const school = useSchool()
   const words = useVocab()
@@ -193,6 +204,7 @@ export default function GuardianStudents({ student = null }) {
               )}
             </div>
           )}
+          {tab === 'progress' && profile && <ChildCharts key={selected.id} studentId={selected.id} terms={gradeTerms(grades, profile.performance)} />}
           {tab === 'timetable' && <ChildTimetable studentId={selected.id} />}
           {tab === 'behaviour' && <ChildBehaviour rows={profile?.discipline} merits={profile?.merits} firstName={selected.first_name} />}
           {tab === 'clubs' && <ChildClubs clubs={profile?.clubs} firstName={selected.first_name} />}

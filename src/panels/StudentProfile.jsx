@@ -8,6 +8,7 @@ import { ScaleContext, useWithLevel, useVocab } from '../levels.js'
 import { api, needsApproval } from '../api.js'
 import { ContactDetails, RELATIONSHIPS } from './ParentContact.jsx'
 import PerformanceChart from './PerformanceChart.jsx'
+import StudentCharts from './StudentCharts.jsx'
 import SupportCard from './SupportCard.jsx'
 import BoarderBedFlag from './BoarderBedFlag.jsx'
 import { BarChart, COMPARE } from './charts.jsx'
@@ -456,6 +457,7 @@ export default function StudentProfile({ studentId, me, onBack }) {
             </div>
           )}
           {section === 'performance' && <SubjectBreakdown studentId={s.id} name={name} />}
+          {section === 'performance' && <StudentCharts studentId={s.id} only="trends" />}
 
           {section === 'academics' && (
             profile.grades_by_term.length === 0 ? (

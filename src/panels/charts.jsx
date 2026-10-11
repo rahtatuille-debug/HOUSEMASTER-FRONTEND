@@ -17,7 +17,15 @@ function Legend({ series }) {
     <div className="chart-legend" aria-hidden="true">
       {series.map((s) => (
         <span key={s.key}>
-          <i style={{ background: s.dashed ? 'transparent' : s.color, border: s.dashed ? `2px dashed ${s.color}` : 'none', boxSizing: 'border-box' }} />
+          {s.marker ? (
+            // The line's own marker and dash, so the key never relies on colour alone.
+            <svg width="22" height="12" viewBox="0 0 22 12" style={{ marginRight: 4, verticalAlign: -1 }}>
+              <line x1="1" x2="21" y1="6" y2="6" stroke={s.color} strokeWidth="2" strokeDasharray={s.dashed ? '4 3' : undefined} />
+              <Marker shape={s.marker} x={11} y={6} r={3.5} fill={s.dashed ? '#fff' : s.color} stroke={s.dashed ? s.color : '#fff'} strokeWidth="1.5" />
+            </svg>
+          ) : (
+            <i style={{ background: s.dashed ? 'transparent' : s.color, border: s.dashed ? `2px dashed ${s.color}` : 'none', boxSizing: 'border-box' }} />
+          )}
           {s.label}
         </span>
       ))}
@@ -25,8 +33,28 @@ function Legend({ series }) {
   )
 }
 
-// Average by term, one line per series. data: [{ term, [series.key]: number|null }]
-export function LineChart({ data, series, label }) {
+// Marker shapes, so lines can be told apart without colour (more than three series on a chart).
+export const MARKERS = ['circle', 'square', 'triangle', 'diamond']
+
+function Marker({ shape = 'circle', x, y, r, ...props }) {
+  if (shape === 'square') return <rect x={x - r} y={y - r} width={r * 2} height={r * 2} {...props} />
+  if (shape === 'triangle') return <path d={`M${x},${y - r * 1.2}L${x + r * 1.1},${y + r * 0.8}L${x - r * 1.1},${y + r * 0.8}Z`} {...props} />
+  if (shape === 'diamond') return <path d={`M${x},${y - r * 1.25}L${x + r * 1.25},${y}L${x},${y + r * 1.25}L${x - r * 1.25},${y}Z`} {...props} />
+  return <circle cx={x} cy={y} r={r} {...props} />
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+const day = (iso) => Date.UTC(+iso.slice(0, 4), +iso.slice(5, 7) - 1, +iso.slice(8, 10))
+
+// One line per series. data: [{ term, [series.key]: number|null }] (or { date } with `dates`).
+// Optional, all off by default so existing charts are unchanged:
+//   gaps: a missing value breaks the line instead of joining across it;
+//   dates: { start, end } (ISO days): an x axis over dates, each row placed by its `date`;
+//   yAxis: { min, max, reverse, ticks, format }: another scale than 0–100% (e.g. positions, 1 at the top);
+//   pointLabel(row, series): makes every point focusable, announcing this text;
+//   valueText(row, series): the tooltip text for a value.
+// A series may set `marker` (see MARKERS) and `dashed`.
+export function LineChart({ data, series, label, gaps = false, dates = null, yAxis = null, pointLabel = null, valueText = null }) {
   const fmt = useWithLevel()
   const [hover, setHover] = useState(null)
   const shown = series.filter((s) => data.some((d) => d[s.key] != null))
@@ -39,14 +67,22 @@ export function LineChart({ data, series, label }) {
   const plotW = W - PAD.left - PAD.right
   const plotH = H - PAD.top - PAD.bottom
   const step = data.length > 1 ? plotW / (data.length - 1) : 0
-  const x = (i) => PAD.left + (data.length > 1 ? i * step : plotW / 2)
-  const y = (v) => PAD.top + plotH - (v / 100) * plotH
+  const from = dates ? day(dates.start || data[0].date) : 0
+  const to = dates ? Math.max(day(dates.end || data[data.length - 1].date), from + 86400000) : 0
+  const xAt = (iso) => PAD.left + ((day(iso) - from) / (to - from)) * plotW
+  const x = (i) => (dates ? xAt(data[i].date) : PAD.left + (data.length > 1 ? i * step : plotW / 2))
+  const axis = yAxis || { min: 0, max: 100, ticks: [0, 25, 50, 75, 100], format: (v) => `${v}%` }
+  const share = (v) => (v - axis.min) / ((axis.max - axis.min) || 1)
+  const y = (v) => (axis.reverse ? PAD.top + share(v) * plotH : PAD.top + plotH - share(v) * plotH)
+  const show = (row, s) => (valueText ? valueText(row, s) : fmt(row[s.key]))
 
   const path = (key) => {
     let d = ''
+    let open = false
     data.forEach((row, i) => {
-      if (row[key] == null) return
-      d += `${d ? 'L' : 'M'}${x(i)},${y(row[key])}`
+      if (row[key] == null) { if (gaps) open = false; return }
+      d += `${open ? 'L' : 'M'}${x(i)},${y(row[key])}`
+      open = true
     })
     return d
   }
@@ -64,23 +100,37 @@ export function LineChart({ data, series, label }) {
   function onMove(e) {
     const rect = e.currentTarget.getBoundingClientRect()
     const px = ((e.clientX - rect.left) / rect.width) * W
-    const i = data.length > 1 ? Math.round((px - PAD.left) / step) : 0
+    let i = data.length > 1 ? Math.round((px - PAD.left) / step) : 0
+    if (dates) i = data.reduce((best, _d, k) => (Math.abs(x(k) - px) < Math.abs(x(best) - px) ? k : best), 0)
     setHover(Math.max(0, Math.min(data.length - 1, i)))
   }
   const hovered = hover != null ? data[hover] : null
+  // A date axis is labelled by month: the first of each month in the range, at most six.
+  const monthTicks = []
+  if (dates) {
+    const first = new Date(from)
+    for (let m = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + (first.getUTCDate() > 1 ? 1 : 0), 1)); m.getTime() <= to; m = new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth() + 1, 1))) {
+      monthTicks.push(m)
+    }
+  }
+  const tickEvery = Math.ceil(monthTicks.length / 6) || 1
 
   return (
     <div className="perf-chart">
       <Legend series={shown} />
       <div style={{ position: 'relative' }}>
         <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={label} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
-          {[0, 25, 50, 75, 100].map((v) => (
+          {axis.ticks.map((v) => (
             <g key={v}>
               <line x1={PAD.left} x2={PAD.left + plotW} y1={y(v)} y2={y(v)} stroke="#ece6d8" strokeWidth="1" />
-              <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" className="chart-axis">{v}%</text>
+              <text x={PAD.left - 8} y={y(v) + 4} textAnchor="end" className="chart-axis">{axis.format(v)}</text>
             </g>
           ))}
-          {data.map((d, i) => (i === data.length - 1 || (i % labelEvery === 0 && data.length - 1 - i >= labelEvery)) && (
+          {dates ? monthTicks.filter((_m, k) => k % tickEvery === 0).map((m) => (
+            <text key={m.getTime()} x={PAD.left + ((m.getTime() - from) / (to - from)) * plotW} y={H - 12} className="chart-axis" textAnchor="middle">
+              {MONTHS[m.getUTCMonth()]}
+            </text>
+          )) : data.map((d, i) => (i === data.length - 1 || (i % labelEvery === 0 && data.length - 1 - i >= labelEvery)) && (
             // Years of terms don't fit: label every few, plus the latest (hovering shows each one).
             <text key={i} x={x(i)} y={H - 12} className="chart-axis"
               textAnchor={data.length > 1 && i === 0 ? 'start' : data.length > 1 && i === data.length - 1 ? 'end' : 'middle'}>
@@ -93,7 +143,8 @@ export function LineChart({ data, series, label }) {
               <path d={path(s.key)} fill="none" stroke={s.color} strokeWidth="2" strokeDasharray={s.dashed ? '6 4' : undefined} strokeLinejoin="round" strokeLinecap="round" />
               {data.map((d, i) =>
                 d[s.key] == null ? null : (
-                  <circle key={i} cx={x(i)} cy={y(d[s.key])} r={hover === i ? 5 : 4} fill={s.dashed ? '#fff' : s.color} stroke={s.dashed ? s.color : '#fff'} strokeWidth="2" />
+                  <Marker key={i} shape={s.marker} x={x(i)} y={y(d[s.key])} r={hover === i ? 5 : 4} fill={s.dashed ? '#fff' : s.color} stroke={s.dashed ? s.color : '#fff'} strokeWidth="2"
+                    {...(pointLabel ? { tabIndex: 0, role: 'img', 'aria-label': pointLabel(d, s), className: 'chart-point', onFocus: () => setHover(i), onBlur: () => setHover(null) } : {})} />
                 )
               )}
             </g>
@@ -104,9 +155,9 @@ export function LineChart({ data, series, label }) {
         </svg>
         {hovered && (
           <div className="chart-tooltip" style={{ left: `${(x(hover) / W) * 100}%`, transform: hover > data.length / 2 ? 'translateX(calc(-100% - 12px))' : 'translateX(12px)' }}>
-            <strong>{hovered.term}</strong>
+            <strong>{hovered.term || hovered.label}</strong>
             {shown.map((s) => (
-              <div key={s.key}><i style={{ background: s.color }} /> {s.label}: {fmt(hovered[s.key])}</div>
+              <div key={s.key}><i style={{ background: s.color }} /> {s.label}: {hovered[s.key] == null && pointLabel ? '—' : show(hovered, s)}</div>
             ))}
           </div>
         )}
@@ -218,6 +269,59 @@ export function ColumnChart({ bands, label }) {
           {bands[hover].band}: {bands[hover].students} student{bands[hover].students === 1 ? '' : 's'} ({Math.round((bands[hover].students / total) * 100)}%)
         </p>
       )}
+    </div>
+  )
+}
+
+// A spider chart on a fixed 0–100% scale (never fitted to the data), for 3 to 10 axes.
+// axes: [{ label, value, compare }]; the comparison (if every axis has one) is a dashed outline.
+export function RadarChart({ axes, label, valueLabel, compareLabel }) {
+  const fmt = useWithLevel()
+  const [focus, setFocus] = useState(null)
+  const W = 640
+  const H = 400
+  const cx = W / 2
+  const cy = H / 2 + 6
+  const R = 140
+  const n = axes.length
+  const angle = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n
+  const at = (i, v) => [cx + Math.cos(angle(i)) * R * (Math.max(0, Math.min(100, v)) / 100), cy + Math.sin(angle(i)) * R * (Math.max(0, Math.min(100, v)) / 100)]
+  const shape = (key) => axes.map((a, i) => at(i, a[key]).join(',')).join(' ')
+  const withCompare = compareLabel && axes.every((a) => a.compare != null)
+  const short = (text) => (text.length > 16 ? `${text.slice(0, 15)}…` : text)
+  const series = [{ key: 'value', label: valueLabel, color: COMPARE[0] }, ...(withCompare ? [{ key: 'compare', label: compareLabel, color: BENCHMARK, dashed: true }] : [])]
+  return (
+    <div className="perf-chart">
+      <Legend series={series} />
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={label}>
+        {[25, 50, 75, 100].map((ring) => (
+          <g key={ring}>
+            <polygon points={axes.map((_a, i) => at(i, ring).join(',')).join(' ')} fill="none" stroke="#ece6d8" strokeWidth="1" />
+            <text x={cx + 4} y={cy - (R * ring) / 100 + 12} className="chart-axis">{ring}%</text>
+          </g>
+        ))}
+        {axes.map((a, i) => {
+          const [ex, ey] = at(i, 100)
+          const cos = Math.cos(angle(i))
+          const [lx, ly] = [cx + cos * (R + 14), cy + Math.sin(angle(i)) * (R + 14)]
+          return (
+            <g key={a.label}>
+              <line x1={cx} y1={cy} x2={ex} y2={ey} stroke="#ece6d8" strokeWidth="1" />
+              <text x={lx} y={ly + 4 + (Math.sin(angle(i)) > 0.5 ? 8 : Math.sin(angle(i)) < -0.5 ? -4 : 0)} className="chart-label"
+                textAnchor={Math.abs(cos) < 0.2 ? 'middle' : cos > 0 ? 'start' : 'end'}>
+                {short(a.label)}
+              </text>
+            </g>
+          )
+        })}
+        {withCompare && <polygon points={shape('compare')} fill="none" stroke={BENCHMARK} strokeWidth="2" strokeDasharray="6 4" />}
+        <polygon points={shape('value')} fill={COMPARE[0]} fillOpacity="0.15" stroke={COMPARE[0]} strokeWidth="2" strokeLinejoin="round" />
+        {axes.map((a, i) => {
+          const [px, py] = at(i, a.value)
+          return <circle key={a.label} cx={px} cy={py} r={focus === i ? 6 : 4} fill={COMPARE[0]} stroke="#fff" strokeWidth="2" tabIndex={0} role="img" className="chart-point"
+            aria-label={`${a.label}: ${fmt(a.value)}${withCompare ? `, ${compareLabel} ${fmt(a.compare)}` : ''}`} onFocus={() => setFocus(i)} onBlur={() => setFocus(null)} />
+        })}
+      </svg>
     </div>
   )
 }
