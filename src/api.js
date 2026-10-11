@@ -141,6 +141,25 @@ async function joinInfo(token) {
   return data
 }
 
+// The staff sign-up link (public): which school, and asking to join.
+async function staffJoinInfo(token) {
+  const res = await fetch(`${API_BASE}/api/staff-join/${token}/`)
+  const data = await res.json().catch(() => null)
+  if (!res.ok) throw new Error(data?.detail || 'This sign-up link isn\'t working.')
+  return data
+}
+
+async function staffJoinAsk(token, body) {
+  const res = await fetch(`${API_BASE}/api/staff-join/${token}/`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  })
+  const data = await res.json().catch(() => null)
+  if (!res.ok) {
+    throw new Error((data && (data.detail || Object.values(data).flat().join(' '))) || `Sign-up failed (${res.status})`)
+  }
+  return data
+}
+
 async function joinClass(token, body) {
   const res = await fetch(`${API_BASE}/api/join/${token}/`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
@@ -720,6 +739,15 @@ export const api = {
   acceptGuardianInvite,
   joinInfo,
   joinClass,
+  staffJoinInfo,
+  staffJoinAsk,
+  // Admins: the school's one staff sign-up link, and who is waiting to join through it.
+  staffJoin: {
+    link: () => request('/api/staff-join-link/'),
+    change: (action) => request('/api/staff-join-link/', { method: 'POST', body: { action } }),
+    requests: (status = 'pending') => request(`/api/staff-signup-requests/?status=${status}`),
+    decide: (ids, decision) => request('/api/staff-signup-requests/', { method: 'POST', body: { ids, decision } }),
+  },
   applyInfo,
   submitApplication,
   confirmApplication,

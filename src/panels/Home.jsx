@@ -86,6 +86,10 @@ export default function Home({ me, onNavigate, onStartTour }) {
       key: 'signups', action: 'Parents', onClick: () => onNavigate('parents'),
       text: `${data.parent_signups_waiting} parent sign-up${data.parent_signups_waiting === 1 ? '' : 's'} to approve`,
     },
+    me?.role === 'admin' && data.staff_signups_waiting > 0 && {
+      key: 'staffsignups', action: 'Staff', onClick: () => onNavigate('staff'),
+      text: `${data.staff_signups_waiting} staff sign-up${data.staff_signups_waiting === 1 ? '' : 's'} to approve`,
+    },
     me?.role === 'admin' && data.invites.items.length > 0 && {
       key: 'invites', action: 'Staff', onClick: () => onNavigate('staff'),
       text: `${data.invites.items.length} invite${data.invites.items.length === 1 ? '' : 's'} not accepted${expired ? ` (${expired} expired)` : ''}`,
