@@ -27,7 +27,7 @@ export function usePullToRefresh(enabled = true, onRefresh = reload) {
 
     function onStart(e) {
       if (e.touches.length !== 1 || window.scrollY > 0 || scrolledInside(e.target)
-        || e.target.closest?.('input, textarea, select, [role="dialog"], .tour')) { startY = null; return }
+        || e.target.closest?.('input, textarea, select, [role="dialog"], .tour, [data-no-pull]')) { startY = null; return }
       startY = e.touches[0].clientY
       startX = e.touches[0].clientX
       distance = 0

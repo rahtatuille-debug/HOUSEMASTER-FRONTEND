@@ -40,6 +40,13 @@ export default function Messages({ me, identityKind }) {
   const [newBody, setNewBody] = useState('')
   const [creating, setCreating] = useState(false)
 
+  // Phones: an open chat fills the screen (styles.css), so the page behind it stays still.
+  const chatOpen = Boolean(thread) && !composing
+  useEffect(() => {
+    document.body.classList.toggle('chat-open', chatOpen)
+    return () => document.body.classList.remove('chat-open')
+  }, [chatOpen])
+
   async function loadConversations() {
     setLoading(true)
     setError('')
@@ -259,8 +266,8 @@ export default function Messages({ me, identityKind }) {
           )}
         </div>
 
-        <div className={`card messages-detail-pane${!composing && thread ? ' has-thread' : ''}`}>
-          {(composing || thread) && (
+        <div className={`card messages-detail-pane${!composing && thread ? ' has-thread' : ''}`} data-no-pull={!composing && thread ? '' : undefined}>
+          {composing && (
             <button type="button" className="secondary back-to-list" onClick={goBackToList}>
               ← Back to conversations
             </button>
@@ -373,9 +380,14 @@ export default function Messages({ me, identityKind }) {
 
           {!composing && thread && (
             <>
-              <div className="announcement-detail-heading" style={{ marginBottom: 14 }}>
-                <div>
-                  <h3 style={{ fontSize: 17 }}>{title(thread)}</h3>
+              <div className="messages-chat-head">
+                <button type="button" className="chat-back" aria-label="Back to conversations" onClick={goBackToList}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"
+                    strokeLinejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6" /></svg>
+                </button>
+                <span className="chat-avatar" aria-hidden="true">{initials(title(thread))}</span>
+                <div className="chat-title">
+                  <h3>{title(thread)}</h3>
                   {CLASS_KINDS[thread.kind] && isStaff && (
                     <p className="text-muted" style={{ margin: '2px 0 0', fontSize: 13 }}>
                       {thread.member_count - 1} parent{thread.member_count - 1 === 1 ? '' : 's'}
@@ -440,4 +452,9 @@ export default function Messages({ me, identityKind }) {
       </div>
     </div>
   )
+}
+
+// "7 East parents · Notice" → "7E"; "Grace Otieno" → "GO".
+function initials(name) {
+  return (name || '').split(/[\s·]+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join('')
 }

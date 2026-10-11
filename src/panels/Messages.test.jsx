@@ -94,3 +94,24 @@ describe('refreshing the page', () => {
     expect(screen.queryByLabelText('Write a message')).toBeNull()
   })
 })
+
+describe('an open chat on a phone', () => {
+  it('fills the screen with a back arrow, and the page behind it stays still', async () => {
+    const conversation = {
+      id: 3, kind: 'direct', participants: [{ id: 5, name: 'Grace Otieno', kind: 'guardian' }, { id: 9, name: 'Mr Otieno', kind: 'staff' }],
+      member_count: 2, can_reply: true, unread_count: 0, last_message: { body: 'Thanks' }, student_name: null,
+    }
+    mockApi.current = deepApiMock({
+      'conversations.list': () => Promise.resolve([conversation]),
+      'conversations.messages': () => Promise.resolve([{ id: 1, sender: 5, sender_name: 'Grace', body: 'Hello', created_at: '2026-09-28T08:00:00Z' }]),
+    })
+    const { container } = render(<Messages me={{ id: 9, name: 'Mr Otieno' }} identityKind="staff" />)
+    fireEvent.click(await screen.findByText('Thanks'))
+    await screen.findByText('Hello')
+    expect(document.body).toHaveClass('chat-open')
+    expect(container.querySelector('.messages-detail-pane')).toHaveAttribute('data-no-pull')
+    fireEvent.click(screen.getByRole('button', { name: 'Back to conversations' }))
+    expect(document.body).not.toHaveClass('chat-open')
+    expect(screen.queryByLabelText('Write a message')).toBeNull()
+  })
+})
