@@ -269,7 +269,8 @@ export default function Performance({ me }) {
         </div>
         <p className="hint" style={{ marginBottom: 0 }}>
           A student's average is the mean of their subject percentages for the term. Group averages are the mean of their
-          students' averages, so every student counts equally.
+          students' averages, so every student counts equally. Another group's average (a class, the year group, the
+          school) is only shown when at least 5 students have marks, so it never stands for one or two children.
         </p>
       </div>
 
