@@ -57,6 +57,8 @@ import { personIdentity, guardianIdentity, studentIdentity } from './user.js'
 import { GOVERNOR_PAGES, GOVERNOR_SECTIONS, GUARDIAN_SECTIONS, STAFF_SECTIONS, STUDENT_SECTIONS, bottomBarSections, sectionOf, visibleSections } from './nav.js'
 import { NavIcon } from './icons.jsx'
 import { forget, useRemembered } from './remember.js'
+import { usePullToRefresh } from './pullToRefresh.js'
+import Settings from './panels/Settings.jsx'
 
 const TABS = [
   { key: 'home', label: 'Dashboard', component: StaffHome },
@@ -90,6 +92,7 @@ const TABS = [
   { key: 'billing', label: 'Billing', component: Billing, adminOnly: true },
   { key: 'guide', label: 'Guide', component: Guide },
   { key: 'profile', label: 'Profile', component: Profile },
+  { key: 'settings', label: 'Settings', component: Settings },
 ]
 
 // Admins and leadership get the school's dashboard; governors the school's
@@ -114,8 +117,8 @@ function tourSteps(me, sections, pageLabel) {
     { key: 'welcome', title: `Welcome to HouseMaster${first ? `, ${first}` : ''}`,
       text: `A quick tour of everything you can do here. The menu has a few sections; each opens with its pages as tabs along the top. It takes about two minutes, and you can leave it whenever you like.` },
     ...stops,
-    { key: 'guide', title: 'Guide', targets: ['.topbar [aria-label="Guide"]'],
-      text: 'Step-by-step instructions for every page. Come back here any time you are unsure how to do something, or to take this tour again.' },
+    { key: 'guide', title: 'Settings', targets: ['.topbar [aria-label="Your profile"]'],
+      text: 'Your profile, the school\'s setup and the guide (step-by-step instructions for every page) are in Settings, under your profile picture. You can take this tour again from there too.' },
     { key: 'end', title: "You're ready",
       text: role === 'admin'
         ? 'Your Dashboard shows what needs you today and your school\'s first-week checklist.'
@@ -128,6 +131,7 @@ const STUDENT_TABS = [
   { key: 'mywork', label: 'My work', component: (props) => <GuardianStudents student={props.me} /> },
   { key: 'calendar', label: 'Calendar', component: Calendar },
   { key: 'profile', label: 'Profile', component: StudentProfile },
+  { key: 'settings', label: 'Settings', component: Settings },
 ]
 
 const GUARDIAN_TABS = [
@@ -136,6 +140,7 @@ const GUARDIAN_TABS = [
   { key: 'calendar', label: 'Calendar', component: Calendar },
   { key: 'messages', label: 'Messages', component: Messages },
   { key: 'profile', label: 'Profile', component: Profile },
+  { key: 'settings', label: 'Settings', component: Settings },
 ]
 
 // No router library — this app is small enough that a plain path check
@@ -186,20 +191,6 @@ function BellIcon() {
   )
 }
 
-function GearIcon() {
-  return (
-    <svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true">
-      <circle cx="10" cy="10" r="2.6" stroke="currentColor" strokeWidth="1.4" />
-      <path
-        d="M10 2.7v1.8M10 15.5v1.8M17.3 10h-1.8M4.5 10H2.7M15.1 4.9l-1.3 1.3M6.2 13.8l-1.3 1.3M15.1 15.1l-1.3-1.3M6.2 6.2 4.9 4.9"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
 function UserIcon() {
   return (
     <svg viewBox="0 0 20 20" width="19" height="19" fill="none" aria-hidden="true">
@@ -243,7 +234,7 @@ export default function App() {
     if (chosen === null && identityKind === 'staff' && me?.role) setQuickLinks(me.role === 'admin')
   }, [identityKind, me?.role])
   const [tourOpen, setTourOpen] = useState(false)
-  // A teacher's first visit starts with the guided tour (once; it can be replayed from Home or the Guide).
+  // A teacher's first visit starts with the guided tour (once; it can be replayed from Settings or the Guide).
   const autoTour = identityKind === 'staff' && me && me.role !== 'admin' && me.tour_seen === false && me.school?.setup_completed
   useEffect(() => { if (autoTour) setTourOpen(true) }, [autoTour])
   const [notifOpen, setNotifOpen] = useState(false)
@@ -266,6 +257,8 @@ export default function App() {
   const [identityAttempt, setIdentityAttempt] = useState(0)
   // The school's subscription is overdue past its grace period: only its admins can sign in, to pay.
   const [schoolLocked, setSchoolLocked] = useState('')
+  // Phones: pull down at the top of the page to refresh it.
+  const pullRefresh = usePullToRefresh(loggedIn && !!identityKind && !tourOpen)
 
   useEffect(() => {
     if (!loggedIn) return
@@ -553,7 +546,7 @@ export default function App() {
   const governor = identityKind === 'staff' && p.is_governor
   // A page shows when its role allows it (`need`), admins see admin pages,
   // and a governor sees only the school's figures and their profile.
-  const visibleTabs = tabSet.filter((t) => (billingLocked ? ['billing', 'profile'].includes(t.key) : governor ? GOVERNOR_PAGES.includes(t.key)
+  const visibleTabs = tabSet.filter((t) => (billingLocked ? ['billing', 'profile', 'settings'].includes(t.key) : governor ? GOVERNOR_PAGES.includes(t.key)
     : (!t.adminOnly || isAdmin) && (!t.need || p[t.need]) && (!t.boardingOnly || me?.is_boarding_staff)))
   const pageKeys = visibleTabs.map((t) => t.key)
   // Pages a role opens inside the Admin section (e.g. Parents for the Secretary, Approvals for leaders).
@@ -574,6 +567,15 @@ export default function App() {
   }
   // Pages outside the sections (a teacher's Setup and requests, the guide, the profile).
   const extraPages = pageKeys.filter((k) => !sections.some((s) => s.pages.includes(k)))
+  // What Settings lists: the profile, Setup, a teacher's requests and the guide (the tour is a button there).
+  const settingsPages = [
+    'profile',
+    ...(showSettings && pageKeys.includes('setup') ? ['setup'] : []),
+    ...extraPages.filter((k) => !['profile', 'setup', 'guide', 'settings'].includes(k)),
+    ...(pageKeys.includes('guide') ? ['guide'] : []),
+  ].filter((k) => pageKeys.includes(k)).map((key) => ({ key, label: pageLabel(key) }))
+  // A page opened from Settings (and not from a section) leads back to it.
+  const fromSettings = !activeSection && activeKey !== 'settings' && settingsPages.some((x) => x.key === activeKey)
   const { bar, more } = bottomBarSections(sections)
   const badgeFor = (section) => (section.pages.includes('approvals') && waitingCount > 0 ? waitingCount : 0)
 
@@ -636,6 +638,15 @@ export default function App() {
 
   return (
     <div className={`app-shell${quickLinks ? ' with-links' : ''}`}>
+      {pullRefresh.pull > 0 && (
+        <div className={`pull-refresh${pullRefresh.ready ? ' ready' : ''}${pullRefresh.refreshing ? ' refreshing' : ''}`}
+          style={{ transform: `translateY(${pullRefresh.pull - 30}px)` }} role="status" aria-label={pullRefresh.refreshing ? 'Refreshing' : 'Pull to refresh'}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"
+            strokeLinejoin="round" style={pullRefresh.refreshing ? undefined : { transform: `rotate(${pullRefresh.pull * 3}deg)` }} aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" /><path d="M21 3v6h-6" />
+          </svg>
+        </div>
+      )}
       {tourOpen && identityKind === 'staff' && (
         <Tour steps={tourSteps(me, sections, pageLabel)} onClose={closeTour} />
       )}
@@ -666,11 +677,6 @@ export default function App() {
               title="Quick links" onClick={toggleQuickLinks}>
               <NavIcon name="links" size={20} />
             </button>
-            {pageKeys.includes('guide') && (
-              <button type="button" className="icon-button" aria-label="Guide" title="Guide" onClick={() => selectTab('guide')}>
-                <NavIcon name="help" size={20} />
-              </button>
-            )}
             <div className="icon-menu-wrap" ref={notifRef}>
               <button
                 type="button"
@@ -708,18 +714,6 @@ export default function App() {
               )}
             </div>
 
-            {showSettings && (
-              <button
-                type="button"
-                className="icon-button"
-                aria-label="Settings"
-                title="Settings"
-                onClick={() => selectTab('setup')}
-              >
-                <GearIcon />
-              </button>
-            )}
-
             <div className="icon-menu-wrap" ref={profileRef}>
               <button
                 type="button"
@@ -741,18 +735,12 @@ export default function App() {
                     className="secondary"
                     style={{ width: '100%', marginBottom: 8 }}
                     onClick={() => {
-                      selectTab('profile')
+                      selectTab('settings')
                       setProfileOpen(false)
                     }}
                   >
-                    View profile
+                    Settings
                   </button>
-                  {extraPages.filter((k) => k !== 'profile' && k !== 'guide').map((k) => (
-                    <button key={k} type="button" className="secondary" style={{ width: '100%', marginBottom: 8 }}
-                      onClick={() => { selectTab(k); setProfileOpen(false) }}>
-                      {pageLabel(k)}
-                    </button>
-                  ))}
                   <button type="button" className="danger" style={{ width: '100%' }} onClick={handleLogout}>
                     Log out
                   </button>
@@ -798,6 +786,9 @@ export default function App() {
               </div>
             )}
             <SchoolContext.Provider value={me?.school || null}>
+              {fromSettings && (
+                <button type="button" className="link-button settings-back" onClick={() => selectTab('settings')}>← Settings</button>
+              )}
               {ActivePanel && (
                 <ActivePanel
                   key={activeKey}
@@ -808,6 +799,8 @@ export default function App() {
                   onNavigate={selectTab}
                   navParams={navParams}
                   onStartTour={() => setTourOpen(true)}
+                  settingsPages={settingsPages}
+                  onLogout={handleLogout}
                 />
               )}
             </SchoolContext.Provider>

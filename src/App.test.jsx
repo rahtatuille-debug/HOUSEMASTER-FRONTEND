@@ -58,7 +58,7 @@ describe('identity fork', () => {
     expect(tabs.getByRole('tab', { name: 'Setup' })).toHaveAttribute('aria-selected', 'true')
   })
 
-  it('a teacher sees five sections; Setup and their requests are in the profile menu', async () => {
+  it('a teacher sees five sections; Setup, their requests, the guide and the tour are in Settings', async () => {
     mockApi.current = deepApiMock({
       isLoggedIn: () => true,
       me: () => Promise.resolve({ id: 2, name: 'Tom', role: 'teacher', tour_seen: true, school, assignments: [] }),
@@ -70,9 +70,20 @@ describe('identity fork', () => {
       .toEqual(['home', 'registers', 'reports', 'messages', 'students'])
     // All five fit the phone's bottom bar, so there's no "More".
     expect(container.querySelector('.bottom-bar [data-section="more"]')).toBeNull()
+    // Nothing but quick links, notifications and the profile picture in the top bar.
+    const topbar = within(container.querySelector('.topbar'))
+    expect(topbar.queryByRole('button', { name: 'Guide' })).toBeNull()
+    expect(topbar.queryByRole('button', { name: 'Settings' })).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Your profile' }))
-    expect(screen.getByRole('button', { name: 'My requests' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Setup' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'View profile' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Settings' }))
+    const settings = await screen.findByRole('heading', { name: 'Settings' })
+    const rows = [...settings.closest('section').querySelectorAll('.settings-row strong')].map((r) => r.textContent)
+    expect(rows).toEqual(['View profile', 'Setup', 'My requests', 'Guide', 'Take the tour'])
+    // A page opened from Settings leads back to it.
+    fireEvent.click(screen.getByRole('button', { name: /Guide/ }))
+    fireEvent.click(await screen.findByRole('button', { name: '← Settings' }))
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeInTheDocument()
   })
 
   it('an admin on a phone gets four sections and More, which lists everything', async () => {
