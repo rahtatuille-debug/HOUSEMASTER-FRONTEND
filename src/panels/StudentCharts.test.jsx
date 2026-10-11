@@ -226,3 +226,13 @@ describe('parents', () => {
     expect(calls).not.toContain('assessment_types')
   })
 })
+
+describe("the parent's term list for the marks chart", () => {
+  it('follows the school term order, so the latest term is the default', async () => {
+    const { gradeTerms } = await import('./GuardianStudents.jsx')
+    // Marks come newest-recorded first, which isn't term order (e.g. older marks imported later).
+    const grades = [{ term: 2, term_name: 'Summer' }, { term: 9, term_name: 'Spring' }, { term: 3, term_name: 'Autumn' }, { term: 2, term_name: 'Summer' }]
+    const performance = [{ term: 'Spring' }, { term: 'Summer' }, { term: 'Autumn' }]
+    expect(gradeTerms(grades, performance).map((t) => t.name)).toEqual(['Spring', 'Summer', 'Autumn'])
+  })
+})
