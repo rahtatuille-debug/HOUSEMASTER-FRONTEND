@@ -273,3 +273,55 @@ export function ColumnChart({ bands, label }) {
   )
 }
 
+// A spider chart on a fixed 0–100% scale (never fitted to the data), for 3 to 10 axes.
+// axes: [{ label, value, compare }]; the comparison (if every axis has one) is a dashed outline.
+export function RadarChart({ axes, label, valueLabel, compareLabel }) {
+  const fmt = useWithLevel()
+  const [focus, setFocus] = useState(null)
+  const W = 640
+  const H = 400
+  const cx = W / 2
+  const cy = H / 2 + 6
+  const R = 140
+  const n = axes.length
+  const angle = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / n
+  const at = (i, v) => [cx + Math.cos(angle(i)) * R * (Math.max(0, Math.min(100, v)) / 100), cy + Math.sin(angle(i)) * R * (Math.max(0, Math.min(100, v)) / 100)]
+  const shape = (key) => axes.map((a, i) => at(i, a[key]).join(',')).join(' ')
+  const withCompare = compareLabel && axes.every((a) => a.compare != null)
+  const short = (text) => (text.length > 16 ? `${text.slice(0, 15)}…` : text)
+  const series = [{ key: 'value', label: valueLabel, color: COMPARE[0] }, ...(withCompare ? [{ key: 'compare', label: compareLabel, color: BENCHMARK, dashed: true }] : [])]
+  return (
+    <div className="perf-chart">
+      <Legend series={series} />
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label={label}>
+        {[25, 50, 75, 100].map((ring) => (
+          <g key={ring}>
+            <polygon points={axes.map((_a, i) => at(i, ring).join(',')).join(' ')} fill="none" stroke="#ece6d8" strokeWidth="1" />
+            <text x={cx + 4} y={cy - (R * ring) / 100 + 12} className="chart-axis">{ring}%</text>
+          </g>
+        ))}
+        {axes.map((a, i) => {
+          const [ex, ey] = at(i, 100)
+          const cos = Math.cos(angle(i))
+          const [lx, ly] = [cx + cos * (R + 14), cy + Math.sin(angle(i)) * (R + 14)]
+          return (
+            <g key={a.label}>
+              <line x1={cx} y1={cy} x2={ex} y2={ey} stroke="#ece6d8" strokeWidth="1" />
+              <text x={lx} y={ly + 4 + (Math.sin(angle(i)) > 0.5 ? 8 : Math.sin(angle(i)) < -0.5 ? -4 : 0)} className="chart-label"
+                textAnchor={Math.abs(cos) < 0.2 ? 'middle' : cos > 0 ? 'start' : 'end'}>
+                {short(a.label)}
+              </text>
+            </g>
+          )
+        })}
+        {withCompare && <polygon points={shape('compare')} fill="none" stroke={BENCHMARK} strokeWidth="2" strokeDasharray="6 4" />}
+        <polygon points={shape('value')} fill={COMPARE[0]} fillOpacity="0.15" stroke={COMPARE[0]} strokeWidth="2" strokeLinejoin="round" />
+        {axes.map((a, i) => {
+          const [px, py] = at(i, a.value)
+          return <circle key={a.label} cx={px} cy={py} r={focus === i ? 6 : 4} fill={COMPARE[0]} stroke="#fff" strokeWidth="2" tabIndex={0} role="img" className="chart-point"
+            aria-label={`${a.label}: ${fmt(a.value)}${withCompare ? `, ${compareLabel} ${fmt(a.compare)}` : ''}`} onFocus={() => setFocus(i)} onBlur={() => setFocus(null)} />
+        })}
+      </svg>
+    </div>
+  )
+}

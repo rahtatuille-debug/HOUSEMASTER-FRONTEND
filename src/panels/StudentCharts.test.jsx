@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import { deepApiMock } from '../test/apiMock.js'
-import { LineChart } from './charts.jsx'
+import { LineChart, RadarChart } from './charts.jsx'
 
 const mockApi = { current: null }
 vi.mock('../api.js', async (importOriginal) => ({
@@ -11,7 +11,7 @@ vi.mock('../api.js', async (importOriginal) => ({
   },
 }))
 
-const { SubjectTrends, AssessmentTypes, MarksInTerm, RankOverTime } = await import('./StudentCharts.jsx')
+const { SubjectTrends, StrengthsRadar, AssessmentTypes, MarksInTerm, RankOverTime, ChildCharts } = await import('./StudentCharts.jsx')
 
 afterEach(() => { try { localStorage.clear() } catch { /* ignore */ } })
 
@@ -59,6 +59,51 @@ describe('P-1 subject trends', () => {
     render(<SubjectTrends data={trends({ Maths: [[74], [80], [90]] })} />)
     expect(screen.queryByLabelText('Compare with class average')).toBeNull()
   })
+})
+
+describe('P-5 strengths radar', () => {
+  const five = { Art: [[60, 55]], Biology: [[70, 65]], Chemistry: [[80, 70]], English: [[50, 60]], French: [[90, 70]] }
+  const oneTerm = (subjects) => ({ ...trends(Object.fromEntries(Object.entries(subjects).map(([k, v]) => [k, [...v, [null], [null]]]))) })
+
+  it('draws a radar on a fixed scale with a summary and the class outline', () => {
+    const { container } = render(<StrengthsRadar data={oneTerm(five)} termId={1} />)
+    expect(screen.getByText('Strongest in French (90.0%); weakest in English (50.0%).')).toBeInTheDocument()
+    expect(container.querySelectorAll('polygon[stroke-dasharray="6 4"]')).toHaveLength(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Show as table' }))
+    expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(6) // header + every subject
+  })
+
+  it('hides the class outline when a class value is missing (too few classmates)', () => {
+    const { container } = render(<StrengthsRadar data={oneTerm({ ...five, Art: [[60, null]] })} termId={1} />)
+    expect(container.querySelectorAll('polygon[stroke-dasharray]')).toHaveLength(0)
+  })
+
+  it('falls back to bars with the reason for fewer than 3 or more than 10 subjects', () => {
+    const { unmount } = render(<StrengthsRadar data={oneTerm({ Art: [[60]], Maths: [[70]] })} termId={1} />)
+    expect(screen.getByText(/A radar needs 3 to 10 subjects; this term has 2/)).toBeInTheDocument()
+    unmount()
+    const eleven = Object.fromEntries([...Array(11).keys()].map((i) => [`Subject ${i}`, [[40 + i]]]))
+    render(<StrengthsRadar data={oneTerm(eleven)} termId={1} />)
+    expect(screen.getByText(/this term has 11/)).toBeInTheDocument()
+  })
+})
+
+describe('RadarChart geometry', () => {
+  for (const n of [3, 5, 10]) {
+    it(`places ${n} axes on a fixed 0–100% scale`, () => {
+      const axes = [...Array(n).keys()].map((i) => ({ label: `A very long subject name number ${i}`, value: i === 0 ? 100 : 50 }))
+      const { container } = render(<RadarChart axes={axes} valueLabel="Ann" label="radar" />)
+      const shape = container.querySelector('polygon[fill-opacity]').getAttribute('points').split(' ').map((p) => p.split(',').map(Number))
+      expect(shape).toHaveLength(n)
+      // Centre (320, 206), radius 140: 100% is on the outer ring straight up; 50% is half way out.
+      expect(shape[0][0]).toBeCloseTo(320)
+      expect(shape[0][1]).toBeCloseTo(206 - 140)
+      expect(Math.hypot(shape[1][0] - 320, shape[1][1] - 206)).toBeCloseTo(70)
+      // Long names are shortened on the chart (the table has them in full).
+      expect(container.textContent).toContain('A very long sub…')
+      expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(n)
+    })
+  }
 })
 
 describe('LineChart options', () => {
@@ -161,3 +206,23 @@ describe('P-4 rank over time', () => {
   })
 })
 
+describe('parents', () => {
+  it('get subject trends and marks with no class comparison and no assessment types', async () => {
+    const calls = []
+    mockApi.current = deepApiMock({
+      'guardianStudents.charts': (id, params) => {
+        calls.push(params.chart)
+        if (params.chart === 'subject_trends') return Promise.resolve(trends({ Maths: [[74], [80], [90]], English: [[50], [60], [70]], Art: [[40], [50], [60]] }))
+        if (params.chart === 'marks') return Promise.resolve({ name: 'Ann X', term: { id: 3, name: 'T3', start: '2026-09-01', end: '2026-11-30' }, points: [{ subject: 'Maths', percent: 90, date: '2026-09-10' }], subjects: ['Maths'], outside_term: 0 })
+        return Promise.resolve({ ranked: false, points: [], reason: 'none' })
+      },
+    })
+    render(<ChildCharts studentId={7} terms={terms} />)
+    expect(await screen.findByText('Subjects over terms')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Compare with class average')).toBeNull()
+    expect(await screen.findByText(/Strengths, T3/)).toBeInTheDocument()
+    expect(await screen.findByText(/Marks through the term, T3/)).toBeInTheDocument()
+    expect(screen.queryByText('Position over terms')).toBeNull()
+    expect(calls).not.toContain('assessment_types')
+  })
+})

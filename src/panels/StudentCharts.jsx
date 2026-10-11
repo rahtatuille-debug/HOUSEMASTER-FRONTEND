@@ -3,7 +3,7 @@ import { api } from '../api.js'
 import { ScaleContext, useVocab, useWithLevel } from '../levels.js'
 import { formatDate } from '../format.js'
 import ChartCard from './ChartCard.jsx'
-import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, LineChart, MARKERS } from './charts.jsx'
+import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, LineChart, MARKERS, RadarChart } from './charts.jsx'
 
 // Five more graphs about one student (P-1 … P-5), and subject trends for a group (P-1). The numbers come from
 // /api/analytics/charts/ (staff) or the child's /charts/ (parents), which work them out exactly as the rest of the
@@ -136,6 +136,52 @@ export function GroupSubjectTrends({ scope, id, name }) {
         </ScaleContext.Provider>
       )}
     </Quiet>
+  )
+}
+
+// ---- P-5 ------------------------------------------------------------------------------------------------------
+
+export function StrengthsRadar({ data, termId, allowCompare = true }) {
+  const fmt = useWithLevel()
+  const words = useVocab()
+  const index = data.terms.findIndex((t) => String(t.id) === String(termId))
+  const i = index >= 0 ? index : data.terms.length - 1
+  const term = data.terms[i]
+  const axes = data.subjects.map((s) => ({ label: s.subject, value: s.points[i]?.student ?? null, compare: allowCompare ? s.points[i]?.class ?? null : null }))
+    .filter((a) => a.value != null)
+  if (!term) return null
+  const sorted = [...axes].sort((a, b) => b.value - a.value)
+  const summary = !sorted.length ? '' : sorted[0].value === sorted[sorted.length - 1].value
+    ? `Every ${words.subject.toLowerCase()} is at ${fmt(sorted[0].value, 1)}.`
+    : `Strongest in ${sorted[0].label} (${fmt(sorted[0].value, 1)}); weakest in ${sorted[sorted.length - 1].label} (${fmt(sorted[sorted.length - 1].value, 1)}).`
+  const withCompare = allowCompare && axes.length > 0 && axes.every((a) => a.compare != null)
+  const table = (
+    <table>
+      <thead><tr><th>{words.subject}</th><th>{data.name}</th>{allowCompare && <th>Class average</th>}</tr></thead>
+      <tbody>{data.subjects.map((s) => (
+        <tr key={s.subject}><td>{s.subject}</td><td>{s.points[i]?.student == null ? <span className="text-muted">no marks</span> : fmt(s.points[i].student, 1)}</td>
+          {allowCompare && <td>{s.points[i]?.class == null ? <span className="text-muted">not shown</span> : fmt(s.points[i].class, 1)}</td>}</tr>
+      ))}</tbody>
+    </table>
+  )
+  const fits = axes.length >= 3 && axes.length <= 10
+  return (
+    <ChartCard title={`Strengths, ${term.name}`} hint={fits ? `Each ${words.subject.toLowerCase()} on one shape, 0 to 100%.${withCompare ? ' The dashed outline is the class average.' : ''}` : null} table={table}>
+      {!axes.length ? <p className="text-muted" style={{ margin: 0 }}>No marks this {words.term.toLowerCase()}.</p> : fits ? (
+        <RadarChart axes={axes} valueLabel={data.name} compareLabel={withCompare ? 'Class average' : null}
+          label={`${data.name}, ${term.name}: ${axes.map((a) => `${a.label} ${fmt(a.value, 1)}`).join('; ')}`} />
+      ) : (
+        <>
+          <p className="hint" style={{ marginTop: 0 }}>
+            A radar needs 3 to 10 {words.subjects.toLowerCase()}; this {words.term.toLowerCase()} has {axes.length}, so here is a bar chart instead.
+          </p>
+          <BarChart rows={axes.map((a) => ({ label: a.label, value: a.value, compare: withCompare ? a.compare : null }))}
+            bars={[{ key: 'value', label: data.name, color: COMPARE[0] }, { key: 'compare', label: 'Class average', color: COMPARE[1] }]}
+            label={`${data.name} by ${words.subject.toLowerCase()}, ${term.name}`} />
+        </>
+      )}
+      {summary && <p className="chart-summary">{summary}</p>}
+    </ChartCard>
   )
 }
 
@@ -313,6 +359,7 @@ export default function StudentCharts({ studentId, termId, only }) {
       </Quiet>
       {only !== 'trends' && (
         <>
+          {trends.data && <StrengthsRadar data={trends.data} termId={termId} />}
           <AssessmentTypes studentId={studentId} termId={termId} />
           <MarksInTerm idKey={studentId} load={() => api.charts({ chart: 'marks', scope: 'student', id: studentId, ...(termId ? { term: termId } : {}) })} deps={[studentId, termId]} />
           <RankOverTime load={() => api.charts({ chart: 'ranks', scope: 'student', id: studentId })} deps={[studentId]} />
@@ -333,7 +380,10 @@ export function ChildCharts({ studentId, terms }) {
     <>
       <Quiet state={trends}>
         {trends.data && (trends.data.terms.length ? (
-          <SubjectTrends data={trends.data} allowCompare={false} />
+          <>
+            <SubjectTrends data={trends.data} allowCompare={false} />
+            <StrengthsRadar data={trends.data} allowCompare={false} />
+          </>
         ) : <p className="hint">{words.subjects} over time appear once the school shares a finalized report.</p>)}
       </Quiet>
       {terms.length > 0 && (
