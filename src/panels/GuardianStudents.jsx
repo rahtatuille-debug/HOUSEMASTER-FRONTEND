@@ -7,6 +7,7 @@ import { formatDate as localDate, formatDateTime } from '../format.js'
 import { useSchool, useWithLevel, useVocab } from '../levels.js'
 import { api } from '../api.js'
 import PerformanceChart from './PerformanceChart.jsx'
+import { ChildCharts } from './StudentCharts.jsx'
 import HealthNotesCard from './HealthNotesCard.jsx'
 import SupportCard from './SupportCard.jsx'
 import WeekGrid from './WeekGrid.jsx'
@@ -39,6 +40,13 @@ function ReportResults({ studentId, term }) {
 // Parents see their children; a student signed in to their own account
 // (`student` = /api/student/me/) sees just their own record, can hand in
 // homework, and doesn't get the parents-only parts (health notes, leave).
+// The terms the child has marks in, oldest first (the marks list carries each term's id and name).
+function gradeTerms(grades) {
+  const seen = new Map()
+  for (const g of [...(grades || [])].reverse()) if (!seen.has(g.term)) seen.set(g.term, { id: g.term, name: g.term_name })
+  return [...seen.values()]
+}
+
 export default function GuardianStudents({ student = null }) {
   const school = useSchool()
   const words = useVocab()
@@ -193,6 +201,7 @@ export default function GuardianStudents({ student = null }) {
               )}
             </div>
           )}
+          {tab === 'progress' && profile && <ChildCharts key={selected.id} studentId={selected.id} terms={gradeTerms(grades)} />}
           {tab === 'timetable' && <ChildTimetable studentId={selected.id} />}
           {tab === 'behaviour' && <ChildBehaviour rows={profile?.discipline} merits={profile?.merits} firstName={selected.first_name} />}
           {tab === 'clubs' && <ChildClubs clubs={profile?.clubs} firstName={selected.first_name} />}

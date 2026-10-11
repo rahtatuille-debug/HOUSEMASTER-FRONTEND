@@ -4,6 +4,8 @@ import { ScaleContext, useSchoolLevels, useWithLevel, useVocab } from '../levels
 import { api } from '../api.js'
 import { BENCHMARK, BarChart, CATEGORICAL, COMPARE, ColumnChart, LineChart } from './charts.jsx'
 import SupportBadge from './SupportBadge.jsx'
+import ChartCard from './ChartCard.jsx'
+import StudentCharts, { GroupSubjectTrends } from './StudentCharts.jsx'
 
 const SCOPES = [
   { key: 'student', label: 'Student' },
@@ -18,24 +20,6 @@ function Change({ value }) {
   if (value === 0) return <span>no change</span>
   // Arrow and sign, so the direction never depends on colour alone.
   return value > 0 ? <span className="change-up">▲ +{value}</span> : <span className="change-down">▼ {value}</span>
-}
-
-function ChartCard({ title, hint, children, table }) {
-  const [showTable, setShowTable] = useState(false)
-  return (
-    <div className="card">
-      <div className="panel-header" style={{ marginBottom: 4 }}>
-        <h3 style={{ fontSize: 15 }}>{title}</h3>
-        {table && (
-          <button type="button" className="link-button" style={{ width: 'auto', padding: 0 }} onClick={() => setShowTable(!showTable)}>
-            {showTable ? 'Show chart' : 'Show as table'}
-          </button>
-        )}
-      </div>
-      {hint && <p className="hint" style={{ marginTop: 0 }}>{hint}</p>}
-      {showTable ? <div className="table-scroll">{table}</div> : children}
-    </div>
-  )
 }
 
 function TrendTable({ data, series }) {
@@ -297,14 +281,14 @@ export default function Performance({ me }) {
       {data && data.terms.length > 0 && (
         // Levels follow the grading of the section this view is about (e.g. IGCSE 9–1 for a Year 10 class).
         <ScaleContext.Provider value={data.grading?.scale || null}>
-          <Charts data={data} termName={termName} onOpenStudent={openStudent} />
+          <Charts data={data} termName={termName} onOpenStudent={openStudent} targetId={id} />
         </ScaleContext.Provider>
       )}
     </div>
   )
 }
 
-function Charts({ data, termName, onOpenStudent }) {
+function Charts({ data, termName, onOpenStudent, targetId }) {
   const words = useVocab()
   const byLevel = useSchoolLevels().length > 0
   if (data.scope === 'student') {
@@ -324,6 +308,7 @@ function Charts({ data, termName, onOpenStudent }) {
         <ChartCard title={`Subjects, ${termName}`} hint="Each subject against the class average." table={<RowsTable rows={rows} bars={bars} />}>
           <BarChart rows={rows} bars={bars} label={`${data.name} by subject, ${termName}`} />
         </ChartCard>
+        <StudentCharts studentId={targetId} termId={data.term} />
       </div>
     )
   }
@@ -376,6 +361,8 @@ function Charts({ data, termName, onOpenStudent }) {
             <BarChart rows={groupRows} bars={groupBar} label={`Average by ${groupWord}, ${termName}`} />
           </ChartCard>
         )}
+
+        <GroupSubjectTrends scope={data.scope} id={data.scope === 'school' ? null : targetId} name={data.name} />
 
         <ChartCard title={`Subjects, ${termName}`} hint={subjectBars.length > 1 ? `Each subject against the ${subjectBars[1].label.toLowerCase()}.` : 'Average in each subject.'}
           table={<RowsTable rows={subjectRows} bars={subjectBars} />}>

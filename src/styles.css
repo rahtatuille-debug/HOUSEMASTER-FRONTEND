@@ -1725,3 +1725,12 @@ form + .staff-sub { margin-top: 18px; }
 .settings-details[open] > summary::after { transform: rotate(90deg); }
 .settings-details-body { padding: 0 18px 16px; font-size: 14px; }
 .settings-who strong, .settings-who .settings-hint { overflow-wrap: anywhere; }
+
+/* Extra performance graphs (StudentCharts.jsx) */
+.chart-controls { margin: 0 0 10px; }
+.chart-pick { border: 0; padding: 0; margin: 0 0 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
+.chart-pick .checkbox-label { margin: 0; font-size: 13px; }
+.chart-swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; }
+.chart-summary { margin: 8px 0 0; font-size: 14px; }
+.chart-point:focus { outline: none; stroke: var(--ink); stroke-width: 3; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }

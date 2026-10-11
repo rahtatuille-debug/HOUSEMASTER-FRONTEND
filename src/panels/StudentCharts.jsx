@@ -1,0 +1,165 @@
+import { useEffect, useState } from 'react'
+import { api } from '../api.js'
+import { ScaleContext, useVocab, useWithLevel } from '../levels.js'
+import ChartCard from './ChartCard.jsx'
+import { CATEGORICAL, LineChart, MARKERS } from './charts.jsx'
+
+// Five more graphs about one student (P-1 … P-5), and subject trends for a group (P-1). The numbers come from
+// /api/analytics/charts/ (staff) or the child's /charts/ (parents), which work them out exactly as the rest of the
+// Performance page does. A missing value is always a gap or "no marks", never a zero. See docs/CHARTS.md.
+
+const DEFAULT_SUBJECTS = 6
+const SUBJECTS_KEY = 'hm.charts.subjects'
+const MIN_TERMS = 2
+
+// Load one chart; anything that fails (e.g. an older server without these charts) is a quiet "not available".
+function useChart(load, deps) {
+  const [state, setState] = useState({ loading: true })
+  useEffect(() => {
+    let live = true
+    setState({ loading: true })
+    load().then((data) => live && setState({ data })).catch(() => live && setState({ unavailable: true }))
+    return () => { live = false }
+  }, deps) // eslint-disable-line react-hooks/exhaustive-deps
+  return state
+}
+
+function Quiet({ state, children }) {
+  if (state.loading) return <p className="text-muted" style={{ margin: 0 }}>Loading…</p>
+  if (state.unavailable || !state.data) return <p className="text-muted" style={{ margin: 0 }}>Not available yet.</p>
+  return children
+}
+
+// Each subject keeps one colour and marker on the whole page: by its place in the full, sorted subject list.
+function subjectStyle(subject, all) {
+  const i = Math.max(0, all.indexOf(subject))
+  return { color: CATEGORICAL[i % CATEGORICAL.length], marker: MARKERS[i % MARKERS.length] }
+}
+
+function readChosen() {
+  try { return JSON.parse(localStorage.getItem(SUBJECTS_KEY) || 'null') } catch { return null }
+}
+
+// ---- P-1 ------------------------------------------------------------------------------------------------------
+
+export function SubjectTrends({ data, valueKey = 'student', allowCompare = true }) {
+  const fmt = useWithLevel()
+  const words = useVocab()
+  const all = data.subjects.map((s) => s.subject)
+  // The six subjects with the most terms of marks (or the ones this person chose last time).
+  const byData = [...data.subjects].sort((a, b) => b.points.filter((p) => p[valueKey] != null).length - a.points.filter((p) => p[valueKey] != null).length
+    || a.subject.localeCompare(b.subject)).map((s) => s.subject)
+  const [chosen, setChosen] = useState(() => {
+    const saved = readChosen()?.filter((s) => all.includes(s))
+    return saved?.length ? saved : byData.slice(0, DEFAULT_SUBJECTS)
+  })
+  const [compare, setCompare] = useState(false)
+  const canCompare = allowCompare && data.subjects.some((s) => s.points.some((p) => p.class != null))
+
+  function toggle(subject) {
+    const next = chosen.includes(subject) ? chosen.filter((s) => s !== subject) : [...chosen, subject]
+    setChosen(next)
+    try { localStorage.setItem(SUBJECTS_KEY, JSON.stringify(next)) } catch { /* private mode */ }
+  }
+
+  const rows = data.terms.map((t, i) => {
+    const row = { term: t.name }
+    for (const s of data.subjects) {
+      row[s.subject] = s.points[i]?.[valueKey] ?? null
+      row[`${s.subject}__class`] = s.points[i]?.class ?? null
+    }
+    return row
+  })
+  const series = chosen.filter((s) => all.includes(s)).flatMap((subject) => {
+    const style = subjectStyle(subject, all)
+    return [{ key: subject, label: subject, short: subject.length > 12 ? `${subject.slice(0, 11)}…` : subject, ...style },
+      ...(compare && canCompare ? [{ key: `${subject}__class`, label: `${subject} (class)`, short: '', ...style, dashed: true }] : [])]
+  })
+  const termsWithMarks = rows.filter((r) => chosen.some((s) => r[s] != null)).length
+  const table = (
+    <table>
+      <thead><tr><th>{words.subject}</th>{data.terms.map((t) => <th key={t.id}>{t.name}</th>)}</tr></thead>
+      <tbody>{data.subjects.map((s) => (
+        <tr key={s.subject}><td>{s.subject}</td>{s.points.map((p) => (
+          <td key={p.term_id}>{p[valueKey] == null ? <span className="text-muted">no marks</span> : fmt(p[valueKey], 1)}
+            {p.class != null && allowCompare && <span className="text-muted"> (class {fmt(p.class, 1)})</span>}</td>
+        ))}</tr>
+      ))}</tbody>
+    </table>
+  )
+  return (
+    <ChartCard title={`${words.subjects} over ${words.terms.toLowerCase()}`}
+      hint={`One line per ${words.subject.toLowerCase()}. A gap means no marks that ${words.term.toLowerCase()}.`}
+      table={table}
+      actions={(
+        <div className="chart-controls">
+          <fieldset className="chart-pick">
+            <legend className="sr-only">{words.subjects} to show</legend>
+            {all.map((subject) => {
+              const style = subjectStyle(subject, all)
+              return (
+                <label key={subject} className="checkbox-label">
+                  <input type="checkbox" checked={chosen.includes(subject)} onChange={() => toggle(subject)} />
+                  <span className="chart-swatch" style={{ background: style.color }} aria-hidden="true" />{subject}
+                </label>
+              )
+            })}
+          </fieldset>
+          {canCompare && (
+            <label className="checkbox-label"><input type="checkbox" checked={compare} onChange={(e) => setCompare(e.target.checked)} /> Compare with class average</label>
+          )}
+        </div>
+      )}>
+      {!all.length ? <p className="text-muted" style={{ margin: 0 }}>No marks yet.</p>
+        : termsWithMarks < MIN_TERMS ? <p className="text-muted" style={{ margin: 0 }}>Not enough {words.terms.toLowerCase()} yet. Show as table to see what there is.</p>
+          : !series.length ? <p className="text-muted" style={{ margin: 0 }}>Choose a {words.subject.toLowerCase()} above.</p>
+            : <LineChart data={rows} series={series} gaps label={`${data.name}: ${chosen.join(', ')} by ${words.term.toLowerCase()}`}
+              pointLabel={(row, s) => `${s.label}, ${row.term}: ${fmt(row[s.key], 1)}`} />}
+    </ChartCard>
+  )
+}
+
+export function GroupSubjectTrends({ scope, id, name }) {
+  const state = useChart(() => api.charts({ chart: 'subject_trends', scope, ...(id ? { id } : {}) }), [scope, id])
+  return (
+    <Quiet state={state}>
+      {state.data && (
+        <ScaleContext.Provider value={state.data.grading?.scale || null}>
+          <SubjectTrends data={{ ...state.data, name }} valueKey="average" allowCompare={false} />
+        </ScaleContext.Provider>
+      )}
+    </Quiet>
+  )
+}
+
+// ---- Putting them together ---------------------------------------------------------------------------------------
+
+// Staff: everything about one student. `only="trends"` for the student profile (P-1 alone).
+export default function StudentCharts({ studentId, termId, only }) {
+  const trends = useChart(() => api.charts({ chart: 'subject_trends', scope: 'student', id: studentId }), [studentId])
+  const scale = trends.data?.grading?.scale || null
+  return (
+    <ScaleContext.Provider value={scale}>
+      <Quiet state={trends}>
+        {trends.data && <SubjectTrends key={studentId} data={trends.data} />}
+      </Quiet>
+    </ScaleContext.Provider>
+  )
+}
+
+// Parents (and a student's own account): only what their child's other pages already show. Subject results for
+// terms with a finalized report, every mark (without assessment types), and positions only where the report card
+// has them. No class comparisons.
+export function ChildCharts({ studentId, terms }) {
+  const words = useVocab()
+  const trends = useChart(() => api.guardianStudents.charts(studentId, { chart: 'subject_trends' }), [studentId])
+  return (
+    <>
+      <Quiet state={trends}>
+        {trends.data && (trends.data.terms.length ? (
+          <SubjectTrends data={trends.data} allowCompare={false} />
+        ) : <p className="hint">{words.subjects} over time appear once the school shares a finalized report.</p>)}
+      </Quiet>
+    </>
+  )
+}

@@ -662,6 +662,8 @@ export const api = {
   governorSummary: () => request('/api/governor/summary/'),
   // Graphs data. scope: 'student' | 'class' | 'year_group' | 'school'.
   performance: (params) => request('/api/analytics/performance/', { params }),
+  // The extra performance graphs: { chart: subject_trends|assessment_types|marks|ranks, scope, id, term, subject }.
+  charts: (params) => request('/api/analytics/charts/', { params }),
   // Excel import (admins). commit=false is a preview: nothing is saved.
   importWorkbook: (file, commit) => {
     const form = new FormData()
@@ -799,6 +801,8 @@ export const api = {
     reports: (id) => request(`/api/guardian-students/${id}/reports/`),
     reportCard: (id, term) => downloadFile(`/api/guardian-students/${id}/report-card/`, { term }),
     termSummary: (id, term) => request(`/api/guardian-students/${id}/term-summary/`, { params: { term } }),
+    // The extra performance graphs a parent may see: { chart: subject_trends|marks|ranks, term }.
+    charts: (id, params) => request(`/api/guardian-students/${id}/charts/`, { params }),
     profile: (id) => request(`/api/guardian-students/${id}/profile/`),
     timetable: (id) => request(`/api/guardian-students/${id}/timetable/`),
     boarding: (id) => request(`/api/guardian-students/${id}/boarding/`),
