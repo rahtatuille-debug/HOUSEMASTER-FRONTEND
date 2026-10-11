@@ -691,6 +691,17 @@ export const api = {
     return postForm('/api/import/', form)
   },
   downloadImportTemplate: () => downloadFile('/api/import/template/'),
+  // A class's mark sheet: { school_class, subject, term, assessment_type, max_score }; check (commit false) or import.
+  marksheets: {
+    template: (params) => downloadFile('/api/marksheets/template/', params),
+    importFile: (file, params, commit) => {
+      const form = new FormData()
+      form.append('file', file)
+      for (const [key, value] of Object.entries(params)) form.append(key, value ?? '')
+      form.append('commit', commit ? 'true' : 'false')
+      return postForm('/api/marksheets/import/', form)
+    },
+  },
   importStaff: (file, commit, sendEmails = false) => {
     const form = new FormData()
     form.append('file', file)
