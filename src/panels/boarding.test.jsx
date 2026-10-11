@@ -108,6 +108,7 @@ describe('Boarding page', () => {
     await waitFor(() => expect(amend).toHaveBeenCalledWith(6, [{ student: 7, status: 'present' }], 'Was in the library'))
     expect(await screen.findByText(/Amended by Head/)).toBeInTheDocument()
     unmount()
+    sessionStorage.clear() // another person, another browser tab
     render(<Boarding me={{ role: 'teacher' }} />)
     await screen.findByText('Missing: not found yet')
     tab('Roll call')

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api.js'
+import { useRemembered } from '../remember.js'
 import { formatDate, formatDateTime } from '../format.js'
 import { errorText } from './Timetable.jsx'
 import StudentSelect from './StudentSelect.jsx'
@@ -879,7 +880,7 @@ function AllocationPanel({ me, houses, reload }) {
 
 // Boarding, for house staff and admins.
 export default function Boarding({ me }) {
-  const [tab, setTab] = useState('today')
+  const [tab, setTab] = useRemembered('panel.boarding.tab', 'today')
   const [houses, setHouses] = useState(null)
   const [error, setError] = useState('')
   const loadHouses = useCallback(() => api.boarding.houses.list().then(setHouses).catch((err) => setError(errorText(err))), [])

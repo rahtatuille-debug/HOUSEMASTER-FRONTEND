@@ -66,3 +66,31 @@ describe('a teacher writing to a parent', () => {
     await waitFor(() => expect(create).toHaveBeenCalledWith({ participant_ids: [5], student: 7, body: 'Hello' }))
   })
 })
+
+describe('refreshing the page', () => {
+  it('reopens the conversation that was open', async () => {
+    const conversation = {
+      id: 3, kind: 'direct', participants: [{ id: 5, name: 'Grace', kind: 'guardian' }, { id: 9, name: 'Mr Otieno', kind: 'staff' }],
+      member_count: 2, can_reply: true, unread_count: 0, last_message: { body: 'Thanks' }, student_name: null,
+    }
+    mockApi.current = deepApiMock({
+      'conversations.list': () => Promise.resolve([conversation]),
+      'conversations.messages': () => Promise.resolve([{ id: 1, sender: 9, sender_name: 'Mr Otieno', body: 'See you Monday', created_at: '2026-09-28T08:00:00Z' }]),
+    })
+    const { unmount } = render(<Messages me={{ id: 5, name: 'Grace' }} identityKind="guardian" />)
+    fireEvent.click(await screen.findByText('Thanks'))
+    await screen.findByText('See you Monday')
+    unmount()
+    render(<Messages me={{ id: 5, name: 'Grace' }} identityKind="guardian" />)
+    expect(await screen.findByText('See you Monday')).toBeInTheDocument()
+    expect(screen.getByLabelText('Write a message')).toBeInTheDocument()
+  })
+
+  it('shows the list when the remembered conversation has gone', async () => {
+    sessionStorage.setItem('hm.page.panel.messages.open', '99')
+    mockApi.current = deepApiMock({ 'conversations.list': () => Promise.resolve([]) })
+    render(<Messages me={{ id: 5, name: 'Grace' }} identityKind="guardian" />)
+    await waitFor(() => expect(sessionStorage.getItem('hm.page.panel.messages.open')).toBeNull())
+    expect(screen.queryByLabelText('Write a message')).toBeNull()
+  })
+})

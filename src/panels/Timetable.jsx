@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api.js'
+import { useRemembered } from '../remember.js'
 import { useVocab } from '../levels.js'
 import WeekGrid from './WeekGrid.jsx'
 
@@ -276,7 +277,7 @@ function SchoolDaySetup({ onChanged }) {
 export default function Timetable({ me }) {
   const words = useVocab()
   const isAdmin = me?.role === 'admin'
-  const [view, setView] = useState(isAdmin ? 'class' : 'mine')
+  const [view, setView] = useRemembered('panel.timetable.view', isAdmin ? 'class' : 'mine')
   const [target, setTarget] = useState('')
   const [options, setOptions] = useState({ classes: [], staff: [], rooms: [], subjects: [] })
   const [week, setWeek] = useState(null)

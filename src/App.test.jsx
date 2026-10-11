@@ -94,6 +94,29 @@ describe('identity fork', () => {
     expect(screen.queryByRole('dialog', { name: 'Everything in HouseMaster' })).toBeNull()
   })
 
+  it('a refresh stays on the page that was open, and signing out forgets it', async () => {
+    mockApi.current = deepApiMock({
+      isLoggedIn: () => true,
+      me: () => Promise.resolve({ id: 1, name: 'Amina', role: 'admin', tour_seen: true, school, assignments: [] }),
+      dashboard: () => Promise.resolve(dashboard),
+      'checklist.get': () => Promise.resolve(checklist),
+      'activity.list': () => Promise.resolve({ results: [], next: null }),
+    })
+    const first = render(<App />)
+    await waitFor(() => expect(first.container.querySelector('.rail [data-section="admin"]')).toBeInTheDocument())
+    fireEvent.click(first.container.querySelector('.rail [data-section="admin"]'))
+    fireEvent.click(within(await screen.findByRole('tablist', { name: 'Admin' })).getByRole('tab', { name: 'Activity log' }))
+    first.unmount()
+    // The refresh.
+    const { container } = render(<App />)
+    expect(await screen.findByRole('tab', { name: 'Activity log' })).toHaveAttribute('aria-selected', 'true')
+    expect(screen.queryByText(/Good (morning|afternoon|evening), Amina/)).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Your profile' }))
+    fireEvent.click(screen.getAllByRole('button', { name: /Log out/ })[0])
+    await waitFor(() => expect(container.querySelector('.rail')).toBeNull())
+    expect(sessionStorage.getItem('hm.page.tab') ?? '').not.toContain('activity')
+  })
+
   it('falls back to the parent menu when /api/me/ answers 403', async () => {
     const guardianMe = vi.fn(() => Promise.resolve({ id: 7, name: 'Grace', school, students: [] }))
     mockApi.current = deepApiMock({ isLoggedIn: () => true, me: forbidden, guardianMe })

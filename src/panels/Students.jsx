@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { classesFor, perms } from '../permissions.js'
+import { useRemembered } from '../remember.js'
 import { usePagedList } from '../usePagedList.js'
 import SubjectChoicesCard from './SubjectChoicesCard.jsx'
 import { useVocab } from '../levels.js'
@@ -19,7 +20,7 @@ export default function Students({ me, navParams }) {
   const [notice, setNotice] = useState('')
   // The student whose profile is open, if any.
   // The dashboard's student search opens a profile straight away.
-  const [openStudentId, setOpenStudentId] = useState(navParams?.studentId || null)
+  const [openStudentId, setOpenStudentId] = useRemembered('panel.students.open', null, navParams?.studentId || null)
   const [allClasses, setAllClasses] = useState([])
   const [error, setError] = useState('')
   const [form, setForm] = useState(emptyForm)
