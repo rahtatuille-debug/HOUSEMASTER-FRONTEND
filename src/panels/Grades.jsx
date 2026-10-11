@@ -3,6 +3,7 @@ import { perms } from '../permissions.js'
 import { levelFor, levelMidpoint, levelsForScale, useSchool, useVocab } from '../levels.js'
 import StudentSelect from './StudentSelect.jsx'
 import { api, isPage } from '../api.js'
+import GradesImport from './GradesImport.jsx'
 import ShowMore, { PAGE } from './ShowMore.jsx'
 
 // Teachers can see every subject's grades for students in their classes,
@@ -204,6 +205,8 @@ export default function Grades({ me }) {
           </p>
         </div>
       )}
+
+      {!noPrereqs && <GradesImport me={me} subjects={subjects} terms={terms} types={types} onImported={loadGrades} />}
 
       {!noPrereqs && (
         <div className="card">

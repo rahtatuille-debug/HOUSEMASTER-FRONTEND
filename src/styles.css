@@ -1734,3 +1734,4 @@ form + .staff-sub { margin-top: 18px; }
 .chart-summary { margin: 8px 0 0; font-size: 14px; }
 .chart-point:focus { outline: none; stroke: var(--ink); stroke-width: 3; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+.text-danger { color: var(--stamp-red); }
