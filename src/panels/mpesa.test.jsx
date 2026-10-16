@@ -83,12 +83,12 @@ describe("a parent's Fees tab", () => {
 describe("the bursar's M-Pesa tab", () => {
   it('saves the paybill and keys, then connects', async () => {
     const saveMpesa = vi.fn(() => Promise.resolve({ connected: true, enabled: true, kind: 'paybill', shortcode: '123456', till_number: '',
-      environment: 'sandbox', keys_saved: true, c2b_registered_at: null, currency_ok: true, server_ready: true }))
+      environment: 'sandbox', keys_saved: true, c2b_registered_at: null, currency_ok: true, server_ready: true, can_change: true }))
     const connectMpesa = vi.fn(() => Promise.resolve({ connected: true, enabled: true, kind: 'paybill', shortcode: '123456', till_number: '',
-      environment: 'sandbox', keys_saved: true, c2b_registered_at: '2026-10-09T10:00:00Z', currency_ok: true, server_ready: true }))
+      environment: 'sandbox', keys_saved: true, c2b_registered_at: '2026-10-09T10:00:00Z', currency_ok: true, server_ready: true, can_change: true }))
     mockApi.current = deepApiMock({
       'fees.mpesa': () => Promise.resolve({ connected: false, enabled: false, kind: 'paybill', shortcode: '', till_number: '',
-        environment: 'sandbox', keys_saved: false, c2b_registered_at: null, currency_ok: true, server_ready: true }),
+        environment: 'sandbox', keys_saved: false, c2b_registered_at: null, currency_ok: true, server_ready: true, can_change: true }),
       'fees.saveMpesa': saveMpesa, 'fees.connectMpesa': connectMpesa, 'fees.mpesaPayments': () => Promise.resolve([]),
     })
     render(<FeesMpesa />)
@@ -103,6 +103,35 @@ describe("the bursar's M-Pesa tab", () => {
     await waitFor(() => expect(connectMpesa).toHaveBeenCalled())
     expect(await screen.findByText(/now recorded by themselves/)).toBeInTheDocument()
     expect(screen.getByText('Nothing to sort out.')).toBeInTheDocument()
+  })
+
+  it("shows a bursar the settings without letting them change where the money goes", async () => {
+    mockApi.current = deepApiMock({
+      'fees.mpesa': () => Promise.resolve({ connected: true, enabled: true, kind: 'paybill', shortcode: '123456', environment: 'production',
+        c2b_registered_at: '2026-10-09T06:00:00Z', currency_ok: true, server_ready: true, can_change: false }),
+      'fees.mpesaPayments': () => Promise.resolve([]),
+    })
+    render(<FeesMpesa />)
+    expect(await screen.findByText(/Paybill 123456/)).toBeInTheDocument()
+    expect(screen.getByText(/Only the school's admins can change where M-Pesa payments go/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Change' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('form', { name: 'M-Pesa details' })).not.toBeInTheDocument()
+  })
+
+  it('lets an admin give M-Pesa a new callback address', async () => {
+    const newMpesaAddress = vi.fn(() => Promise.resolve({ connected: true, enabled: true, kind: 'paybill', shortcode: '123456',
+      environment: 'production', c2b_registered_at: '2026-10-16T06:00:00Z', currency_ok: true, server_ready: true, can_change: true }))
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    mockApi.current = deepApiMock({
+      'fees.mpesa': () => Promise.resolve({ connected: true, enabled: true, kind: 'paybill', shortcode: '123456', environment: 'production',
+        c2b_registered_at: '2026-10-09T06:00:00Z', currency_ok: true, server_ready: true, can_change: true }),
+      'fees.mpesaPayments': () => Promise.resolve([]), 'fees.newMpesaAddress': newMpesaAddress,
+    })
+    render(<FeesMpesa />)
+    fireEvent.click(await screen.findByRole('button', { name: 'New callback address' }))
+    await waitFor(() => expect(newMpesaAddress).toHaveBeenCalled())
+    expect(await screen.findByText(/every admin has been emailed/)).toBeInTheDocument()
+    vi.restoreAllMocks()
   })
 
   it('gives an unmatched paybill payment to a student', async () => {

@@ -15,7 +15,7 @@ export default function FeesMpesa({ onUnmatched }) {
   const [notice, setNotice] = useState('')
 
   useEffect(() => {
-    api.fees.mpesa().then((a) => { setAccount(a); if (!a.connected) setForm({ ...BLANK, ...pick(a) }) }).catch((err) => setError(err.message))
+    api.fees.mpesa().then((a) => { setAccount(a); if (!a.connected && a.can_change) setForm({ ...BLANK, ...pick(a) }) }).catch((err) => setError(err.message))
   }, [])
 
   const set = (key) => (e) => setForm({ ...form, [key]: e.target.type === 'checkbox' ? e.target.checked : e.target.value })
@@ -51,6 +51,21 @@ export default function FeesMpesa({ onUnmatched }) {
     }
   }
 
+  async function newAddress() {
+    if (!window.confirm('Give M-Pesa a new secret address to report payments to? Use this if the current one may have been seen by someone else. The old address stops working straight away.')) return
+    setBusy(true)
+    setError('')
+    setNotice('')
+    try {
+      setAccount(await api.fees.newMpesaAddress())
+      setNotice('Done. M-Pesa now reports payments to the new address; every admin has been emailed.')
+    } catch (err) {
+      setError(fieldError(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   if (!account) return error ? <div className="error-banner" role="alert">{error}</div> : <p className="text-muted">Loading…</p>
   return (
     <>
@@ -69,12 +84,14 @@ export default function FeesMpesa({ onUnmatched }) {
                 {' · '}{account.enabled ? 'On' : 'Off'}
                 {account.c2b_registered_at ? ` · connected ${formatDateTime(account.c2b_registered_at, { day: 'numeric', month: 'short' })}` : ' · not connected yet'}
               </p>
-            ) : <p className="hint" style={{ margin: '4px 0 0' }}>Not set up. Parents can pay by M-Pesa once you add your paybill or till.</p>}
+            ) : <p className="hint" style={{ margin: '4px 0 0' }}>Not set up. Parents can pay by M-Pesa once {account.can_change ? 'you add' : 'an admin adds'} your paybill or till.</p>}
+            {!account.can_change && <p className="hint" style={{ margin: '4px 0 0' }}>Only the school&apos;s admins can change where M-Pesa payments go.</p>}
           </div>
-          {account.connected && !form && (
+          {account.connected && !form && account.can_change && (
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button type="button" style={{ width: 'auto' }} disabled={busy} onClick={connect}>{account.c2b_registered_at ? 'Connect again' : 'Connect'}</button>
               <button type="button" className="secondary" style={{ width: 'auto' }} onClick={() => setForm({ ...BLANK, ...pick(account) })}>Change</button>
+              <button type="button" className="secondary" style={{ width: 'auto' }} disabled={busy} onClick={newAddress}>New callback address</button>
             </div>
           )}
         </div>

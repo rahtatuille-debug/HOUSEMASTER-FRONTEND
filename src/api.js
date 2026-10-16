@@ -1171,13 +1171,14 @@ export const api = {
     voidPayment: (id, reason) => request(`/api/fees/payments/${id}/void/`, { method: 'POST', body: { reason } }),
     receipt: (id) => downloadFile(`/api/fees/payments/${id}/receipt/`),
     claims: (status) => request('/api/fees/claims/', { params: { status } }),
-    confirmClaim: (id, amount) => request(`/api/fees/claims/${id}/confirm/`, { method: 'POST', body: amount ? { amount } : {} }),
+    confirmClaim: (id, amount, extra) => request(`/api/fees/claims/${id}/confirm/`, { method: 'POST', body: { ...(amount ? { amount } : {}), ...extra } }),
     rejectClaim: (id, reason) => request(`/api/fees/claims/${id}/reject/`, { method: 'POST', body: { reason } }),
     remind: (schoolClass) => request('/api/fees/remind/', { method: 'POST', body: schoolClass ? { school_class: schoolClass } : {} }),
     // The school's own M-Pesa paybill or till. The keys are write-only.
     mpesa: () => request('/api/fees/mpesa/'),
     saveMpesa: (body) => request('/api/fees/mpesa/', { method: 'PUT', body }),
     connectMpesa: () => request('/api/fees/mpesa/connect/', { method: 'POST' }),
+    newMpesaAddress: () => request('/api/fees/mpesa/new-address/', { method: 'POST' }),
     // Payments made straight to the paybill: 'unmatched' (default) or 'all'.
     mpesaPayments: (status) => request('/api/fees/mpesa/payments/', { params: { status } }),
     assignMpesa: (id, student) => request(`/api/fees/mpesa/payments/${id}/assign/`, { method: 'POST', body: { student } }),
