@@ -116,8 +116,53 @@ describe('the bursar', () => {
     fireEvent.click(screen.getByRole('tab', { name: /To confirm/ }))
     expect(await screen.findByText('RKT55X')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: "Confirm Amina K's payment" }))
-    await waitFor(() => expect(confirmClaim).toHaveBeenCalledWith(9, '18000'))
+    await waitFor(() => expect(confirmClaim).toHaveBeenCalledWith(9, '18000', {}))
     expect(await screen.findByText(/Nothing to check/)).toBeInTheDocument()
+  })
+
+  it('asks before recording an M-Pesa code that is already on a payment, as one payment shared by siblings', async () => {
+    let open = [{ id: 9, student: 7, student_name: 'Amina K', class_name: '1 East', claimed_by_name: 'Pat Parent', amount: '3000',
+      paid_on: '2026-10-08', method_label: 'M-Pesa', reference: 'RKT55X', note: '', created_at: '2026-10-08T10:00:00Z' }]
+    const used = Object.assign(new Error('Bad request'), {
+      data: { reference: ['M-Pesa code RKT55X is already recorded: receipt R2026-00004 for Ben O (KES 3,000.00).'], mpesa_code_used: ['RKT55X'] },
+    })
+    const confirmClaim = vi.fn((id, got, extra) => {
+      if (!extra.shared) return Promise.reject(used)
+      open = []
+      return Promise.resolve({})
+    })
+    vi.spyOn(window, 'prompt').mockReturnValue('3000')
+    const ask = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    mockApi.current = deepApiMock({
+      'fees.settings': () => Promise.resolve({ currency: 'KES' }), 'schoolClasses.list': () => Promise.resolve([]),
+      'fees.balances': () => Promise.resolve(balances), 'fees.claims': () => Promise.resolve(open), 'fees.confirmClaim': confirmClaim,
+    })
+    render(<Fees />)
+    fireEvent.click(screen.getByRole('tab', { name: /To confirm/ }))
+    fireEvent.click(await screen.findByRole('button', { name: "Confirm Amina K's payment" }))
+    await waitFor(() => expect(confirmClaim).toHaveBeenLastCalledWith(9, '3000', { shared: true }))
+    expect(ask.mock.calls[0][0]).toMatch(/already recorded: receipt R2026-00004 for Ben O[\s\S]*shared between children/)
+    expect(await screen.findByText(/Nothing to check/)).toBeInTheDocument()
+  })
+
+  it('records nothing when the bursar says it is not a shared payment', async () => {
+    const open = [{ id: 9, student: 7, student_name: 'Amina K', class_name: '1 East', claimed_by_name: 'Pat Parent', amount: '3000',
+      paid_on: '2026-10-08', method_label: 'M-Pesa', reference: 'RKT55X', note: '', created_at: '2026-10-08T10:00:00Z' }]
+    const used = Object.assign(new Error('Bad request'), {
+      data: { reference: ['M-Pesa code RKT55X is already recorded: receipt R2026-00004 for Ben O (KES 3,000.00).'], mpesa_code_used: ['RKT55X'] },
+    })
+    const confirmClaim = vi.fn(() => Promise.reject(used))
+    vi.spyOn(window, 'prompt').mockReturnValue('3000')
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    mockApi.current = deepApiMock({
+      'fees.settings': () => Promise.resolve({ currency: 'KES' }), 'schoolClasses.list': () => Promise.resolve([]),
+      'fees.balances': () => Promise.resolve(balances), 'fees.claims': () => Promise.resolve(open), 'fees.confirmClaim': confirmClaim,
+    })
+    render(<Fees />)
+    fireEvent.click(screen.getByRole('tab', { name: /To confirm/ }))
+    fireEvent.click(await screen.findByRole('button', { name: "Confirm Amina K's payment" }))
+    expect(await screen.findByText(/already recorded: receipt R2026-00004/)).toBeInTheDocument()
+    expect(confirmClaim).toHaveBeenCalledTimes(1)
   })
 })
 

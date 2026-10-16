@@ -159,7 +159,7 @@ function Statement({ studentId, onBack }) {
   }
   const pay = (e) => {
     e.preventDefault()
-    run(() => api.fees.addPayment(studentId, payForm), () => { setPayForm(null); setNotice('Payment recorded. The receipt has been emailed to the parents.') })
+    run(() => withSharedCode((extra) => api.fees.addPayment(studentId, { ...payForm, ...extra })), () => { setPayForm(null); setNotice('Payment recorded. The receipt has been emailed to the parents.') })
   }
   const charge = (e) => {
     e.preventDefault()
@@ -368,6 +368,18 @@ function Structure({ currency }) {
   )
 }
 
+// One M-Pesa payment can cover two children. If the code is already recorded, say where, and record it again only
+// if the bursar says it's one payment shared between children (the server still won't let it exceed what was paid).
+export async function withSharedCode(send) {
+  try {
+    return await send({})
+  } catch (err) {
+    if (!err.data?.mpesa_code_used) throw err
+    if (!window.confirm(`${fieldError(err)}\n\nIs this one M-Pesa payment shared between children? OK records it as shared. Cancel records nothing.`)) throw err
+    return send({ shared: true })
+  }
+}
+
 function Claims({ onChange, onOpen }) {
   const [rows, setRows] = useState(null)
   const [error, setError] = useState('')
@@ -381,7 +393,7 @@ function Claims({ onChange, onOpen }) {
     if (!got) return
     setError('')
     try {
-      await api.fees.confirmClaim(c.id, got)
+      await withSharedCode((extra) => api.fees.confirmClaim(c.id, got, extra))
       load()
     } catch (err) {
       setError(fieldError(err))
