@@ -44,7 +44,7 @@ describe('Billing page', () => {
     mockApi.current = deepApiMock({ 'billing.get': () => Promise.resolve(billing) })
     render(<Billing />)
     expect(await screen.findByText('Payment overdue')).toBeInTheDocument()
-    expect(screen.getByText(/pause for everyone at your school/)).toBeInTheDocument()
+    expect(screen.getByText(/pause for your school's staff, except registers/)).toBeInTheDocument()
     expect(screen.getByText('KES 50 per student a month')).toBeInTheDocument()
     expect(screen.getAllByText('KES 12,000')).toHaveLength(3) // a month for the school, and each invoice
     expect(screen.queryByText('Prices')).toBeNull() // one price: no table

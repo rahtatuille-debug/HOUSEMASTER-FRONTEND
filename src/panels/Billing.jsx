@@ -21,8 +21,8 @@ export function billingSentence(b) {
   if (b.status === 'exempt') return 'Your school uses HouseMaster free of charge.'
   if (b.status === 'active') return 'Your subscription is paid up.'
   if (b.status === 'due') return b.days_left > 0 ? `An invoice is due in ${b.days_left} day${b.days_left === 1 ? '' : 's'}.` : 'An invoice is due today.'
-  if (b.status === 'overdue') return `An invoice is overdue. HouseMaster will pause for everyone at your school on ${formatDate(b.locked_from)} unless it's paid.`
-  if (b.status === 'locked') return 'HouseMaster is paused for your school until the overdue invoice is paid. Only admins can sign in, and only to this page.'
+  if (b.status === 'overdue') return `An invoice is overdue. On ${formatDate(b.locked_from)} HouseMaster will pause for your school's staff, except registers, boarding, the sick bay, absences, messages and alerts, unless it's paid. Parents aren't affected.`
+  if (b.status === 'locked') return "HouseMaster is paused for your school's staff until the overdue invoice is paid. Registers, boarding, the sick bay, absences, messages and alerts still work, and parents aren't affected. Your school's administrators can pay from Billing."
   return ''
 }
 

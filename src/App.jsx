@@ -133,6 +133,10 @@ const STUDENT_TABS = [
   { key: 'settings', label: 'Settings', component: Settings },
 ]
 
+// While a school is paused for an unpaid subscription (BILL-001): registers, boarding, the sick bay, absences,
+// messages and alerts keep working, for safety; admins also have Billing to pay.
+const PAUSED_PAGES = ['attendance', 'boarding', 'sickbay', 'absences', 'messages', 'alerts', 'settings', 'billing']
+
 const GUARDIAN_TABS = [
   { key: 'students', label: 'Students', component: GuardianStudents },
   { key: 'announcements', label: 'Communications', component: GuardianAnnouncements },
@@ -324,11 +328,10 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [identityKind, me?.role, activeTab])
 
-  // Check for urgent alerts on load and every minute after, for staff and parents.
-  // A locked school's admin can only reach Billing, so there's nothing to poll.
-  const schoolPaused = me?.billing?.status === 'locked'
+  // Check for urgent alerts on load and every minute after, for staff and parents: even while a school is paused
+  // for an unpaid subscription, emergencies still get through.
   useEffect(() => {
-    if (!identityKind || schoolPaused) return
+    if (!identityKind) return
     let cancelled = false
     function check() {
       api.alerts
@@ -342,7 +345,7 @@ export default function App() {
       cancelled = true
       clearInterval(timer)
     }
-  }, [identityKind, schoolPaused])
+  }, [identityKind])
 
   async function acknowledgeAlert(id) {
     try {
@@ -508,7 +511,7 @@ export default function App() {
     )
   }
 
-  // A locked school's admin sees only Billing and their profile until it's paid.
+  // A school paused for an unpaid subscription keeps what keeps children safe; admins also see Billing.
   const billingLocked = identityKind === 'staff' && me?.billing?.status === 'locked'
 
   // A new school has to finish setup before anyone can use it.
@@ -554,8 +557,9 @@ export default function App() {
   const governor = identityKind === 'staff' && p.is_governor
   // A page shows when its role allows it (`need`), admins see admin pages,
   // and a governor sees only the school's figures and their profile.
-  const visibleTabs = tabSet.filter((t) => (billingLocked ? ['billing', 'settings'].includes(t.key) : governor ? GOVERNOR_PAGES.includes(t.key)
-    : (!t.adminOnly || isAdmin) && (!t.need || p[t.need]) && (!t.boardingOnly || me?.is_boarding_staff)))
+  const allowed = (t) => (!t.adminOnly || isAdmin) && (!t.need || p[t.need]) && (!t.boardingOnly || me?.is_boarding_staff)
+  const visibleTabs = tabSet.filter((t) => (billingLocked ? PAUSED_PAGES.includes(t.key) && (t.key !== 'billing' || isAdmin) && (t.key === 'billing' || allowed(t))
+    : governor ? GOVERNOR_PAGES.includes(t.key) : allowed(t)))
   const pageKeys = visibleTabs.map((t) => t.key)
   // Pages a role opens inside the Admin section (e.g. Parents for the Secretary, Approvals for leaders).
   const granted = [...visibleTabs.filter((t) => t.need).map((t) => t.key), ...(p.approve_requests || p.approve_reports ? ['approvals'] : [])]
@@ -757,7 +761,7 @@ export default function App() {
         {identityKind === 'staff' && ['due', 'overdue', 'locked'].includes(me?.billing?.status) && (
           <div className={`billing-banner billing-${me.billing.status}`} role={me.billing.status === 'due' ? 'status' : 'alert'}>
             <p>{billingSentence(me.billing)}</p>
-            {activeKey !== 'billing' && <button type="button" className="secondary" onClick={() => selectTab('billing')}>Open billing</button>}
+            {activeKey !== 'billing' && me.role === 'admin' && <button type="button" className="secondary" onClick={() => selectTab('billing')}>Open billing</button>}
           </div>
         )}
         {urgentAlerts.map((a) => (
