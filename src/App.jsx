@@ -145,6 +145,9 @@ const GUARDIAN_TABS = [
 // for the public routes (/invite/:token, /guardian-invite/:token,
 // /reset-password/:token) plus tab state for everything else is simpler
 // than pulling in react-router.
+// Answers that mean this account's school is closed to it for now (see the backend's _school_gates).
+const SCHOOL_CLOSED = new Set(['school_locked', 'school_not_open'])
+
 function getInviteToken() {
   const match = window.location.pathname.match(/^\/invite\/([^/]+)\/?$/)
   return match ? match[1] : null
@@ -259,17 +262,18 @@ export default function App() {
   // still signed in: say so and offer to try again, rather than asking for the password again.
   const [cantReach, setCantReach] = useState(false)
   const [identityAttempt, setIdentityAttempt] = useState(0)
-  // The school's subscription is overdue past its grace period: only its admins can sign in, to pay.
-  const [schoolLocked, setSchoolLocked] = useState('')
+  // The school is closed to this account: its subscription is overdue past the grace period (only its admins can
+  // sign in, to pay), or it is still being set up (only its admins can sign in, to finish). { code, detail }.
+  const [schoolLocked, setSchoolLocked] = useState(null)
   // Phones: pull down at the top of the page to refresh it.
   const pullRefresh = usePullToRefresh(loggedIn && !!identityKind && !tourOpen)
 
   useEffect(() => {
     if (!loggedIn) return
     setCantReach(false)
-    setSchoolLocked('')
+    setSchoolLocked(null)
     const failed = (err) => {
-      if (err?.data?.code === 'school_locked') { setSchoolLocked(err.data.detail || 'HouseMaster is paused for your school.'); return }
+      if (SCHOOL_CLOSED.has(err?.data?.code)) { setSchoolLocked({ code: err.data.code, detail: err.data.detail }); return }
       // No internet, or the server itself down: say so. Anything else (an
       // expired session) goes back to sign-in.
       if (err?.network || err?.status >= 500) setCantReach(true)
@@ -285,7 +289,7 @@ export default function App() {
         setIdentityKind('staff')
       })
       .catch((err) => {
-        if (err.status === 403 && err.data?.code !== 'school_locked') {
+        if (err.status === 403 && !SCHOOL_CLOSED.has(err.data?.code)) {
           api
             .guardianMe()
             .then((data) => {
@@ -293,7 +297,7 @@ export default function App() {
               setIdentityKind('guardian')
             })
             .catch((gErr) => {
-              if (gErr.status !== 403 || gErr.data?.code === 'school_locked') { failed(gErr); return }
+              if (gErr.status !== 403 || SCHOOL_CLOSED.has(gErr.data?.code)) { failed(gErr); return }
               // Neither staff nor parent: a student's own account (studentaccounts).
               api.student.me()
                 .then((data) => {
@@ -479,8 +483,13 @@ export default function App() {
         <div className="login-wrap">
           <div className="login-card">
             <LogoFull />
-            <p className="tagline">HouseMaster is paused for your school</p>
-            <p>{schoolLocked}</p>
+            <p className="tagline">
+              {schoolLocked.code === 'school_not_open' ? 'Your school isn’t open yet' : 'HouseMaster is paused for your school'}
+            </p>
+            <p>{schoolLocked.detail || (schoolLocked.code === 'school_not_open'
+              ? 'Your school is still being set up. Please try again once its administrator has finished.'
+              : 'HouseMaster is paused for your school.')}</p>
+            <button type="button" onClick={() => setIdentityAttempt((n) => n + 1)}>Check again</button>
             <button type="button" className="secondary" onClick={handleLogout}>Sign out</button>
           </div>
         </div>
