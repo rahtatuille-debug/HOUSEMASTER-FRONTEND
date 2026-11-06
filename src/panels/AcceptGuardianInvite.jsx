@@ -19,10 +19,14 @@ export default function AcceptGuardianInvite({ token, onAccepted }) {
       .catch((err) => setPreviewError(err.message))
   }, [token])
 
+  // Already signs in to HouseMaster (another school, or staff and parent): this school is added to that
+  // account with its password, instead of a new password being chosen.
+  const existing = !!preview?.has_account
+
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
-    if (password !== confirmPassword) {
+    if (!existing && password !== confirmPassword) {
       setError('Passwords do not match.')
       return
     }
@@ -59,12 +63,14 @@ export default function AcceptGuardianInvite({ token, onAccepted }) {
             <p className="hint" style={{ marginBottom: 18 }}>
               You're joining <strong>{preview.school_name}</strong> as the parent/guardian of{' '}
               <strong>{preview.student_names?.join(', ') || 'a student'}</strong>, signing in as{' '}
-              <strong>{preview.email}</strong>. Choose a password to finish.
+              <strong>{preview.email}</strong>. {existing
+                ? <> You already sign in to HouseMaster with this email: enter that password to add {preview.school_name} to your account.</>
+                : ' Choose a password to finish.'}
             </p>
             {error && <div className="error-banner">{error}</div>}
             <form onSubmit={handleSubmit}>
               <div className="field">
-                <label htmlFor="invite-password">Password</label>
+                <label htmlFor="invite-password">{existing ? 'Your HouseMaster password' : 'Password'}</label>
                 <input
                   id="invite-password"
                   type="password"
@@ -74,20 +80,22 @@ export default function AcceptGuardianInvite({ token, onAccepted }) {
                   required
                 />
               </div>
-              <div className="field">
-                <label htmlFor="invite-confirm">Confirm password</label>
-                <input
-                  id="invite-confirm"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
+              {!existing && (
+                <div className="field">
+                  <label htmlFor="invite-confirm">Confirm password</label>
+                  <input
+                    id="invite-confirm"
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
               <PrivacyNotice schoolName={preview.school_name} contact={preview.privacy_contact} country={preview.country} audience="parent" />
               <PrivacyConsent checked={agreed} onChange={setAgreed} />
               <button type="submit" disabled={submitting || !agreed} style={{ width: '100%' }}>
-                {submitting ? 'Creating account…' : 'Create account & sign in'}
+                {submitting ? (existing ? 'Joining…' : 'Creating account…') : existing ? `Join ${preview.school_name} & sign in` : 'Create account & sign in'}
               </button>
             </form>
           </>

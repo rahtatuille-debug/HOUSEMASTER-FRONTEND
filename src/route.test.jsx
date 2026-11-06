@@ -45,3 +45,42 @@ describe('the app', () => {
     await waitFor(() => expect(screen.getByRole('tab', { name: 'Staff' })).toHaveAttribute('aria-selected', 'true'))
   })
 })
+
+describe('one login, several schools', () => {
+  it('switches school from the profile menu and starts again there', async () => {
+    const memberships = [
+      { key: 'staff:1', kind: 'staff', school: 'Alpha', role: 'Admin', current: true },
+      { key: 'parent:7', kind: 'parent', school: 'Beta', role: 'Parent', current: false },
+    ]
+    const switched = vi.fn(() => Promise.resolve({ access: 'a', refresh: 'r' }))
+    let asParent = false
+    const notStaff = () => Promise.reject(Object.assign(new Error('Forbidden'), { status: 403 }))
+    mockApi.current = deepApiMock({
+      isLoggedIn: () => true,
+      me: () => (asParent ? notStaff() : admin().then((m) => ({ ...m, memberships }))),
+      guardianMe: () => Promise.resolve({ id: 1, name: 'Amina', memberships, children: [], students: [] }),
+      'account.switch': (key) => { asParent = true; return switched(key) },
+    })
+    window.history.replaceState({}, '', '/staff')
+    render(<App />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Your profile' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Beta · Parent' }))
+    await waitFor(() => expect(switched).toHaveBeenCalledWith('parent:7'))
+    // The parent's front page (their children), not the staff page they were on.
+    await waitFor(() => expect(window.location.pathname).toBe('/students'))
+  })
+
+  it('offers the other schools when this one is paused', async () => {
+    const locked = () => Promise.reject(Object.assign(new Error('Forbidden'), {
+      status: 403, data: { code: 'school_locked', detail: 'Paused.' } }))
+    mockApi.current = deepApiMock({
+      isLoggedIn: () => true, me: locked,
+      'account.memberships': () => Promise.resolve([
+        { key: 'staff:1', school: 'Alpha', role: 'Teacher', current: true },
+        { key: 'staff:2', school: 'Beta', role: 'Teacher', current: false },
+      ]),
+    })
+    render(<App />)
+    expect(await screen.findByRole('button', { name: 'Beta · Teacher' })).toBeInTheDocument()
+  })
+})

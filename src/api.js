@@ -675,6 +675,15 @@ export const api = {
   logout,
   isLoggedIn: () => !!getTokens()?.access,
   me: () => request('/api/me/'),
+  // One login, several schools: which ones, and moving this session to another (new tokens).
+  account: {
+    memberships: () => request('/api/account/memberships/'),
+    switch: async (membership) => {
+      const data = await request('/api/account/switch/', { method: 'POST', body: { membership } })
+      setTokens(data)
+      return data
+    },
+  },
   // Admin home page.
   dashboard: () => request('/api/dashboard/'),
   // School-wide figures for governors and leaders: numbers only.

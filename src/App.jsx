@@ -10,6 +10,7 @@ import TeacherHome from './panels/TeacherHome.jsx'
 import Tour from './panels/Tour.jsx'
 import { api, countOf } from './api.js'
 import { onTokenLink, readRoute, showRoute } from './route.js'
+import SchoolSwitcher from './panels/SchoolSwitcher.jsx'
 import { LogoFull } from './panels/Logo.jsx'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
@@ -414,6 +415,20 @@ export default function App() {
     setProfileOpen(false)
   }
 
+  // Moved to another of this login's schools: start again there, from its front page.
+  function handleSwitched() {
+    forget()
+    window.history.replaceState({}, '', '/')
+    routeShown.current = false
+    setActiveTab('home')
+    setNavParams(null)
+    setLastPage({})
+    setProfileOpen(false)
+    setMe(null)
+    setIdentityKind(null)
+    setIdentityAttempt((n) => n + 1)
+  }
+
   function handleInviteAccepted() {
     window.history.replaceState({}, '', '/')
     setInviteToken(null)
@@ -513,6 +528,7 @@ export default function App() {
               ? 'Your school is still being set up. Please try again once its administrator has finished.'
               : 'HouseMaster is paused for your school.')}</p>
             <button type="button" onClick={() => setIdentityAttempt((n) => n + 1)}>Check again</button>
+            <SchoolSwitcher onSwitched={handleSwitched} />
             <button type="button" className="secondary" onClick={handleLogout}>Sign out</button>
           </div>
         </div>
@@ -568,6 +584,7 @@ export default function App() {
         <div className="login-card">
           <h1>HouseMaster</h1>
           <p>{me.school.name} is still being set up. An administrator needs to finish setup before you can start.</p>
+          {me.memberships?.length > 1 && <SchoolSwitcher memberships={me.memberships} onSwitched={handleSwitched} />}
           <button type="button" className="secondary" onClick={handleLogout}>Sign out</button>
         </div>
       </div>
@@ -767,6 +784,7 @@ export default function App() {
               {profileOpen && (
                 <div className="icon-popover profile-popover">
                   <p style={{ margin: '0 0 10px', fontSize: 14, fontWeight: 600 }}>{identityLine}</p>
+                  {me?.memberships?.length > 1 && <SchoolSwitcher memberships={me.memberships} onSwitched={handleSwitched} />}
                   <button
                     type="button"
                     className="secondary"
