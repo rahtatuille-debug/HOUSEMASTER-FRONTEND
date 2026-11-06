@@ -5,6 +5,14 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8001'
 
 const TOKEN_KEY = 'housemaster_tokens'
 
+// The refresh token in an httpOnly cookie the page can't read (backend AUTH_REFRESH_COOKIE, docs/
+// DESIGN_httpOnly_refresh.md). Only when the app and the API share a site; both switches must be on together.
+// The access token then lives in memory only, and a page reload gets a new one from the cookie.
+const COOKIE_MODE = import.meta.env.VITE_REFRESH_COOKIE === '1'
+const CREDENTIALS = COOKIE_MODE ? 'include' : 'same-origin'
+const IN_COOKIE = 'cookie' // stands in for the refresh token the page can't see
+let memoryAccess = null
+
 // A request that gets no answer is given up after timeoutMs; loading data is
 // then tried again after each retryDelaysMs (long enough for a sleeping
 // Render server to wake). Saves are never sent twice by the app itself: one
@@ -69,17 +77,25 @@ function clearOldDrafts() {
 function getTokens() {
   try {
     const raw = localStorage.getItem(TOKEN_KEY)
-    return raw ? JSON.parse(raw) : null
+    const tokens = raw ? JSON.parse(raw) : null
+    return tokens?.refresh_cookie ? { access: memoryAccess, refresh: IN_COOKIE } : tokens
   } catch {
     return null
   }
 }
 
 function setTokens(tokens) {
+  if (tokens.refresh_cookie || tokens.refresh === IN_COOKIE) {
+    memoryAccess = tokens.access
+    // Only that a cookie holds the session (so a reload knows to ask for an access token), never a token.
+    localStorage.setItem(TOKEN_KEY, JSON.stringify({ refresh_cookie: true }))
+    return
+  }
   localStorage.setItem(TOKEN_KEY, JSON.stringify(tokens))
 }
 
 function clearTokens() {
+  memoryAccess = null
   localStorage.removeItem(TOKEN_KEY)
 }
 
@@ -88,6 +104,7 @@ async function login(email, password) {
   try {
     res = await fetchWithTimeout(`${API_BASE}/api/token/`, {
       method: 'POST',
+    credentials: CREDENTIALS,
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
     }, network.writeTimeoutMs)
@@ -113,11 +130,13 @@ function logout() {
   clearOldDrafts()
   forget()
   if (!refresh) return
+  const inCookie = refresh === IN_COOKIE
   try {
-    fetch(`${API_BASE}/api/logout/`, {
+    fetch(`${API_BASE}${inCookie ? '/api/token/logout/' : '/api/logout/'}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh }),
+      headers: { 'Content-Type': 'application/json', ...(inCookie ? { 'X-Requested-With': 'HouseMaster' } : {}) },
+      body: JSON.stringify(inCookie ? {} : { refresh }),
+      credentials: CREDENTIALS,
       keepalive: true,
     }).catch(() => {})
   } catch {
@@ -203,6 +222,7 @@ async function confirmApplication(token) {
 async function acceptGuardianInvite(token, password, acceptPrivacy = false) {
   const res = await fetch(`${API_BASE}/api/guardian-invites/accept/`, {
     method: 'POST',
+    credentials: CREDENTIALS,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, password, accept_privacy: acceptPrivacy }),
   })
@@ -228,6 +248,7 @@ async function acceptGuardianInvite(token, password, acceptPrivacy = false) {
 async function registerSchool(body) {
   const res = await fetch(`${API_BASE}/api/schools/register/`, {
     method: 'POST',
+    credentials: CREDENTIALS,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   })
@@ -261,6 +282,7 @@ async function previewInvite(token) {
 async function acceptInvite(token, password, acceptPrivacy = false) {
   const res = await fetch(`${API_BASE}/api/invites/accept/`, {
     method: 'POST',
+    credentials: CREDENTIALS,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ token, password, accept_privacy: acceptPrivacy }),
   })
@@ -433,10 +455,12 @@ async function doRefresh(staleAccess) {
   }
   // A refresh that never got an answer throws: the session may be fine, so
   // it must not be treated like a refused token (which signs out).
+  const inCookie = tokens.refresh === IN_COOKIE
   const res = await fetchWithTimeout(`${API_BASE}/api/token/refresh/`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh: tokens.refresh }),
+    headers: { 'Content-Type': 'application/json', ...(inCookie ? { 'X-Requested-With': 'HouseMaster' } : {}) },
+    body: JSON.stringify(inCookie ? {} : { refresh: tokens.refresh }),
+    credentials: CREDENTIALS,
   }, network.timeoutMs)
   if (!res.ok) {
     // Another tab may have rotated the token a moment ago (browsers without
@@ -448,7 +472,7 @@ async function doRefresh(staleAccess) {
     return null
   }
   const data = await res.json()
-  setTokens({ ...tokens, access: data.access, ...(data.refresh ? { refresh: data.refresh } : {}) })
+  setTokens(data.refresh_cookie ? data : { ...tokens, access: data.access, ...(data.refresh ? { refresh: data.refresh } : {}) })
   return data.access
 }
 
@@ -469,6 +493,7 @@ async function request(path, { method = 'GET', body, params } = {}) {
   const send = async (accessToken) => {
     const init = {
       method,
+      credentials: CREDENTIALS,
       headers: {
         'Content-Type': 'application/json',
         ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
@@ -673,7 +698,10 @@ async function postForm(path, form) {
 export const api = {
   login,
   logout,
-  isLoggedIn: () => !!getTokens()?.access,
+  isLoggedIn: () => {
+    const tokens = getTokens()
+    return !!(tokens?.access || tokens?.refresh === IN_COOKIE)
+  },
   me: () => request('/api/me/'),
   // One login, several schools: which ones, and moving this session to another (new tokens).
   account: {
