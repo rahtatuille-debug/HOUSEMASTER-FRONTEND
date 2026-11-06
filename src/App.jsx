@@ -9,6 +9,7 @@ import Guide from './panels/Guide.jsx'
 import TeacherHome from './panels/TeacherHome.jsx'
 import Tour from './panels/Tour.jsx'
 import { api, countOf } from './api.js'
+import { onTokenLink, readRoute, showRoute } from './route.js'
 import { LogoFull } from './panels/Logo.jsx'
 import Login from './panels/Login.jsx'
 import AcceptInvite from './panels/AcceptInvite.jsx'
@@ -224,9 +225,29 @@ export default function App() {
   // 'staff' | 'guardian' | null (unknown until /api/me/ or /api/guardian-me/ resolves)
   const [identityKind, setIdentityKind] = useState(null)
   // Kept for this browser tab, so a refresh stays on the same page.
-  const [activeTab, setActiveTab] = useRemembered('tab', 'home')
+  // The address bar wins (a bookmark or shared link), then what this tab last showed.
+  const [activeTab, setActiveTab] = useRemembered('tab', 'home', readRoute()?.tab)
   // Extra details for the page being opened, e.g. which student (the dashboard's search).
-  const [navParams, setNavParams] = useState(null)
+  const [navParams, setNavParams] = useState(() => readRoute()?.params || null)
+  // Whether the address bar has been set since the app opened: the first time replaces, later ones add history.
+  const routeShown = useRef(false)
+  // The page actually shown (worked out while rendering: a page this person can't open falls back to another).
+  const shownPage = useRef(null)
+  useEffect(() => {
+    if (!identityKind || !shownPage.current || onTokenLink()) return
+    showRoute(shownPage.current, navParams, !routeShown.current)
+    routeShown.current = true
+  })
+  // Back and forward move between pages without adding history of their own.
+  useEffect(() => {
+    const onPop = () => {
+      const route = readRoute()
+      setActiveTab(route?.tab || 'home')
+      setNavParams(route?.params || null)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [setActiveTab])
   // The last page used in each section, so a section opens where you left it.
   const [lastPage, setLastPage] = useRemembered('sections', {})
   // Phone: the "More" sheet. Laptop: the quick-links bar on the right (remembered per browser).
@@ -382,6 +403,8 @@ export default function App() {
   function handleLogout() {
     api.logout()
     forget()
+    window.history.replaceState({}, '', '/')
+    routeShown.current = false
     setActiveTab('home')
     setLastPage({})
     setMe(null)
@@ -572,6 +595,7 @@ export default function App() {
     : governor ? GOVERNOR_SECTIONS : STAFF_SECTIONS,
     pageKeys, isAdmin, granted)
   const activeKey = pageKeys.includes(activeTab) ? activeTab : sections[0]?.pages[0] || visibleTabs[0]?.key
+  shownPage.current = activeKey
   const ActivePanel = visibleTabs.find((t) => t.key === activeKey)?.component
   const activeSection = sections.find((s) => s.pages.includes(activeKey)) || null
   const identityLine = identityKind === 'guardian' ? guardianIdentity(me) : identityKind === 'student' ? studentIdentity(me) : personIdentity(me)
@@ -811,6 +835,7 @@ export default function App() {
                   onCountsChanged={refreshWaitingCount}
                   onNavigate={selectTab}
                   navParams={navParams}
+                  onRoute={setNavParams}
                   onStartTour={() => setTourOpen(true)}
                   settingsPages={settingsPages}
                   onLogout={handleLogout}

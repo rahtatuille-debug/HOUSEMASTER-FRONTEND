@@ -6,4 +6,6 @@ afterEach(() => {
   cleanup()
   globalThis.localStorage?.clear()
   globalThis.sessionStorage?.clear()
+  // Pages are in the address bar: each test starts at the front page.
+  globalThis.window?.history.replaceState({}, '', '/')
 })

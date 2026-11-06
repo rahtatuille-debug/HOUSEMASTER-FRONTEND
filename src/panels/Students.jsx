@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { classesFor, perms } from '../permissions.js'
 import { useRemembered } from '../remember.js'
 import { usePagedList } from '../usePagedList.js'
@@ -14,13 +14,22 @@ const emptyForm = { first_name: '', last_name: '', house: '', external_id: '', s
 // Teachers only see and add students in the classes they teach. Deleting a
 // student permanently (with all their grades, attendance and reports) is
 // admin-only; a teacher's delete becomes a request for an admin to approve.
-export default function Students({ me, navParams }) {
+export default function Students({ me, navParams, onRoute }) {
   const words = useVocab()
   const isAdmin = me?.role === 'admin'
   const [notice, setNotice] = useState('')
   // The student whose profile is open, if any.
   // The dashboard's student search opens a profile straight away.
   const [openStudentId, setOpenStudentId] = useRemembered('panel.students.open', null, navParams?.studentId || null)
+  // The open profile is in the address bar (/students/42), so it can be shared and Back closes it.
+  useEffect(() => { onRoute?.(openStudentId ? { studentId: openStudentId } : null) }, [openStudentId]) // eslint-disable-line react-hooks/exhaustive-deps
+  const routed = useRef(navParams?.studentId || null)
+  useEffect(() => {
+    const id = navParams?.studentId || null
+    if (id === routed.current) return
+    routed.current = id
+    setOpenStudentId(id) // Back or Forward
+  }, [navParams?.studentId]) // eslint-disable-line react-hooks/exhaustive-deps
   const [allClasses, setAllClasses] = useState([])
   const [error, setError] = useState('')
   const [form, setForm] = useState(emptyForm)
